@@ -106,7 +106,12 @@ HASHES = {
     # Cats' Custom Prompt tab. DETECT, lint(), find_terms() and the banned/
     # warn logic are byte-for-byte unchanged; nothing about the gate widened.
     "tools/realism_lint.py": "95efaad0f06a9478",
-    "tools/motion_bank.json": "ca574d64805ed492",
+    # Bumped for the "negatives" and "style_presets" lists (build_motion.py's
+    # negative_tail()/style_preset()) - a standing artifact guard and concrete
+    # camera/grade vocabulary, replacing the vague "cinematic lighting"
+    # every video prompt used to carry. The 40 movements themselves, their
+    # requires/image_hints, and the two toolkit rules are untouched.
+    "tools/motion_bank.json": "53340b578f556b4b",
 }
 for name, expected in HASHES.items():
     got = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()[:16]
@@ -729,6 +734,60 @@ check("the gate goes green in the real view too", tview.passing, tview.lint_badg
 check("the sound sheet names the pair, not the literal string 'the cat'",
       "two cats" in tview.sheet_box.toPlainText(),
       tview.sheet_box.toPlainText()[:120])
+
+print()
+print("=== THE 6-FIELD VIDEO-PROMPT TEMPLATE (Prompts tab) ===")
+# Reuses `view` from THE FORM above - a real story, already built.
+view.tabs.setCurrentIndex(view.PROMPTS_TAB)
+view.rebuild_prompts()
+check("every scene gets a custom_motion entry the first time its card renders",
+      set(view.custom_motion) == set(range(len(view.scenes))),
+      str(sorted(view.custom_motion)))
+check("the default camera movement is never blank for a real movement",
+      all(view.custom_motion[i]["camera_movement"] or view.scenes[i]["movement"] in (None, "")
+          for i in range(len(view.scenes))))
+check("Cats' style default asks for subtle motion, not Videos' plain 'natural motion'",
+      all("subtle" in fields["style"] for fields in view.custom_motion.values()),
+      str(view.custom_motion[0]["style"]))
+check("the still prompt is untouched by any of this",
+      all(view.scenes[i]["prompt"] for i in range(len(view.scenes))))
+
+before = view.scenes[0]["motion_prompt"]
+view._on_motion_field_edited(0, "camera_movement", "slow orbit around the cat")
+check("editing a field re-assembles that scene's motion_prompt immediately",
+      view.scenes[0]["motion_prompt"] != before
+      and view.scenes[0]["motion_prompt"].startswith("slow orbit around the cat"),
+      view.scenes[0]["motion_prompt"])
+check("the live preview box updates too",
+      view._motion_widgets[0]["preview"].toPlainText() == view.scenes[0]["motion_prompt"])
+
+view._on_motion_field_edited(0, "audio_cues", "claws scraping on the linoleum floor")
+check("the audio badge scores the cue via sound_lint, not silently",
+      view._motion_widgets[0]["audio_badge"].property("status") in ("success", "warning"))
+check("_audio_cue_overrides carries the edited cue for scene 0",
+      view._audio_cue_overrides().get(0) == "claws scraping on the linoleum floor",
+      str(view._audio_cue_overrides().get(0)))
+check("every other scene still has its own default cue - defaulted, not blank",
+      all(view._audio_cue_overrides().get(i, "").strip()
+          for i in range(1, len(view.scenes))))
+view._on_motion_field_edited(1, "audio_cues", "")
+check("a scene's cue cleared back to blank drops out of the overrides dict",
+      1 not in view._audio_cue_overrides(), str(view._audio_cue_overrides().get(1)))
+view.refresh_sheet()
+check("the edited cue reaches the actual CapCut sound sheet",
+      "claws scraping on the linoleum floor" in view.sheet_box.toPlainText())
+
+# A story rebuild (arc/length change, or just re-editing the script) recomposes
+# every scene's motion_prompt from scratch - a stored hand edit has to win back
+# over that the next time this scene's card is built, not be silently lost.
+view.rebuild()
+check("motion_prompt reverts to auto-composed immediately after a story rebuild",
+      view.scenes[0]["motion_prompt"] != "slow orbit around the cat"
+      or "no warped face" not in view.scenes[0]["motion_prompt"])
+view.rebuild_prompts()
+check("but the hand edit is restored the next time the Prompts tab renders",
+      view.scenes[0]["motion_prompt"].startswith("slow orbit around the cat"),
+      view.scenes[0]["motion_prompt"])
 
 print()
 if fails:

@@ -22,6 +22,7 @@ from PyQt6.QtGui import QColor, QGuiApplication, QIcon, QPainter
 from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
+    QFormLayout,
     QHBoxLayout,
     QLabel,
     QLayout,
@@ -42,10 +43,12 @@ from PyQt6.QtWidgets import (
 ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
+import build_motion as bm  # noqa: E402
 import build_sound as bsd  # noqa: E402
 import build_story as bs  # noqa: E402
 import generate_video as gv  # noqa: E402
 import history as hist  # noqa: E402
+import sound_lint as sl  # noqa: E402
 import story_lint as stl  # noqa: E402
 
 from .. import assets, tokens as T  # noqa: E402
@@ -171,6 +174,7 @@ class CatsView(QWidget):
         self.bank = bank                     # the image/realism bank
         self.story_bank = bs.load_bank()
         self.sound_bank = bsd.load_bank()
+        self.motion_bank = bm.load_bank()
         self._palette = palette or {}
         self.scenes = []
         self.script = {}
@@ -179,6 +183,14 @@ class CatsView(QWidget):
         self.videos = {}            # scene index -> generated clip
         self.entries = {}           # scene index -> history entry id
         self.status_by_scene = {}
+        # scene index -> {shot_type, subject, action, style, camera_movement,
+        # audio_cues} - the 6-field template, hand-edited or defaulted the
+        # first time that scene's card is built. Same accepted limitation as
+        # images/videos above: keyed by index, so reshaping the story (a
+        # different arc or length) can leave a stale entry pointing at a scene
+        # that no longer lines up with it.
+        self.custom_motion = {}
+        self._motion_widgets = {}   # scene index -> {"preview", "audio_badge"}, rebuilt each tab render
         self.pool = QThreadPool(self)
         self.pool.setMaxThreadCount(1)
         self.setup_ui()
@@ -543,6 +555,7 @@ class CatsView(QWidget):
             if widget is not None:
                 widget.deleteLater()
 
+        self._motion_widgets = {}
         for index, scene in enumerate(self.scenes):
             card = Card()
             card.body.setSpacing(T.SPACE["sm"])
@@ -558,26 +571,24 @@ class CatsView(QWidget):
                 card.body.addWidget(MutedLabel("caption: {}    narration: {}".format(
                     scene.get("caption") or "-", scene.get("narration") or "-")))
 
-            for label, text, empty in (
-                    ("Still prompt", scene["prompt"], ""),
-                    ("Video prompt ({})".format(scene["movement"] or "no move"),
-                     scene["motion_prompt"],
-                     "This beat has no camera move, so there is no video prompt.")):
-                row = QHBoxLayout()
-                row.addWidget(MutedLabel(label), 1)
-                button = QPushButton("Copy")
-                button.setProperty("class", "ghost")
-                button.clicked.connect(
-                    lambda _=False, value=text: self.copy_text(value))
-                button.setEnabled(bool(text))
-                row.addWidget(button)
-                card.body.addLayout(row)
+            # -- still prompt: unchanged, auto-composed, read-only ------------ #
+            still_row = QHBoxLayout()
+            still_row.addWidget(MutedLabel("Still prompt"), 1)
+            still_copy = QPushButton("Copy")
+            still_copy.setProperty("class", "ghost")
+            still_copy.clicked.connect(
+                lambda _=False, value=scene["prompt"]: self.copy_text(value))
+            still_copy.setEnabled(bool(scene["prompt"]))
+            still_row.addWidget(still_copy)
+            card.body.addLayout(still_row)
+            still_box = QPlainTextEdit(scene["prompt"])
+            still_box.setReadOnly(True)
+            still_box.setProperty("class", "mono")
+            still_box.setFixedHeight(84)
+            card.body.addWidget(still_box)
 
-                box = QPlainTextEdit(text or empty)
-                box.setReadOnly(True)
-                box.setProperty("class", "mono")
-                box.setFixedHeight(84 if text else 40)
-                card.body.addWidget(box)
+            # -- video prompt: the 6-field template, hand-editable ------------ #
+            self._build_motion_card_section(card, index, scene)
 
             # check_compatibility returns {requirement, label, fix} dicts, not
             # strings - joining them raised inside a tab-change slot, and Qt
@@ -589,6 +600,135 @@ class CatsView(QWidget):
                         for w in scene["warnings"])))
             self.prompts_layout.addWidget(card)
         self.prompts_layout.addStretch(1)
+
+    def _default_motion_fields(self, index, scene):
+        """[SHOT TYPE] + [SUBJECT] + [ACTION] + [STYLE] + [CAMERA MOVEMENT] +
+        [AUDIO CUES], defaulted from this scene's own movement/spec - the
+        starting point a hand edit then replaces.
+        """
+        spec = scene.get("spec", {}) or {}
+        key = scene.get("movement")
+        camera = bs.locked_camera(self.story_bank, scene.get("format") or self.format_key())
+        if key == "locked-off" and camera:
+            camera_movement = ", ".join(
+                s for s in (camera.get("lead", ""), camera.get("detail", "")) if s)
+            shot_type = ""
+        elif key and key in self.motion_bank.get("movements", {}):
+            movement = self.motion_bank["movements"][key]
+            camera_movement = ", ".join(
+                s for s in (movement["lead"], movement.get("detail", "")) if s)
+            shot_type = bm.image_defaults(self.motion_bank, key).get("shot", "")
+        else:
+            camera_movement = ""
+            shot_type = ""
+        mood = str(spec.get("mood", "")).strip()
+        # A named camera + grade, not "cinematic lighting" - cycled by scene
+        # index the same reproducible way accent_for() cycles accents, so
+        # neighbouring scenes do not all suggest the same preset. "subtle" is
+        # baked in here, not in Videos' own default - a cat's own movement
+        # reads as fake fastest when it is too big, a live house rule that
+        # only applies to this section.
+        style = bm.style_preset(self.motion_bank, seed=index) + ", subtle natural motion"
+        if mood:
+            style += ", " + mood + " tone"
+        return {
+            "shot_type": shot_type,
+            "subject": str(spec.get("subject", "")).strip(),
+            "action": str(spec.get("action", "")).strip(),
+            "style": style,
+            "camera_movement": camera_movement,
+            "audio_cues": bsd.key_for(spec.get("subject", ""), spec.get("action", "")),
+        }
+
+    def _build_motion_card_section(self, card, index, scene):
+        is_stored = index in self.custom_motion
+        fields = self.custom_motion.setdefault(index, self._default_motion_fields(index, scene))
+        if is_stored:
+            # rebuild() recomposes scene["motion_prompt"] from scratch on
+            # every story change; a stored hand edit has to win back over
+            # that here, not wait for the next keystroke in this card.
+            scene["motion_prompt"] = bm.assemble_template(
+                self.motion_bank, fields.get("shot_type", ""), fields.get("subject", ""),
+                fields.get("action", ""), fields.get("camera_movement", ""),
+                fields.get("style", ""))
+
+        card.body.addWidget(MutedLabel("Video prompt ({})".format(scene["movement"] or "no move")))
+        form = QFormLayout()
+        form.setHorizontalSpacing(T.COLUMN_GAP)
+        form.setVerticalSpacing(T.SPACE["xs"])
+        widgets = {}
+        for key, label in (("shot_type", "Shot type"), ("subject", "Subject"),
+                           ("action", "Action"), ("style", "Style"),
+                           ("camera_movement", "Camera movement")):
+            edit = QLineEdit(fields.get(key, ""))
+            edit.textChanged.connect(
+                lambda text, i=index, k=key: self._on_motion_field_edited(i, k, text))
+            form.addRow(label, edit)
+            widgets[key] = edit
+        card.body.addLayout(form)
+
+        preview = QPlainTextEdit(scene["motion_prompt"])
+        preview.setReadOnly(True)
+        preview.setProperty("class", "mono")
+        preview.setFixedHeight(56)
+        card.body.addWidget(preview)
+
+        audio_row = QHBoxLayout()
+        audio_row.addWidget(MutedLabel("Audio cue"))
+        audio_edit = QLineEdit(fields.get("audio_cues", ""))
+        audio_edit.setPlaceholderText("optional - feeds the CapCut sound sheet's key effect")
+        audio_edit.textChanged.connect(
+            lambda text, i=index: self._on_motion_field_edited(i, "audio_cues", text))
+        audio_badge = Badge("-", "neutral")
+        video_copy = QPushButton("Copy")
+        video_copy.setProperty("class", "ghost")
+        video_copy.clicked.connect(
+            lambda _=False, i=index: self.copy_text(self.scenes[i]["motion_prompt"]))
+        audio_row.addWidget(audio_edit, 1)
+        audio_row.addWidget(audio_badge)
+        audio_row.addWidget(video_copy)
+        card.body.addLayout(audio_row)
+
+        self._motion_widgets[index] = {"preview": preview, "audio_badge": audio_badge}
+        self._update_audio_badge(index, fields.get("audio_cues", ""))
+
+    def _on_motion_field_edited(self, index, key, text):
+        fields = self.custom_motion.setdefault(index, {})
+        fields[key] = text
+        if not (0 <= index < len(self.scenes)):
+            return
+        self.scenes[index]["motion_prompt"] = bm.assemble_template(
+            self.motion_bank, fields.get("shot_type", ""), fields.get("subject", ""),
+            fields.get("action", ""), fields.get("camera_movement", ""),
+            fields.get("style", ""))
+        widgets = self._motion_widgets.get(index, {})
+        if widgets.get("preview") is not None:
+            widgets["preview"].setPlainText(self.scenes[index]["motion_prompt"])
+        if key == "audio_cues":
+            self._update_audio_badge(index, text)
+            # The CapCut sheet is the actual destination for this field - keep
+            # it in step rather than waiting for the next unrelated rebuild.
+            self.refresh_sheet()
+
+    def _update_audio_badge(self, index, text):
+        widgets = self._motion_widgets.get(index, {})
+        badge = widgets.get("audio_badge")
+        if badge is None:
+            return
+        cue = (text or "").strip()
+        if not cue:
+            badge.set_status("neutral", "-")
+            return
+        results = sl.lint(self.sound_bank, cue)
+        got, total = sl.score(results)
+        badge.set_status("success" if got == total else "warning",
+                         "{}/{}".format(got, total))
+
+    def _audio_cue_overrides(self):
+        """{scene index: cue text} for every scene with a non-blank cue -
+        story_sound() falls back to key_for() wherever this has no entry."""
+        return {index: fields["audio_cues"] for index, fields in self.custom_motion.items()
+                if fields.get("audio_cues", "").strip()}
 
     def copy_text(self, text):
         if not (text or "").strip():
@@ -929,7 +1069,8 @@ class CatsView(QWidget):
         # cement" over a two-cat scene. The real subject is on every scene's
         # own spec, so use it rather than the placeholder.
         subject = (self.scenes[0]["spec"].get("subject") if self.scenes else None) or "the cat"
-        sheets = bsd.story_sound(self.sound_bank, self.scenes, subject=subject)
+        sheets = bsd.story_sound(self.sound_bank, self.scenes, subject=subject,
+                                 key_overrides=self._audio_cue_overrides())
         self.sheet_box.setPlainText(
             bs.edit_sheet_text(self.story_bank, self.scenes, sheets))
 

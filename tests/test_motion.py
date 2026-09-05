@@ -158,6 +158,95 @@ check("an explicit composition override survives",
       merged["overrides"]["composition"] == ["rule of thirds"], str(merged["overrides"]))
 
 print()
+print("=== the 6-field template: assemble_template() ===")
+text = bm.assemble_template(
+    bank, "close-up shot", "a ginger tabby cat", "staring at the fridge handle",
+    "camera slowly pushes in, tension building", "shot on a DSLR, natural color grading")
+check("camera movement opens the text regardless of argument/field order",
+      text.startswith("camera slowly pushes in"), text[:60])
+check("every field's own text survives somewhere in the assembly",
+      all(part in text for part in
+          ("close-up shot", "a ginger tabby cat", "staring at the fridge handle",
+           "camera slowly pushes in", "shot on a DSLR, natural color grading")))
+check("the standing negative guard is always appended",
+      all(term in text for term in bank["negatives"]), text[-120:])
+checks, _ = ml.lint(text, bank)
+check("the assembled template passes every motion check",
+      all(ok for _, ok, _ in checks), str([n for n, ok, _ in checks if not ok]))
+
+blank = bm.assemble_template(bank, "", "", "", "", "")
+check("every field blank still only carries the negative guard, no stray commas",
+      blank == bm.negative_tail(bank), blank)
+
+print()
+print("=== the negative-artifact guard ===")
+check("compose() always closes with the negative guard",
+      all(bm.compose(bank, key, {"subject": "a woman"})[0].endswith(bm.negative_tail(bank))
+          for key in bank["movements"]))
+check("negatives is a real, non-empty bank list",
+      isinstance(bank.get("negatives"), list) and len(bank["negatives"]) >= 4,
+      str(bank.get("negatives")))
+check("a bank with no negatives key falls back rather than crashing",
+      bm.negative_tail({}) == ", ".join(bm.DEFAULT_NEGATIVES))
+
+print()
+print("=== concrete style presets, not vague words ===")
+check("style_presets is a real, non-empty bank list",
+      isinstance(bank.get("style_presets"), list) and len(bank["style_presets"]) >= 3,
+      str(bank.get("style_presets")))
+check("no preset uses the vague words the Reddit retrospective warned against",
+      not any(word in preset.lower() for preset in bank["style_presets"]
+              for word in ("cinematic", "professional", "high quality")),
+      str(bank["style_presets"]))
+check("style_preset() cycles reproducibly by seed",
+      bm.style_preset(bank, seed=0) == bm.style_preset(bank, seed=0)
+      and bm.style_preset(bank, seed=len(bank["style_presets"]))
+      == bm.style_preset(bank, seed=0))
+check("compose()'s own default no longer says the vague 'cinematic lighting'",
+      "cinematic lighting" not in bm.compose(bank, "orbit-360", {"subject": "a woman"})[0])
+
+print()
+print("=== one action per prompt (RULE from 10,000 AI videos) ===")
+chained = bm.assemble_template(
+    bank, "", "a cat", "walking while talking while eating",
+    "camera slowly pushes in", "natural motion")
+checks, _ = ml.lint(chained, bank)
+by_name = {n: ok for n, ok, _ in checks}
+check("a chained action is caught", not by_name["One action, not a chain"], chained)
+
+single = bm.assemble_template(
+    bank, "", "a cat", "staring at the fridge handle",
+    "camera slowly pushes in", "natural motion")
+checks, _ = ml.lint(single, bank)
+by_name = {n: ok for n, ok, _ in checks}
+check("a single action passes", by_name["One action, not a chain"], single)
+
+check("a camera direction using 'then' is not falsely flagged",
+      not ml.chains_actions("camera pushes in, then holds on the subject's face"))
+
+# Bootcamp PDF audit: the Kling Camera PDF names 4 "combo movements" as a
+# legitimate technique (e.g. "Crane Down + Orbit"), and motion_bank.json
+# already models them (category "combo") - but their own lead/detail text
+# ("descending while circling") tripped this same chain check the moment it
+# shipped, rejecting 3 of the app's own 40 sanctioned movements. The check
+# must be scoped to the SUBJECT's action, not the camera's.
+for key in ("wide-static", "tilt-up-approach", "combo-crane-orbit"):
+    cat_spec = {"subject": "a ginger tabby cat", "action": "sitting on a windowsill"}
+    text, _ = bm.compose(bank, key, cat_spec)
+    checks, _ = ml.lint(text, bank, key, cat_spec)
+    by_name = {n: ok for n, ok, _ in checks}
+    check("{} (a legitimate combo/compound camera phrase) is not flagged".format(key),
+          by_name["One action, not a chain"], text)
+
+chained_through_combo = bm.assemble_template(
+    bank, "", "a cat", "walking while talking while eating",
+    bank["movements"]["combo-crane-orbit"]["lead"], "natural motion")
+checks, _ = ml.lint(chained_through_combo, bank, "combo-crane-orbit")
+by_name = {n: ok for n, ok, _ in checks}
+check("a genuinely chained SUBJECT action still fails, even through a combo movement",
+      not by_name["One action, not a chain"], chained_through_combo)
+
+print()
 print("=== hints never break the image score ===")
 broken = []
 for key in bank["movements"]:

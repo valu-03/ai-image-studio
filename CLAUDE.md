@@ -358,13 +358,104 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   read by the vision-capable `ask_llm.ask(images=...)` path `brief.critique_image` already
   used - it informs wording only, and is deliberately never carried into the generation
   request as an identity-lock reference the way Compose's own reference is.
+- **Videos' Motion tab and Cats' Prompts tab both build the Kling prompt from the same
+  hands-on template now**: `[SHOT TYPE] + [SUBJECT] + [ACTION] + [STYLE] + [CAMERA MOVEMENT] +
+  [AUDIO CUES]`, six editable fields replacing what used to be a read-only, auto-composed box
+  (Videos) or fully automatic per-beat text with no control at all (Cats). Picking a movement
+  (Videos) or opening a scene's card for the first time (Cats) prefills every field; after that,
+  only picking a *different* movement, or a story rebuild that then re-renders the Prompts tab,
+  resets them - a hand edit otherwise survives (`build_motion.assemble_template()`, `ui/views/
+  videos.py`, `CatsView.custom_motion` in `ui/views/cats.py`). The assembled text always leads
+  with camera movement regardless of the fields' on-screen order - `motion_lint`'s rule 1 is a
+  Kling-toolkit PDF rule, not a style choice, and it fails the moment anything else opens the
+  prompt.
+- **Audio Cues means two different things depending on where it is, on purpose.** Cats already
+  has a real per-scene sound system (three ElevenLabs layers, gated by `sound_lint`); there, the
+  field's text becomes that scene's *key-effect* layer (`build_sound.scene_sound()`'s new
+  `key_override` param - explicit choice wins, same precedence rule as shot/lighting/
+  composition), and shows up in the actual CapCut sheet. Videos' Motion tab has no scene or
+  sound sheet to attach to at all, so there it is a standalone suggestion - built and scored the
+  same way (`sound_lint`), shown with its own badge and its own "Copy sound cue" button - and
+  it is never sent to Kling and never persisted. Kling's own native audio stays off either way;
+  see the "two soundtracks fight" rule above.
+- **A video prompt's default style is a named camera and colour grade, not "cinematic
+  lighting."** That phrase, and "professional," "high quality," are exactly the vague words a
+  video model has nothing to act on - `motion_bank.json`'s new `style_presets` list gives it
+  something concrete instead (`build_motion.style_preset()`, cycled by seed the same
+  reproducible way `build_sound.accent_for()` cycles accents). Every prompt - hand-built through
+  the template or still auto-composed by `compose()` for a story that never visits the Prompts
+  tab - also always closes with a standing negative guard now (`negative_tail()`,
+  `motion_bank.json`'s `negatives` list: warped faces, floating limbs, distorted hands, and
+  the other specific artifact classes a video model actually fails on, not a vague "no bad
+  quality" plea). `motion_lint` also gained a sixth check, **"One action, not a chain"** -
+  "walking while talking while eating" confuses a video model exactly the way two competing
+  camera movements do, so it is rejected the same way. None of this was guessed: it is lifted
+  directly from a widely-read "10,000 AI videos" retrospective, cross-checked against what this
+  app already did before changing anything.
+- **Compose's provider, model, resolution and output format are per-generation choices now, not
+  only account-wide Settings.** Every `SpecEditor` field was already free-text/overridable;
+  these four were the one thing in the whole Images tab that was not. `ui/views/compose.py`
+  gained `provider_override()`/`model_override()`/`options_override()`, read by
+  `MainWindow.generate_single()` and falling back to Settings' values when left on "(use
+  Settings)" - today's behaviour, unchanged, when nobody touches them. Scoped to Compose's own
+  single-image path on purpose; Variants' batch still uses Settings' values.
 - **Every output folder is created at launch, not the first time something writes into it.**
   `ui/assets.ensure_output_dirs()`, called from `MainWindow.__init__`, covers
   characters/prompts/images/videos. `VIDEOS_DIR` was missing from `ui/assets.py`'s path table
   entirely until this pass - `generate_video.py` had its own separate `temp/outputs/videos/`
   constant that nothing else in the app knew about, so Settings had no "Open Videos folder"
   button and the folder did not exist until the first clip was ever rendered.
-- **Run `python tests/run_all.py` before calling anything done.** 922 checks, no dependencies
+- **A combo camera movement's own lead/detail text is exempt from the "one action, not a
+  chain" check.** The Kling Camera PDF names 4 "combo movements" as a legitimate technique
+  (`motion_bank.json`'s `category: "combo"` - Push-In + Tilt Up, Crane Down + Orbit, POV +
+  Handheld + Fall, Track Behind + Push-In; 30 core + 6 niche + 4 combo = the bank's 40).
+  Their own phrasing legitimately uses "while"/"and" ("descending while circling") - the check
+  exists to catch a chained SUBJECT action ("walking while talking while eating"), not one
+  continuous camera technique, so `motion_lint.chains_actions()` strips the movement's lead/
+  detail text before looking for a chain marker. Shipped and fixed in the same pass: 3 of the
+  bank's own 40 sanctioned movements failed this check the moment it landed, found by cross-
+  referencing the Kling Camera PDF against the actual bank rather than guessing.
+- **`tools/upscale_image.py` is the bootcamp's own "upscale before you animate" rule, not a new
+  provider path.** Phase 2's upscaling lesson gives an exact 4K prompt template and the pipeline
+  rule that a still should be upscaled before it goes to Videos or Cats - the app had no upscale
+  feature at all. It is nothing more than `generate_image.generate()` with the image being
+  upscaled as the sole reference and `UPSCALE_PROMPT` (the course's template, verbatim) instead
+  of a user-written prompt - no new transport, no new job shape. Compose's "Upscale to 4K"
+  button (`compose_view.upscale_requested` -> `MainWindow.upscale_image()`) submits through the
+  same `GenerationPool` `generate_single()` already uses, so the result routes back to
+  `compose_view.show_image()` the same way any other single-image job does.
+- **Variants can vary `shot`, not only `seed` - "N angles, same seed" (Higgsfield SHOTS'
+  technique).** Before this, the only thing a batch could ever sample was the seed at a fixed
+  spec; the bootcamp's own multi-angle lesson is the opposite - one reference image held fixed,
+  the camera angle varied. `VariantsView.angle_mode()` iterates `bank["shot_presets"]` instead
+  of a seed range, with `seed` fixed and `shot_custom` explicitly cleared per variant (a custom
+  shot beats a preset outright per `build_prompt.custom_shot()` - left set, every "angle" would
+  render the same shot four times). Card captions, output filenames and status messages name
+  the shot instead of "seed N" when a card carries one (`card.shot`, `None` in seed mode);
+  everything else downstream (`ResultCard`, rating, `history.append`, the reference attachment
+  in `request_generate()`) is unchanged - a card is still one entry keyed by index regardless of
+  what varied to produce it.
+- **Videos' Motion tab attaches a first frame now - the actual cause of "not the video I
+  want."** Kling is image-to-video underneath; the still constrains composition and identity
+  far more than the prompt does, and every clip made here used to start from text alone
+  (`"image": None`, always) while Cats' own per-scene clips already attached one correctly. No
+  new transport was needed - `generate_video.generate(image=...)`, `VideoTask`, and
+  `VideoPool.submit()` already read a real path through untouched. `VideosView._resolved_still()`
+  defaults to whatever `MainWindow.compose_view.current_image` is (wired the same way `context`
+  already reads Compose's spec) and an explicit "Choose still..." pick overrides it - same
+  precedence rule as everywhere else. Generating with genuinely nothing attached is the one
+  place in this view that gets a hard confirmation, not just a warning badge, since it is the
+  literal failure mode being fixed.
+- **A test that calls a view's own `request_video()`/`generate_requested`-style method on a real
+  `MainWindow` fires the REAL signal chain wired at construction - straight into a background
+  `QThreadPool` job with no mock underneath it.** This had never been exercised before
+  (`smoke_gui.py` never drives Kling video generation either), and the first test that did
+  crashed the interpreter with no traceback - a native access violation, not a Python exception,
+  because the real job ran against a fake endpoint from a worker thread while the test process
+  moved on. Patch the instance method itself before calling the real trigger (`win.generate_videos
+  = lambda *a, **k: None`, restored after) - the same `win.pool.submit = fake_submit` pattern
+  already used for Compose's per-generation overrides, just for the video pool's entry point.
+- **Run `python tests/run_all.py` before calling anything done.** 1040 checks, no dependencies
   beyond PyQt6, Qt runs offscreen.
 
 ---

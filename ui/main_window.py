@@ -31,6 +31,7 @@ import build_prompt as bp  # noqa: E402
 import generate_image as gi  # noqa: E402
 import generate_video as gv  # noqa: E402
 import history as hist  # noqa: E402
+import upscale_image as up  # noqa: E402
 
 from . import assets, tokens as T  # noqa: E402
 from .views import (  # noqa: E402
@@ -280,6 +281,7 @@ class MainWindow(QMainWindow):
                 view.status.connect(self.statusBar().showMessage)
 
         self.compose_view.generate_requested.connect(self.generate_single)
+        self.compose_view.upscale_requested.connect(self.upscale_image)
         self.variants_view.spec_provider = self.current_spec_bundle
         self.variants_view.generate_requested.connect(self.generate_batch)
         # The ads view reads the open character so the presenter is the one you
@@ -301,6 +303,7 @@ class MainWindow(QMainWindow):
         self.variants_view.seed_adopted.connect(self.adopt_seed)
 
         self.videos_view.context = lambda: self.compose_view.editor.spec()
+        self.videos_view.image_provider = lambda: self.compose_view.current_image
         self.videos_view.hints_applied.connect(self.apply_motion_hints)
         self.videos_view.video_requested.connect(
             lambda jobs, options: self.generate_videos(jobs, options, self.videos_view))
@@ -439,8 +442,31 @@ class MainWindow(QMainWindow):
             return
         self._batch = None   # no session = Compose's own single-image path
         self.compose_view.set_busy(True)
-        self.pool.submit([(0, prompt, None, references)], self.provider, self.model,
-                         self.request_options(self.compose_view.editor.spec()))
+        provider = self.compose_view.provider_override() or self.provider
+        model = self.compose_view.model_override() or self.model
+        options = self.request_options(self.compose_view.editor.spec())
+        options.update(self.compose_view.options_override())
+        self.pool.submit([(0, prompt, None, references)], provider, model, options)
+
+    def upscale_image(self, path):
+        """The bootcamp's own "upscale before you animate" rule, one click.
+
+        Not a new job shape: `tools/upscale_image.upscale()` is `gi.generate()`
+        with a fixed instruction prompt and `path` as the sole reference, so
+        this is `generate_single()`'s shape with the prompt and references
+        swapped for that - same pool, same routing (`_batch = None` means the
+        result answers to Compose, same as any other single-image job).
+        """
+        if self.pool.busy:
+            self.statusBar().showMessage("A generation is already running")
+            return
+        self._batch = None
+        self.compose_view.set_busy(True)
+        provider = self.compose_view.provider_override() or self.provider
+        model = self.compose_view.model_override() or self.model
+        options = self.request_options(self.compose_view.editor.spec())
+        options.update(self.compose_view.options_override())
+        self.pool.submit([(0, up.UPSCALE_PROMPT, None, [path])], provider, model, options)
 
     def generate_batch(self, jobs):
         if self.pool.busy:

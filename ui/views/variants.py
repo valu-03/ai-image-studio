@@ -10,6 +10,7 @@ from pathlib import Path
 
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
+    QComboBox,
     QGridLayout,
     QHBoxLayout,
     QLabel,
@@ -54,6 +55,26 @@ class VariantsView(QWidget):
         self.count = QSpinBox(minimum=2, maximum=12, value=6)
         self.count.setToolTip("How many seeds to sample")
 
+        # Bootcamp Phase 2 (Higgsfield SHOTS): one strong reference image in,
+        # several camera angles out, framed explicitly against "generating a
+        # new image for every angle" and "fighting character consistency."
+        # Before this, the only thing Variants could ever vary was the seed -
+        # same framing, different vocabulary. Angle mode holds the seed fixed
+        # and cycles `shot` across the bank's own shot_presets instead, so a
+        # reference image gets several ANGLES of the same person, not several
+        # rolls of the same angle.
+        self.count_label = QLabel("Seeds")
+        self.mode = QComboBox()
+        self.mode.addItem("Same shot, N seeds", "seeds")
+        self.mode.addItem("N angles, same seed", "angles")
+        self.mode.setToolTip(
+            "Seeds: same framing, different random vocabulary - which one reads "
+            "most real?\nAngles: one seed, a different camera angle each time - "
+            "set a reference image on the character first, the same way Higgsfield "
+            "SHOTS does it."
+        )
+        self.mode.currentIndexChanged.connect(self.update_mode_label)
+
         self.build_button = QPushButton("Build prompts")
         self.build_button.clicked.connect(self.build_variants)
 
@@ -75,7 +96,8 @@ class VariantsView(QWidget):
 
         controls = QHBoxLayout()
         controls.setSpacing(T.SPACE["sm"])
-        controls.addWidget(QLabel("Seeds"))
+        controls.addWidget(self.mode)
+        controls.addWidget(self.count_label)
         controls.addWidget(self.count)
         controls.addWidget(self.build_button)
         controls.addWidget(self.generate_button)
@@ -105,6 +127,11 @@ class VariantsView(QWidget):
             "Build prompts from consecutive seeds, generate them together, then pick the one "
             "that looks most real. Picking records a 5-star outcome and adopts that seed."
         )
+        self.angle_hint = (
+            "Build one prompt per camera angle, same seed, generate them together with the "
+            "reference image on the character. Picking records a 5-star outcome, same as a seed."
+        )
+        self.seed_hint = self.hint.text()
 
         card = Card()
         card.body.setSpacing(T.SPACE["md"])
@@ -117,6 +144,21 @@ class VariantsView(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(card)
+
+    def angle_mode(self):
+        return self.mode.currentData() == "angles"
+
+    def update_mode_label(self):
+        if self.angle_mode():
+            self.count_label.setText("Angles")
+            self.count.setToolTip(
+                "How many of the bank's shot presets to sample - capped at how "
+                "many exist ({}).".format(len(self.bank.get("shot_presets", {}))))
+            self.hint.setText(self.angle_hint)
+        else:
+            self.count_label.setText("Seeds")
+            self.count.setToolTip("How many seeds to sample")
+            self.hint.setText(self.seed_hint)
 
     # -- building ---------------------------------------------------------- #
     def clear_grid(self):
@@ -141,9 +183,28 @@ class VariantsView(QWidget):
 
         self.clear_grid()
         base_seed = spec.get("seed", 0)
-        for index in range(self.count.value()):
-            seed = base_seed + index
-            variant = dict(spec, seed=seed)
+        angle_mode = self.angle_mode()
+
+        # (shot_key or None, seed, variant_spec) - one dominant "what varies"
+        # per entry, the same shape whichever mode built it.
+        plan = []
+        if angle_mode:
+            presets = list(self.bank.get("shot_presets", {}))
+            if not presets:
+                self.status.emit("No shot presets in the bank to vary")
+                return
+            for shot_key in presets[:self.count.value()]:
+                # shot_custom beats a preset outright (build_prompt.custom_shot) -
+                # cleared here, or every "angle" would render the same custom
+                # shot the character already had typed in.
+                plan.append((shot_key, base_seed,
+                             dict(spec, shot=shot_key, shot_custom="", seed=base_seed)))
+        else:
+            for index in range(self.count.value()):
+                seed = base_seed + index
+                plan.append((None, seed, dict(spec, seed=seed)))
+
+        for index, (shot_key, seed, variant) in enumerate(plan):
             prompt, layers = bp.compose(self.bank, variant, detailed=detailed, weights=weights)
             present, _, banned, _, _ = rl.lint(prompt.lower(), self.bank)
             score = len(present)
@@ -153,9 +214,11 @@ class VariantsView(QWidget):
             self.entries[index] = entry_id
             self.prompts[index] = prompt
 
-            card = ResultCard(index, "seed {} · {}/8".format(seed, score))
+            label = shot_key.replace("-", " ").title() if shot_key else "seed {}".format(seed)
+            card = ResultCard(index, "{} · {}/8".format(label, score))
             card.set_status("neutral", "queued")
             card.seed = seed
+            card.shot = shot_key
             card.clicked.connect(self.select_card)
             card.rated.connect(self.rate_card)
             self.cards[index] = card
@@ -166,11 +229,16 @@ class VariantsView(QWidget):
             self.grid.setRowStretch(row, 1)
 
         self.generate_button.setEnabled(True)
-        self.status.emit(
-            "Built {} variants from seeds {}–{}".format(
-                len(self.cards), base_seed, base_seed + len(self.cards) - 1
+        if angle_mode:
+            self.status.emit(
+                "Built {} angles, one seed ({})".format(len(self.cards), base_seed)
             )
-        )
+        else:
+            self.status.emit(
+                "Built {} variants from seeds {}–{}".format(
+                    len(self.cards), base_seed, base_seed + len(self.cards) - 1
+                )
+            )
 
     def request_generate(self):
         if not self.prompts:
@@ -182,9 +250,11 @@ class VariantsView(QWidget):
                 references = [spec["reference"]]
         jobs = []
         for index, prompt in sorted(self.prompts.items()):
-            out_name = "variant-{}-{}.png".format(self.cards[index].seed, self.entries[index][-6:])
+            card = self.cards[index]
+            tag = card.shot or "seed-{}".format(card.seed)
+            out_name = "variant-{}-{}.png".format(tag, self.entries[index][-6:])
             jobs.append((index, prompt, out_name, references))
-            self.cards[index].set_status("accent", "generating…")
+            card.set_status("accent", "generating…")
         self.generate_requested.emit(jobs)
 
     # -- batch feedback ---------------------------------------------------- #
@@ -232,7 +302,8 @@ class VariantsView(QWidget):
         if not entry_id:
             return
         hist.rate(entry_id, value, image=str(getattr(card, "image_path", "") or ""))
-        self.status.emit("Rated seed {} · {}/5".format(getattr(card, "seed", index), value))
+        tag = getattr(card, "shot", None) or "seed {}".format(getattr(card, "seed", index))
+        self.status.emit("Rated {} · {}/5".format(tag, value))
 
     # -- selection --------------------------------------------------------- #
     def select_card(self, index):
@@ -256,6 +327,10 @@ class VariantsView(QWidget):
                 if existing and existing.get("rating") is None:
                     hist.rate(other_id, 2, note="not picked")
         self.seed_adopted.emit(card.seed)
+        # Angle mode shares one seed across the whole batch by design, so there
+        # is no separate "adopt the shot" step here - see the plan note on why
+        # that stays out of this pass. The seed itself still adopts harmlessly.
+        tag = "shot '{}'".format(card.shot) if card.shot else "seed {}".format(card.seed)
         self.status.emit(
-            "Adopted seed {} — winner rated 5, the rest 2. Insights updated.".format(card.seed)
+            "Picked {} as the winner — rated 5, the rest 2. Insights updated.".format(tag)
         )

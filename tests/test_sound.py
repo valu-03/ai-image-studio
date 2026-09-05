@@ -160,6 +160,40 @@ check("a weak action is reported, not silently passed",
       not key_layer["passed"] and key_layer["failures"], key_layer["text"])
 
 print()
+print("=== KEY OVERRIDE (Cats' Audio Cues field) ===")
+default_layers = bsd.scene_sound(bank, "a kitchen at night", "the cat",
+                                 "hauling the fridge door open", seed=0)
+overridden = bsd.scene_sound(bank, "a kitchen at night", "the cat",
+                             "hauling the fridge door open", seed=0,
+                             key_override="claws scraping on the fridge door, ice cubes rattling")
+check("the key layer becomes the override",
+      overridden[1]["text"] == "claws scraping on the fridge door, ice cubes rattling",
+      overridden[1]["text"])
+check("ambience is untouched", overridden[0]["text"] == default_layers[0]["text"])
+check("accent is untouched", overridden[2]["text"] == default_layers[2]["text"])
+check("an override is still scored, not exempt from the gate",
+      "score" in overridden[1] and "passed" in overridden[1])
+
+blank_override = bsd.scene_sound(bank, "a kitchen at night", "the cat",
+                                 "hauling the fridge door open", seed=0, key_override="")
+check("a blank override falls back to key_for(), same as no override at all",
+      blank_override[1]["text"] == default_layers[1]["text"], blank_override[1]["text"])
+
+sheets_no_override = bsd.story_sound(bank, scenes, subject="the cat", theme="comedy")
+sheets_with_override = bsd.story_sound(bank, scenes, subject="the cat", theme="comedy",
+                                       key_overrides={2: "a loud crash of pans hitting the floor"})
+check("story_sound with no key_overrides reproduces today's output exactly",
+      [s["layers"][1]["text"] for s in sheets_no_override]
+      == [s["layers"][1]["text"] for s in sheets],
+      str([s["layers"][1]["text"] for s in sheets_no_override]))
+check("only the overridden scene's key layer changes",
+      sheets_with_override[2]["layers"][1]["text"] == "a loud crash of pans hitting the floor")
+check("every other scene keeps its own auto-composed key effect",
+      all(sheets_with_override[i]["layers"][1]["text"]
+          == sheets_no_override[i]["layers"][1]["text"]
+          for i in range(len(scenes)) if i != 2))
+
+print()
 print("=== THEMES ===")
 comedy = sl.by_theme(bank, "comedy")
 check("comedy has ten", len(comedy) == 10, str(len(comedy)))

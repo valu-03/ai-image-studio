@@ -28,6 +28,7 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
 import build_prompt as bp  # noqa: E402
+import generate_image as gi  # noqa: E402
 import history as hist  # noqa: E402
 
 from .. import assets, tokens as T  # noqa: E402
@@ -42,6 +43,7 @@ class ComposeView(QWidget):
     """Emits `generate_requested` with (prompt, references) for the controller."""
 
     generate_requested = pyqtSignal(str, list)
+    upscale_requested = pyqtSignal(str)
     status = pyqtSignal(str)
 
     def __init__(self, bank, parent=None):
@@ -197,6 +199,19 @@ class ComposeView(QWidget):
         self.rating.setEnabled(False)
         self.rating.rated.connect(self.apply_rating)
 
+        # Bootcamp Phase 2 (Upscaling to 4K with Nanobanana PRO): "REMEMBER you
+        # need to UPSCALE before you animate!" - the app had no upscale path at
+        # all. Not a new provider call: tools/upscale_image.py is generate()
+        # with this image as the sole reference and a fixed instruction prompt,
+        # so it needs an image already on screen and nothing else.
+        self.upscale_button = QPushButton("Upscale to 4K")
+        self.upscale_button.setProperty("class", "ghost")
+        self.upscale_button.setToolTip(
+            "Preserves composition, lighting and identity; adds micro-detail. "
+            "Do this before sending the still to Videos.")
+        self.upscale_button.setEnabled(False)
+        self.upscale_button.clicked.connect(self.request_upscale)
+
         # The reference controls live in the editor's Identity tab; this is the
         # read-out so you can see the lock state next to the result.
         self.reference_label = MutedLabel("No reference image — the face is invented each time.")
@@ -208,12 +223,61 @@ class ComposeView(QWidget):
         rating_row.addWidget(MutedLabel("How did it turn out?"))
         rating_row.addWidget(self.rating)
 
+        # Provider/model/resolution/format were global-only, in Settings - the
+        # one thing in this whole view that was not a per-shot choice, when
+        # every SpecEditor field already is. "(use Settings)" leaves today's
+        # behaviour exactly unchanged; picking anything else overrides it for
+        # this generation only.
+        USE_SETTINGS = "(use Settings)"
+        self.gen_provider = QComboBox()
+        self.gen_provider.addItem(USE_SETTINGS, "")
+        for name in sorted(gi.PROVIDERS):
+            self.gen_provider.addItem(name, name)
+        self.gen_provider.setToolTip("Override the provider for this generation only.")
+
+        self.gen_model = QLineEdit()
+        self.gen_model.setPlaceholderText(USE_SETTINGS)
+        self.gen_model.setToolTip("Override the model for this generation only.")
+
+        self.gen_resolution = QComboBox()
+        self.gen_resolution.addItem(USE_SETTINGS, "")
+        for option in gi.KIE_RESOLUTIONS:
+            self.gen_resolution.addItem(option, option)
+        self.gen_resolution.setToolTip("Override the resolution for this generation only.")
+
+        self.gen_output_format = QComboBox()
+        self.gen_output_format.addItem(USE_SETTINGS, "")
+        for option in gi.KIE_OUTPUT_FORMATS:
+            self.gen_output_format.addItem(option, option)
+        self.gen_output_format.setToolTip("Override the image format for this generation only.")
+
+        # One packed row, not a form - the same shape Videos' own duration/
+        # aspect/mode/sound row already uses successfully in an equally
+        # narrow column. A four-row QFormLayout here crushed every field in
+        # this view below its minimum height at the 700px floor; captions
+        # live in tooltips instead of a label column.
+        options_row = QHBoxLayout()
+        options_row.setSpacing(T.SPACE["xs"])
+        options_row.addWidget(self.gen_provider)
+        options_row.addWidget(self.gen_model, 1)
+        options_row.addWidget(self.gen_resolution)
+        options_row.addWidget(self.gen_output_format)
+
         right_card = Card()
         right_card.body.setSpacing(T.SPACE["md"])
         right_card.body.addWidget(TitleLabel("Result"))
         right_card.body.addWidget(self.preview, 1)
         right_card.body.addLayout(rating_row)
         right_card.body.addWidget(self.reference_label)
+        right_card.body.addWidget(MutedLabel("Generation options"))
+        right_card.body.addLayout(options_row)
+
+        # Stacked, not a shared row: side by side in this column's 230-460px
+        # width, "Generate image" elided to a few characters - the crushed-
+        # below-minimum layout check does not catch a QPushButton eliding its
+        # own text (only QLabel wrapping and widget-vs-widget overlap), so
+        # this was only visible in an actual screenshot, not the test gate.
+        right_card.body.addWidget(self.upscale_button)
         right_card.body.addWidget(self.generate_button)
 
         # Floors for all three, or the splitter falls back to an even split when
@@ -645,6 +709,23 @@ class ComposeView(QWidget):
     def prompt_text(self):
         return self.prompt_view.toPlainText()
 
+    # -- per-generation overrides -------------------------------------------- #
+    # "(use Settings)" is index 0 / empty data on all four, so leaving them
+    # alone is indistinguishable from before this existed.
+    def provider_override(self):
+        return self.gen_provider.currentData() or None
+
+    def model_override(self):
+        return self.gen_model.text().strip() or None
+
+    def options_override(self):
+        options = {}
+        if self.gen_resolution.currentData():
+            options["resolution"] = self.gen_resolution.currentData()
+        if self.gen_output_format.currentData():
+            options["output_format"] = self.gen_output_format.currentData()
+        return options
+
     # -- results handed back from the Brief view ---------------------------- #
     def apply_suggested_spec(self, spec):
         """Merge a model-drafted spec over the form, keeping what you already set."""
@@ -698,14 +779,22 @@ class ComposeView(QWidget):
         references = [self.editor.reference()] if self.editor.reference() else []
         self.generate_requested.emit(prompt, references)
 
+    def request_upscale(self):
+        if not self.current_image:
+            self.status.emit("Generate or load an image first")
+            return
+        self.upscale_requested.emit(str(self.current_image))
+
     def set_busy(self, busy):
         self.generate_button.setEnabled(not busy)
         self.generate_button.setText("Generating…" if busy else "Generate image")
+        self.upscale_button.setEnabled(not busy and bool(self.current_image))
 
     def show_image(self, path):
         self.current_image = path
         if self.preview.load(path):
             self.rating.setEnabled(True)
+            self.upscale_button.setEnabled(True)
             if self.entry_id:
                 hist.rate(self.entry_id, None, image=str(path))
             self.status.emit("Saved {}".format(Path(path).name))

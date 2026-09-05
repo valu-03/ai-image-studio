@@ -14,6 +14,9 @@ The rules come from the Kling toolkit PDF, not from taste:
      plus dolly-out is the classic failure
   4. Describes motion              - a still prompt sent to a video model
   5. No contradictions             - underwater in a kitchen
+  6. One action, not a chain       - "walking while talking while eating"
+     confuses a video model the same way two competing movements do; a
+     combo movement's own lead/detail text is exempt (see chains_actions)
 
 Usage:
     python tools/motion_lint.py temp/outputs/prompts/motion-orbit-360-x.txt
@@ -102,6 +105,35 @@ def contradictions(text):
     return hits
 
 
+# "Walking while talking while eating" confuses a video model as much as two
+# competing camera movements do - one action at a time, same as one movement
+# at a time. "and then"/"as well as" catch a chained second action; a bare
+# "then" is too common in legitimate camera-timing phrases ("pushes in, then
+# holds") to use as a marker without false-positiving on those.
+CHAIN_MARKERS = (" while ", " and then ", " as well as ")
+
+
+def chains_actions(text, bank=None, movement=None):
+    """Rule 6: one SUBJECT action at a time - not one camera move at a time.
+
+    A combo movement (the Kling toolkit's own "Crane Down + Orbit" category)
+    legitimately describes one continuous camera technique with exactly this
+    phrasing - "descending while circling" is not the chained subject action
+    the rule exists to catch. Strip the movement's own lead/detail text before
+    checking, so the camera clause is exempt and a genuinely chained subject
+    action ("walking while talking while eating") still fails regardless of
+    which movement carries it.
+    """
+    body = text.lower()
+    if bank and movement:
+        move = bank["movements"].get(movement, {})
+        for phrase in (move.get("lead", ""), move.get("detail", "")):
+            phrase = phrase.strip().lower()
+            if phrase and phrase in body:
+                body = body.replace(phrase, "", 1)
+    return any(marker in body for marker in CHAIN_MARKERS)
+
+
 def lint(text, bank, movement=None, spec=None):
     """Return (checks, warnings). checks is a list of (name, ok, detail)."""
     lower = text.lower()
@@ -145,6 +177,14 @@ def lint(text, bank, movement=None, spec=None):
         "No contradictions",
         not clashes,
         "consistent" if not clashes else "; ".join(clashes),
+    ))
+
+    chained = chains_actions(text, bank, movement)
+    checks.append((
+        "One action, not a chain",
+        not chained,
+        "single action" if not chained
+        else "split this into separate shots - one action per prompt",
     ))
 
     warnings = []

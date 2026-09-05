@@ -154,6 +154,33 @@ check("winner rated 5", len(winners) == 1 and winners[0]["rating"] == 5)
 check("losers rated 2", len(losers) == 3, str(len(losers)))
 check("seed adopted into compose", win.compose_view.editor.seed.value() == winners[0]["seed"])
 
+print("--- feature 3b: variant grid, angle mode (Higgsfield SHOTS: one seed, N shots) ---")
+# A synthetic spec_provider, not editor.load_spec() - the real Compose editor's
+# state must survive intact for feature 4 right after this, the same
+# "a test must not corrupt state other suites depend on" discipline this
+# project already holds run_all.py's history/pricing seams to.
+angle_spec = {"subject": "a ginger cat", "shot_custom": "an odd custom shot", "seed": 7}
+real_spec_provider = win.variants_view.spec_provider
+win.variants_view.spec_provider = lambda: (angle_spec, False, None)
+win.variants_view.mode.setCurrentIndex(1)  # "N angles, same seed"
+win.variants_view.count.setValue(4)
+win.variants_view.build_variants()
+check("4 thumb cards", len(win.variants_view.cards) == 4, str(len(win.variants_view.cards)))
+check("one shared seed, not four",
+      len({c.seed for c in win.variants_view.cards.values()}) == 1)
+check("four distinct shot presets",
+      len({c.shot for c in win.variants_view.cards.values()}) == 4,
+      str({c.shot for c in win.variants_view.cards.values()}))
+check("shot_custom was cleared, or every 'angle' would be the same custom shot",
+      len(set(win.variants_view.prompts.values())) == 4)
+win.variants_view.request_generate()
+ok = pump(20, lambda: not win.pool.busy)
+check("batch completed", ok)
+loaded = sum(1 for c in win.variants_view.cards.values() if getattr(c, "image_path", None))
+check("all 4 images returned", loaded == 4, "{}/4".format(loaded))
+win.variants_view.mode.setCurrentIndex(0)  # back to seed mode, for anything that follows
+win.variants_view.spec_provider = real_spec_provider
+
 print("--- feature 2: learned weighting ---")
 w = hist.weights()
 check("weights derived", len(w) > 0, "{} terms".format(len(w)))

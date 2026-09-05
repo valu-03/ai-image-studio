@@ -22,6 +22,7 @@ ORDER = [
     "test_motion.py",
     "test_brief.py",
     "test_generate.py",
+    "test_upscale.py",
     "test_lighting.py",
     "test_composition.py",
     "test_autofill.py",

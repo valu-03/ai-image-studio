@@ -160,6 +160,35 @@ def subject_clause(spec):
     return ", ".join(p for p in parts if p)
 
 
+DEFAULT_NEGATIVES = ["no warped face", "no floating limbs", "no distorted hands",
+                    "no text artifacts", "no blurry edges", "no extra fingers"]
+DEFAULT_STYLE_PRESETS = ["shot on a DSLR with an 85mm lens, natural color grading"]
+
+
+def negative_tail(bank):
+    """The standing "what to avoid" guard every Kling prompt carries.
+
+    These are the specific artifact classes a video model actually fails on -
+    warped faces, floating limbs, extra fingers - not a vague "high quality"
+    plea. Bank-sourced so it is data, not code, the same way the image side's
+    negatives live in prompt_bank.json rather than in realism_lint.py.
+    """
+    return ", ".join(bank.get("negatives") or DEFAULT_NEGATIVES)
+
+
+def style_preset(bank, seed=0):
+    """A concrete camera + colour-grade phrase, cycled by seed.
+
+    "Cinematic lighting" and "professional" are exactly the vague style words
+    that give a model nothing to work with - a named camera and a named grade
+    do. Cycles rather than picks randomly, the same reproducible-by-seed
+    pattern build_sound.accent_for() already uses for the same reason: two
+    neighbouring scenes should not draw the same one by chance.
+    """
+    presets = bank.get("style_presets") or DEFAULT_STYLE_PRESETS
+    return presets[int(seed) % len(presets)]
+
+
 def compose(bank, key, spec, detail=None):
     """Spec + movement -> (prompt, parts). The camera lead is ALWAYS first."""
     movement = bank["movements"][key]
@@ -187,7 +216,10 @@ def compose(bank, key, spec, detail=None):
     if extra:
         segments.append(", ".join(str(e) for e in extra))
 
-    segments.append("cinematic lighting, natural motion")
+    # A named camera and grade, not "cinematic lighting" - keyed off the
+    # movement itself so the same movement always gets the same preset.
+    segments.append(style_preset(bank, seed=sum(ord(c) for c in key)) + ", natural motion")
+    segments.append(negative_tail(bank))
 
     prompt = ", ".join(s for s in segments if s)
     parts = {
@@ -198,6 +230,31 @@ def compose(bank, key, spec, detail=None):
         "requires": requires,
     }
     return prompt, parts
+
+
+def assemble_template(bank, shot_type, subject, action, camera_movement, style):
+    """[SHOT TYPE] + [SUBJECT] + [ACTION] + [STYLE] + [CAMERA MOVEMENT] -> one
+    prompt - the hands-on template, as an alternative to compose()'s own
+    bank-driven assembly.
+
+    Camera movement always opens the assembled text, whatever order the six
+    fields are shown in on screen: motion_lint.leads_with_camera() is the
+    Kling toolkit's own rule ("always start your prompt with the camera
+    angle"), and it fails the moment anything else leads. Reuses
+    subject_clause() for the subject+action join rather than duplicating it -
+    the two are the same "who, doing what" pairing either way. Always closes
+    with negative_tail(bank) - the same standing artifact guard compose()
+    appends, so a hand-edited prompt is no less protected than an auto-composed
+    one.
+    """
+    segments = [
+        str(camera_movement or "").strip(),
+        str(shot_type or "").strip(),
+        subject_clause({"subject": subject, "action": action}),
+        str(style or "").strip(),
+        negative_tail(bank),
+    ]
+    return ", ".join(s for s in segments if s)
 
 
 def write_prompt(spec, prompt, key):

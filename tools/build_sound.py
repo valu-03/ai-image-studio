@@ -162,12 +162,21 @@ def accent_for(bank, theme="comedy", seed=0):
     return rows[int(seed) % len(rows)]["text"]
 
 
-def scene_sound(bank, setting, subject, doing, theme="comedy", seed=0):
-    """The full three-layer sheet for one scene, each layer already scored."""
+def scene_sound(bank, setting, subject, doing, theme="comedy", seed=0, key_override=None):
+    """The full three-layer sheet for one scene, each layer already scored.
+
+    `key_override`, when given, replaces the auto-composed key-effect text -
+    the same "an explicit choice always wins" precedence this project already
+    gives shot/lighting/composition. Ambience and accent are untouched: an
+    Audio Cue describes the one thing you can see happening, not the room
+    tone or the punctuation. Still linted like any other layer - an override
+    is not exempt from the gate.
+    """
+    key_override = _clean(key_override)
     layers = []
     for key, text in (
         ("ambience", ambience_for(setting, seed)),
-        ("key", key_for(subject, doing, seed)),
+        ("key", _trim(key_override) if key_override else key_for(subject, doing, seed)),
         ("accent", accent_for(bank, theme, seed)),
     ):
         results = sl.lint(bank, text)
@@ -188,9 +197,15 @@ def scene_sound(bank, setting, subject, doing, theme="comedy", seed=0):
     return layers
 
 
-def story_sound(bank, scenes, subject="the cat", theme="comedy"):
+def story_sound(bank, scenes, subject="the cat", theme="comedy", key_overrides=None):
     """A sheet per scene, for a whole story. Scene index seeds the accent so two
-    neighbouring scenes do not get the same one."""
+    neighbouring scenes do not get the same one.
+
+    `key_overrides`, when given, is a {scene_index: text} dict - a scene with
+    no entry (or an empty one) falls back to the auto-composed key effect,
+    exactly as before this parameter existed.
+    """
+    key_overrides = key_overrides or {}
     sheets = []
     for index, scene in enumerate(scenes):
         spec = scene.get("spec", {}) if isinstance(scene, dict) else {}
@@ -204,6 +219,7 @@ def story_sound(bank, scenes, subject="the cat", theme="comedy"):
                 doing=spec.get("action") or scene.get("action", ""),
                 theme=theme,
                 seed=index,
+                key_override=key_overrides.get(index),
             ),
         })
     return sheets

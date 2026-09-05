@@ -28,7 +28,7 @@ os.environ["OPENROUTER_API_KEY"] = "ui-llm-key"
 HISTORY = ROOT / "temp" / "outputs" / "history.jsonl"
 backup = HISTORY.read_bytes() if HISTORY.exists() else None
 
-from PyQt6.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication, QMessageBox
 from ui.main_window import MainWindow
 from ui.theme import ThemeManager
 import build_prompt as bp
@@ -222,6 +222,133 @@ cv.rebuild()
 check("app still fully usable", cv.passing)
 os.environ["OPENROUTER_API_KEY"] = "ui-llm-key"
 
+print("--- Compose: per-generation options ---")
+check("every override starts as 'use Settings' - unchanged behaviour by default",
+      cv.provider_override() is None and cv.model_override() is None
+      and cv.options_override() == {})
+
+cv.gen_provider.setCurrentText("higgsfield")
+cv.gen_model.setText("some-override-model")
+cv.gen_resolution.setCurrentText("2K")
+app.processEvents()
+check("provider override reads back", cv.provider_override() == "higgsfield")
+check("model override reads back", cv.model_override() == "some-override-model")
+check("only the touched option appears in the options override",
+      cv.options_override() == {"resolution": "2K"}, str(cv.options_override()))
+
+submitted = []
+
+
+def fake_submit(jobs, provider=None, model=None, spec=None):
+    submitted.append((provider, model, dict(spec or {}), list(jobs)))
+
+
+win.pool.submit = fake_submit
+win.generate_single(cv.prompt_text(), [])
+check("generate_single uses the override provider, not Settings'",
+      submitted and submitted[0][0] == "higgsfield", str(submitted))
+check("and the override model", submitted[0][1] == "some-override-model")
+check("and the override resolution reaches the request options",
+      submitted[0][2].get("resolution") == "2K", str(submitted[0][2]))
+
+cv.gen_provider.setCurrentIndex(0)
+cv.gen_model.setText("")
+cv.gen_resolution.setCurrentIndex(0)
+app.processEvents()
+submitted.clear()
+win.generate_single(cv.prompt_text(), [])
+check("clearing the overrides falls back to Settings' provider, exactly as before this existed",
+      submitted and submitted[0][0] == win.provider, str(submitted))
+
+print("--- Compose: Upscale to 4K (bootcamp's own 'upscale before you animate') ---")
+import upscale_image as upi
+
+check("nothing to upscale yet - the button starts disabled",
+      not cv.upscale_button.isEnabled())
+no_image_emits = []
+cv.upscale_requested.connect(lambda path: no_image_emits.append(path))
+cv.request_upscale()
+check("requesting with no image on screen emits nothing",
+      no_image_emits == [], str(no_image_emits))
+
+fixture_image = Path(_tempfile.gettempdir()) / "aivs-newui-fixture.png"
+fixture_image.write_bytes(mock_api.PNG)
+cv.show_image(str(fixture_image))
+app.processEvents()
+check("an image on screen enables the button", cv.upscale_button.isEnabled())
+
+cv.set_busy(True)
+check("busy disables it, same as Generate", not cv.upscale_button.isEnabled())
+cv.set_busy(False)
+check("idle re-enables it, since an image is still on screen", cv.upscale_button.isEnabled())
+
+submitted.clear()
+win.upscale_image(str(fixture_image))
+check("upscale_image submits exactly one job, through the same pool",
+      len(submitted) == 1, str(submitted))
+job = submitted[0][3][0]  # (index, prompt, out_name, references)
+check("the fixed upscale prompt is sent, not whatever was in the prompt box",
+      job[1] == upi.UPSCALE_PROMPT, job[1][:60])
+check("the image on screen is the sole reference",
+      job[3] == [str(fixture_image)], str(job[3]))
+check("the request options still honour Compose's own overrides, unchanged",
+      submitted[0][0] == win.provider and submitted[0][1] == win.model)
+
+emitted = []
+cv.upscale_requested.connect(lambda path: emitted.append(path))
+cv.request_upscale()
+check("the button asks for the image actually on screen",
+      emitted == [str(fixture_image)], str(emitted))
+
+print("--- Variants: angle mode (Higgsfield SHOTS - one reference, several angles) ---")
+win.go_to("images")
+win.images_view.show_variants()
+var = win.variants_view
+real_spec_provider = var.spec_provider
+angle_spec = {"subject": "a ginger cat", "shot_custom": "an odd custom shot", "seed": 3,
+              "reference": str(fixture_image)}
+var.spec_provider = lambda: (angle_spec, False, None)
+
+check("starts in seed mode - unchanged default behaviour", not var.angle_mode())
+check("count's caption reads 'Seeds' by default", var.count_label.text() == "Seeds")
+
+var.mode.setCurrentIndex(1)
+app.processEvents()
+check("switching to angle mode relabels the count field",
+      var.angle_mode() and var.count_label.text() == "Angles")
+
+var.count.setValue(4)
+var.build_variants()
+check("one card per requested angle", len(var.cards) == 4, str(len(var.cards)))
+check("every card shares the ONE seed from the spec - nothing rolled a new one",
+      {c.seed for c in var.cards.values()} == {3}, str({c.seed for c in var.cards.values()}))
+shots = {c.shot for c in var.cards.values()}
+check("four distinct shot presets, not the same one four times",
+      len(shots) == 4 and None not in shots, str(shots))
+check("shot_custom was cleared for each variant - a preset beats it outright, "
+      "per build_prompt.custom_shot(), so leaving it set would have rendered "
+      "the same custom shot four times",
+      len(set(var.prompts.values())) == 4)
+check("a card's caption names the shot, not 'seed N'",
+      all(s in var.cards[i].caption_label.text() for i, s in
+          ((i, c.shot.replace("-", " ").title()) for i, c in var.cards.items())))
+
+jobs = {}
+var.generate_requested.connect(lambda emitted_jobs: jobs.setdefault("v", emitted_jobs))
+var.request_generate()
+out_names = [job[2] for job in jobs.get("v", [])]
+check("out_name is tagged by shot, not by the shared seed",
+      all(any(shot in name for shot in shots) for name in out_names), str(out_names))
+check("the ONE reference on the spec reaches every job - Higgsfield SHOTS' whole "
+      "point, one photo in, several angles out",
+      all(job[3] == [str(fixture_image)] for job in jobs.get("v", [])), str(jobs.get("v")))
+
+var.mode.setCurrentIndex(0)
+app.processEvents()
+check("switching back to seed mode relabels it back",
+      not var.angle_mode() and var.count_label.text() == "Seeds")
+var.spec_provider = real_spec_provider
+
 print("--- Videos: the Kling motion toolkit ---")
 win.go_to("videos")
 vv = win.videos_view
@@ -281,6 +408,119 @@ check("badge reports a pass", "/" in vv.lint_badge.text(), vv.lint_badge.text())
 vv.copy_prompt()
 check("copied to clipboard",
       QApplication.clipboard().text().startswith("camera slowly orbits"))
+
+print("--- Videos: the 6-field template ---")
+check("picking a movement prefilled every field",
+      all(w.text().strip() for w in
+          (vv.subject_field, vv.camera_movement_field, vv.style_field, vv.audio_cues_field)))
+check("style is a concrete camera/grade phrase, not 'cinematic lighting'",
+      "cinematic" not in vv.style_field.text().lower(), vv.style_field.text())
+check("the assembled prompt carries the standing negative guard",
+      "no warped face" in vv.prompt, vv.prompt[-80:])
+check("the audio cue is never folded into the Kling prompt itself",
+      vv.audio_cues_field.text() not in vv.prompt, vv.prompt)
+
+before_prompt = vv.prompt
+vv.camera_movement_field.setText("slow orbit around the subject")
+app.processEvents()
+check("editing a field re-assembles the live preview",
+      vv.prompt != before_prompt and vv.prompt.startswith("slow orbit around the subject"),
+      vv.prompt[:50])
+check("re-picking the SAME still-selected movement does not silently revert the edit",
+      vv.camera_movement_field.text() == "slow orbit around the subject")
+
+vv.audio_cues_field.setText("a low growl, then a sudden hiss")
+app.processEvents()
+check("the audio cue gets its own pass/fail badge, separate from the Kling lint badge",
+      vv.audio_badge.text() != "-", vv.audio_badge.text())
+vv.copy_audio_cue()
+check("the audio cue copies on its own, never mixed into the Kling prompt",
+      QApplication.clipboard().text() == "a low growl, then a sudden hiss")
+
+# Picking a DIFFERENT movement is the one moment fields are expected to reset.
+pick_movement("dolly-in")
+check("a fresh movement pick overwrites the earlier hand edit",
+      vv.camera_movement_field.text() != "slow orbit around the subject",
+      vv.camera_movement_field.text())
+
+print("--- Videos: the first frame (the actual fix for 'not the video I want') ---")
+win.compose_view.current_image = str(fixture_image)
+vv._still_override = None
+vv.refresh()
+
+# request_video() emits a real signal that MainWindow already wired, at
+# construction, straight to generate_videos() - a real Kling job, over the
+# real network, through a background QThreadPool with no mock underneath it.
+# Every other suite that drives generation through the real signal chain
+# mocks the provider first; this path has never been exercised before, so
+# patch the instance method the same way `win.pool.submit` is patched above -
+# request_video()'s own emitted payload is what these checks care about, not
+# a real clip.
+real_generate_videos = win.generate_videos
+win.generate_videos = lambda *a, **k: None
+
+video_jobs = []
+vv.video_requested.connect(lambda jobs, options: video_jobs.append((jobs, options)))
+
+check("with a still open in Images and no override, the badge reads attached",
+      vv.still_badge.text() == "attached", vv.still_badge.text())
+check("...and names it as coming from Images",
+      "(from Images)" in vv.still_label.text(), vv.still_label.text())
+
+video_jobs.clear()
+vv.request_video()
+check("the clip request carries Compose's current image as the first frame",
+      video_jobs and video_jobs[0][0][0]["image"] == str(fixture_image),
+      str(video_jobs))
+
+# An explicit pick beats whatever Compose has open - same precedence rule as
+# shot/lighting/composition. Not driving the real QFileDialog (it would block
+# a headless run) - setting the override directly is exactly what a completed
+# picker call leaves behind.
+override_image = Path(_tempfile.gettempdir()) / "aivs-newui-still-override.png"
+override_image.write_bytes(mock_api.PNG)
+vv._still_override = str(override_image)
+vv._refresh_still_label()
+check("a chosen still overrides Compose's own image",
+      "(chosen)" in vv.still_label.text(), vv.still_label.text())
+
+video_jobs.clear()
+vv.request_video()
+check("the override, not Compose's image, reaches the request",
+      video_jobs and video_jobs[0][0][0]["image"] == str(override_image),
+      str(video_jobs))
+
+vv.clear_still()
+check("clearing the override falls back to Compose's own image",
+      "(from Images)" in vv.still_label.text() and vv._still_override is None,
+      vv.still_label.text())
+
+# No still anywhere - the one case that gets a hard interrupt, since it is
+# the literal cause of the complaint this feature exists to fix.
+win.compose_view.current_image = None
+vv.refresh()
+check("with nothing attached, the badge warns rather than staying neutral",
+      vv.still_badge.text() == "none", vv.still_badge.text())
+
+real_question = QMessageBox.question
+QMessageBox.question = staticmethod(lambda *a, **k: QMessageBox.StandardButton.No)
+video_jobs.clear()
+vv.request_video()
+check("declining the 'no first frame' confirmation emits nothing",
+      video_jobs == [], str(video_jobs))
+
+QMessageBox.question = staticmethod(lambda *a, **k: QMessageBox.StandardButton.Yes)
+video_jobs.clear()
+vv.request_video()
+check("accepting it still generates - text-only, image explicitly None, not silently dropped",
+      video_jobs and video_jobs[0][0][0]["image"] is None, str(video_jobs))
+QMessageBox.question = real_question
+win.generate_videos = real_generate_videos
+
+# Leave the view in a normal state for anything that runs after this.
+win.compose_view.current_image = str(fixture_image)
+vv._still_override = None
+vv.refresh()
 
 print("--- Videos: glossary ---")
 vv.tabs.setCurrentIndex(1)
