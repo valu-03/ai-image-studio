@@ -152,7 +152,6 @@ class MainWindow(QMainWindow):
         brand_row.addWidget(self.brand_mark)
         brand_row.addWidget(brand, 1)
         layout.addLayout(brand_row)
-        layout.addWidget(MutedLabel("Phase 2 · Architect"))
         layout.addSpacing(T.SPACE["lg"])
 
         self.nav_group = QButtonGroup(self)
