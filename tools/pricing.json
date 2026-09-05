@@ -1,0 +1,43 @@
+{
+  "note": "SEED FIGURES, NOT AN API. Kie publishes no pricing endpoint, so these come from its marketing pages on the date below and they will drift. They exist to answer 'roughly what will this batch cost' BEFORE you spend it. The only measured number in this project is `creditsConsumed`, which recordInfo returns on every finished job: once the app has seen a real charge for a model it reports the cost as `measured` and stops guessing. Treat anything labelled `estimated` as an order of magnitude.",
+  "as_of": "2026-08-31",
+  "sources": [
+    "https://www.bitdoze.com/kie-ai-review/",
+    "https://kie.ai/pricing"
+  ],
+  "currency": "credits",
+  "models": {
+    "nano-banana-pro": {
+      "label": "Nano Banana Pro",
+      "unit": "image",
+      "credits_per_unit": 24,
+      "multipliers": {
+        "resolution": {
+          "1K": 1.0,
+          "2K": 1.0,
+          "4K": 1.0
+        }
+      },
+      "confidence": "estimated",
+      "note": "~24 credits (about $0.12) per image. Whether 2K and 4K cost more is not published, so they are priced the same until a real charge says otherwise - which is exactly the case `measured` exists to fix."
+    },
+    "kling-3.0/video": {
+      "label": "Kling 3.0",
+      "unit": "second",
+      "credits_per_unit": 27,
+      "multipliers": {
+        "mode": {
+          "std": 1.0,
+          "pro": 2.0,
+          "4K": 3.0
+        },
+        "sound": {
+          "false": 1.0,
+          "true": 2.0
+        }
+      },
+      "confidence": "estimated",
+      "note": "27 credits/second is the published figure for std without audio (5s = 135, 10s = 270). The mode and sound multipliers are INFERRED from 'sound roughly doubles the price per second' and from pro being the higher-resolution tier - they are the least trustworthy numbers in this file and the first that a measured charge should replace."
+    }
+  }
+}

@@ -1,0 +1,344 @@
+{
+  "source": "AI Video Bootcamp - Phase 2 ARCHITECT - Lesson 20: Creating More Realistic Avatars",
+  "version": 5,
+  "default_model": "Nano Banana Pro",
+  "layers": {
+    "core": {
+      "label": "Core photorealism triggers",
+      "note": "Always include at least 2-3 of these. Without them the model has to guess.",
+      "pick": 3,
+      "terms": [
+        "photorealistic",
+        "ultra-realistic",
+        "real-world photography",
+        "cinematic realism",
+        "lifelike details",
+        "natural imperfections",
+        "true-to-life textures",
+        "realistic skin textures"
+      ]
+    },
+    "camera": {
+      "label": "Camera language",
+      "note": "Tells the model this is a photo, not an image.",
+      "pick": 1,
+      "terms": [
+        "DSLR photography",
+        "mirrorless camera",
+        "cinematic film still",
+        "documentary-style photography",
+        "street photography",
+        "studio portrait photography"
+      ]
+    },
+    "lens": {
+      "label": "Lens and optics",
+      "note": "35mm is the most natural, 50mm is the human-eye look, 85mm is for faces.",
+      "pick": 2,
+      "terms": [
+        "shot on a 35mm lens",
+        "shot on a 50mm lens",
+        "shot on an 85mm portrait lens",
+        "shallow depth of field",
+        "natural bokeh",
+        "realistic focal length"
+      ]
+    },
+    "lighting": {
+      "label": "Lighting",
+      "note": "Real-world lighting only. Pick ONE source - mixing daylight with golden hour contradicts itself. Natural daylight is the highest-value phrase here.",
+      "pick": 1,
+      "always": [
+        "realistic shadows"
+      ],
+      "terms": [
+        "soft natural daylight",
+        "soft window light",
+        "golden hour sunlight",
+        "overcast daylight",
+        "practical lighting",
+        "studio softbox lighting",
+        "chiaroscuro lighting",
+        "harsh midday sunlight"
+      ]
+    },
+    "texture": {
+      "label": "Texture and detail",
+      "note": "The single biggest defence against the plastic AI look. Imperfections are the big one.",
+      "pick": 3,
+      "terms": [
+        "high-detail textures",
+        "realistic surface detail",
+        "visible skin pores",
+        "natural fabric grain",
+        "skin micro-details",
+        "dust, scratches and wear",
+        "slight imperfections",
+        "tactile materials"
+      ]
+    },
+    "colour": {
+      "label": "Colour and tone",
+      "note": "Realism is restraint. Controlled, photographic colour language.",
+      "pick": 2,
+      "terms": [
+        "natural color grading",
+        "muted tones",
+        "earthy color palette",
+        "cinematic color balance",
+        "realistic contrast",
+        "soft highlights and deep shadows"
+      ]
+    },
+    "composition": {
+      "label": "Composition",
+      "note": "Framing language only - no compositional geometry. A grid or ratio is imposed ONLY when the user picks one from composition_guides, so an unasked-for rule can never reach the prompt.",
+      "pick": 2,
+      "terms": [
+        "eye-level shot",
+        "candid moment",
+        "unstaged composition",
+        "natural framing",
+        "foreground and background separation"
+      ]
+    },
+    "grain": {
+      "label": "Grain and image quality",
+      "note": "The final 10% - makes an image feel captured rather than generated.",
+      "pick": 2,
+      "terms": [
+        "subtle film grain",
+        "cinematic grain",
+        "high dynamic range used lightly",
+        "sharp focus",
+        "clean but not overly polished"
+      ]
+    }
+  },
+  "composition_guides": {
+    "note": "Classical framing geometries. Entirely opt-in: no composition rule reaches a prompt unless one is chosen here - the composition layer and the shot presets carry framing language only. When one is chosen it pins the first composition slot and the bank fills the rest, so the layer never drops below its normal strength. The jargon alone means little to an image model, so every phrase also states what the geometry does to the frame.",
+    "guides": {
+      "rule-of-thirds": {
+        "label": "Rule of Thirds",
+        "phrase": "composed on the rule of thirds, the subject set on a third line rather than centred",
+        "note": "The safe default. Off-centre placement, room to look into."
+      },
+      "phi-grid": {
+        "label": "Phi grid",
+        "phrase": "composed on a phi grid, the subject set just off centre on the 0.618 division",
+        "note": "The rule of thirds pulled tighter to the middle - calmer, less graphic."
+      },
+      "diagonals": {
+        "label": "Diagonals",
+        "phrase": "diagonal composition, leading lines running corner to corner through the frame",
+        "note": "Motion and depth. Wants a scene with lines in it - a street, a corridor, a table edge."
+      },
+      "triangle": {
+        "label": "Triangle",
+        "phrase": "triangular composition, the subject anchored in a stable triangle",
+        "note": "Stability and weight. Works for seated poses and groups."
+      },
+      "golden-ratio": {
+        "label": "Golden Ratio",
+        "phrase": "golden ratio composition, the frame divided at 1:1.618",
+        "note": "The proportion itself rather than a grid. Subtle - expect a gentle off-centre bias."
+      },
+      "golden-spiral": {
+        "label": "Golden Spiral (Fibonacci Spiral)",
+        "phrase": "golden spiral composition, the frame's lines curving inward toward the subject",
+        "note": "Draws the eye along a curve into the subject. Needs curved or receding elements to read."
+      },
+      "harmonic-armature": {
+        "label": "Harmonic Armature",
+        "phrase": "harmonic armature composition, the subject placed where the frame's diagonals and reciprocals cross",
+        "note": "The most structured of the seven. The weakest signal to an image model - judge the result, do not assume it landed."
+      }
+    }
+  },
+  "negatives": [
+    "no cartoon style",
+    "no CGI",
+    "no 3D render",
+    "no game engine",
+    "no plastic skin",
+    "no unrealistic lighting",
+    "no text, logo or watermark"
+  ],
+  "banned": [
+    "neon glow",
+    "magical light",
+    "fantasy lighting",
+    "hyper-saturated",
+    "hypersaturated",
+    "cartoon colors",
+    "cartoon colours",
+    "cartoon style",
+    "cgi",
+    "3d render",
+    "game engine",
+    "plastic skin",
+    "octane render",
+    "unreal engine",
+    "digital painting",
+    "concept art",
+    "airbrushed"
+  ],
+  "warn": [
+    "8k",
+    "4k",
+    "masterpiece",
+    "trending on artstation"
+  ],
+  "purposes": {
+    "youtube-ad": {
+      "label": "YouTube ad",
+      "aspect": "16:9",
+      "shot": "talking-head",
+      "note": "landscape and longer - the one placement with room to tell a story"
+    },
+    "tiktok-ugc": {
+      "label": "TikTok / Reels UGC",
+      "aspect": "9:16",
+      "shot": "selfie",
+      "note": "vertical, phone-shot, deliberately unpolished"
+    },
+    "instagram-post": {
+      "label": "Instagram post",
+      "aspect": "4:5",
+      "shot": "portrait",
+      "note": "the tallest crop the feed shows without cropping"
+    },
+    "youtube-thumbnail": {
+      "label": "YouTube thumbnail",
+      "aspect": "16:9",
+      "shot": "portrait",
+      "note": "face large in frame, readable at small size"
+    },
+    "website-hero": {
+      "label": "Website hero",
+      "aspect": "16:9",
+      "shot": "environmental",
+      "note": "wide, room around the subject for text overlay"
+    },
+    "ad-creative": {
+      "label": "Paid ad creative",
+      "aspect": "4:5",
+      "shot": "product-demo",
+      "note": "product legible, subject presenting it"
+    },
+    "character-ref": {
+      "label": "Character reference",
+      "aspect": "1:1",
+      "shot": "portrait",
+      "note": "clean and front-facing — this is what you lock a face to"
+    }
+  },
+  "shot_presets": {
+    "portrait": {
+      "camera": "studio portrait photography",
+      "lens": [
+        "shot on an 85mm portrait lens",
+        "shallow depth of field"
+      ],
+      "composition": [
+        "eye-level shot",
+        "foreground and background separation"
+      ]
+    },
+    "selfie": {
+      "camera": "raw front-facing smartphone selfie",
+      "lens": [
+        "natural phone camera sharpness",
+        "shallow depth of field"
+      ],
+      "composition": [
+        "unstaged composition",
+        "candid moment"
+      ],
+      "extra": [
+        "phone held at arm's length",
+        "UGC aesthetic",
+        "no beauty filter"
+      ]
+    },
+    "talking-head": {
+      "camera": "documentary-style photography",
+      "lens": [
+        "shot on a 35mm lens",
+        "shallow depth of field"
+      ],
+      "composition": [
+        "eye-level shot",
+        "foreground and background separation"
+      ]
+    },
+    "product-demo": {
+      "camera": "cinematic film still",
+      "lens": [
+        "shot on a 35mm lens",
+        "natural bokeh"
+      ],
+      "composition": [
+        "natural framing",
+        "foreground and background separation"
+      ]
+    },
+    "environmental": {
+      "camera": "street photography",
+      "lens": [
+        "shot on a 35mm lens",
+        "realistic focal length"
+      ],
+      "composition": [
+        "candid moment",
+        "natural framing"
+      ]
+    },
+    "phone-candid": {
+      "camera": "iPhone-style photo",
+      "lens": [
+        "natural phone camera sharpness",
+        "realistic focal length"
+      ],
+      "composition": [
+        "candid moment",
+        "natural framing"
+      ],
+      "extra": [
+        "shot by a friend holding the phone",
+        "UGC aesthetic",
+        "no beauty filter"
+      ]
+    }
+  },
+  "examples": [
+    {
+      "name": "compact base",
+      "text": "Ultra-realistic cinematic photography of a female model, shot on a 35mm lens, natural day time lighting, realistic shadows, shallow depth of field, true-to-life textures, visible imperfections, subtle film grain, natural color grading"
+    },
+    {
+      "name": "bedroom selfie",
+      "text": "Ultra-realistic close-up selfie of a woman sitting on her bed, soft natural morning light through sheer curtains, phone held at arm's length, natural skin texture with faint freckles, light eye bags, glossy lips, messy hair tied loosely, white oversized t-shirt, cozy bedroom blurred behind her, raw iPhone selfie look, no makeup filter, UGC aesthetic, hyper-realistic skin pores and hair strands, no cartoon, no fantasy, no plastic skin, unstaged composition, skin micro-details"
+    },
+    {
+      "name": "bathroom mirror selfie",
+      "text": "Ultra-realistic, close-up front-facing smartphone selfie of a young woman standing in a modern, softly lit bathroom, captured as if filmed on a real phone front camera. She is holding her phone slightly angled in front of her face, partially obscuring it in a natural, casual influencer pose, with her fingers and phone edges visible in the frame. Warm white LED strips create soft facial highlights, realistic skin shine, and gentle light bloom in the mirror. Her skin shows real-world micro-detail including pores, faint blemishes, subtle redness, and natural oiliness - nothing airbrushed or plasticky. Loose casual hoodie with visible fabric fibers, folds and natural wrinkles. Authentic mirror reflections, slight glare, soft background blur from shallow depth of field. Raw unfiltered UGC style, slight digital noise, zero artificial beauty retouching."
+    },
+    {
+      "name": "product demo",
+      "text": "Ultra-realistic, cinematic beauty UGC portrait of a young woman sitting on a beige sofa in a bright modern apartment, holding a lipstick toward the camera in a natural influencer product-demo pose. Framed from the waist up, direct eye contact, calm conversational expression. Skin shows true-to-life texture including pores, faint freckles, slight redness and natural glow - no heavy makeup, no airbrushing. Black strapless top with visible fabric tension and folds, minimal gold jewelry catching soft metallic reflections. Soft natural daylight through large windows, gentle highlights, realistic shadow falloff, warm ambient bounce light. Background slightly out of focus, natural bokeh, strong subject separation. Shot on a full-frame camera with a 35mm lens at a wide aperture. Neutral photographic color grading, realistic skin colors, no artificial HDR. Fine film grain and subtle sensor noise in the shadows."
+    },
+    {
+      "name": "influencer beach candid",
+      "text": "A close-up iPhone-style photo of a woman tanning on a tropical beach, laying on her stomach with her back slightly arched. Her wide-brim straw hat covers her eyes, but her mouth shows a subtle smirk. She wears a black and white snakeskin bikini, and her arm rests over an open paperback novel. The sunlight casts hard shadows across her toned shoulders and back, making the grains of sand on her skin glisten. The photo is framed to include a clear sky, bright blue water, and a woven beach bag behind her.",
+      "teaches": [
+        "The capture device is named as the shot itself - 'close-up iPhone-style photo'.",
+        "The hat covers her eyes. Partial occlusion of the face is the strongest defence against the tells that give an AI face away.",
+        "Hard light, not soft: sunlight casting hard shadows is what makes skin read as real.",
+        "Texture is bound to the scene - grains of sand ON her skin, not generic 'skin micro-details'.",
+        "A prop that implies a story: an open paperback, a woven bag.",
+        "The frame is described as a frame - an explicit list of what to include."
+      ]
+    }
+  ]
+}

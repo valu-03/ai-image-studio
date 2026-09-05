@@ -1,0 +1,684 @@
+{
+  "source": "AI Video Bootcamp - 100 Elevenlabs Soundeffects Example Prompts",
+  "version": 1,
+  "note": "The course's 100 example prompts, verbatim, plus the pattern they all share. ElevenLabs' sound-effects model makes EFFECTS: it does not write music and it does not speak lines, and asking for either is the usual reason a generation comes back unusable.",
+  "pattern": {
+    "shape": "<source> <action, as an -ing verb> <space or acoustic treatment>",
+    "why": "Measured across all 100: 81 carry an -ing action verb (a further one has only \"being\", a copula, which does not count), 92 carry a preposition, and all 100 carry at least one of an action, a placement or a qualifier. They run 4 to 9 words. So the hard rule is that it must describe an EVENT rather than an object; naming the space is advice, not a rule.",
+    "max_words": 12
+  },
+  "themes": {
+    "ancient": {
+      "label": "Ancient world",
+      "note": "Stone, fire and crowds. Reverb is doing most of the work.",
+      "range": [
+        1,
+        10
+      ]
+    },
+    "medieval": {
+      "label": "Medieval",
+      "note": "Metal, weather and animals. Good source of impact accents.",
+      "range": [
+        11,
+        20
+      ]
+    },
+    "war": {
+      "label": "Modern war",
+      "note": "Distance and muffling. Note how often the effect is described as heard through something.",
+      "range": [
+        21,
+        30
+      ]
+    },
+    "colonial": {
+      "label": "Colonial",
+      "note": "Small, close, mechanical sounds - the useful half for quiet scenes.",
+      "range": [
+        31,
+        40
+      ]
+    },
+    "transition": {
+      "label": "Transitions",
+      "note": "Not objects but MOMENTS: something stops, reverses or resets. These are cut sounds.",
+      "range": [
+        41,
+        50
+      ]
+    },
+    "villain": {
+      "label": "Villain and menace",
+      "note": "Low frequencies and slow movement. Use sparingly or it reads as parody.",
+      "range": [
+        51,
+        60
+      ]
+    },
+    "comedy": {
+      "label": "Comedy",
+      "note": "The set that carries an animal video. Exaggeration is the point - 'with comedic echo', 'with absurd intensity'.",
+      "range": [
+        61,
+        70
+      ]
+    },
+    "action": {
+      "label": "Action and drama",
+      "note": "Impacts and swells. Almost all of these are accents, not beds.",
+      "range": [
+        71,
+        80
+      ]
+    },
+    "magic": {
+      "label": "Magic and time",
+      "note": "Layered hums and pulses. The most abstract group - lean on the qualifier.",
+      "range": [
+        81,
+        100
+      ]
+    }
+  },
+  "roles": {
+    "ambience": {
+      "label": "Ambience",
+      "role": "The bed under the whole scene. Continuous, quiet, no events.",
+      "note": "Generate long and loop it. If you notice it, it is too loud."
+    },
+    "key": {
+      "label": "Key effect",
+      "role": "The thing the scene is actually about - the action you can see.",
+      "note": "Should land on the frame where the action happens, not near it."
+    },
+    "accent": {
+      "label": "Accent",
+      "role": "The punctuation: the cut, the reveal, the punchline.",
+      "note": "One per scene at most. Two accents cancel each other out."
+    }
+  },
+  "treatments": [
+    "echo",
+    "echoing",
+    "echoey",
+    "reverb",
+    "distant",
+    "muffled",
+    "far away",
+    "overhead",
+    "underground",
+    "background",
+    "slow motion",
+    "high-pitched",
+    "low-pitched",
+    "deep",
+    "layered",
+    "comedic",
+    "absurd",
+    "exaggerated",
+    "dramatic",
+    "suddenly",
+    "repeatedly",
+    "fast",
+    "slowly",
+    "quiet",
+    "loud",
+    "sudden",
+    "quick",
+    "squishy",
+    "slippery",
+    "cartoonish"
+  ],
+  "placement_words": [
+    "in",
+    "on",
+    "through",
+    "inside",
+    "beyond",
+    "over",
+    "under",
+    "near",
+    "at",
+    "across",
+    "from",
+    "during",
+    "against",
+    "into",
+    "onto",
+    "behind",
+    "beside",
+    "around",
+    "with",
+    "like",
+    "after",
+    "before",
+    "as",
+    "by",
+    "of",
+    "up",
+    "down",
+    "off",
+    "out",
+    "followed"
+  ],
+  "not_effects": [
+    "music",
+    "song",
+    "melody",
+    "soundtrack",
+    "background score",
+    "singing",
+    "sings",
+    "rap verse",
+    "lyrics",
+    "instrumental",
+    "voiceover",
+    "voice over",
+    "narrator",
+    "narration",
+    "spoken word"
+  ],
+  "examples": [
+    {
+      "n": 1,
+      "text": "Camel groaning in the distance with desert wind blowing",
+      "theme": "ancient"
+    },
+    {
+      "n": 2,
+      "text": "Crowd cheering in ancient Roman coliseum with echo",
+      "theme": "ancient"
+    },
+    {
+      "n": 3,
+      "text": "Stone door grinding open inside a dark pyramid",
+      "theme": "ancient"
+    },
+    {
+      "n": 4,
+      "text": "Chisel tapping on stone in an Egyptian tomb",
+      "theme": "ancient"
+    },
+    {
+      "n": 5,
+      "text": "Marching sandals on cobblestone in ancient Rome",
+      "theme": "ancient"
+    },
+    {
+      "n": 6,
+      "text": "Torch flame crackling in a temple hallway",
+      "theme": "ancient"
+    },
+    {
+      "n": 7,
+      "text": "Ceremonial horn echoing through a stone plaza",
+      "theme": "ancient"
+    },
+    {
+      "n": 8,
+      "text": "Clay pot smashing on ancient market ground",
+      "theme": "ancient"
+    },
+    {
+      "n": 9,
+      "text": "Greek lyre being plucked in a calm courtyard",
+      "theme": "ancient"
+    },
+    {
+      "n": 10,
+      "text": "Priest chanting in a vast stone chamber",
+      "theme": "ancient"
+    },
+    {
+      "n": 11,
+      "text": "Castle gates creaking open with chains rattling",
+      "theme": "medieval"
+    },
+    {
+      "n": 12,
+      "text": "Horse galloping on muddy battlefield with armor clanks",
+      "theme": "medieval"
+    },
+    {
+      "n": 13,
+      "text": "Sizzling spit roast in a tavern kitchen",
+      "theme": "medieval"
+    },
+    {
+      "n": 14,
+      "text": "Sword clashing in a knight's training yard",
+      "theme": "medieval"
+    },
+    {
+      "n": 15,
+      "text": "Church bells tolling in a foggy village",
+      "theme": "medieval"
+    },
+    {
+      "n": 16,
+      "text": "Blacksmith hammer hitting anvil repeatedly",
+      "theme": "medieval"
+    },
+    {
+      "n": 17,
+      "text": "Crowd shouting during a medieval execution",
+      "theme": "medieval"
+    },
+    {
+      "n": 18,
+      "text": "Rain falling on a wooden tavern roof",
+      "theme": "medieval"
+    },
+    {
+      "n": 19,
+      "text": "Wolves howling beyond the castle walls",
+      "theme": "medieval"
+    },
+    {
+      "n": 20,
+      "text": "Drawbridge dropping with echoing boom",
+      "theme": "medieval"
+    },
+    {
+      "n": 21,
+      "text": "Air raid siren rising over a quiet city",
+      "theme": "war"
+    },
+    {
+      "n": 22,
+      "text": "Boots splashing through muddy trench water",
+      "theme": "war"
+    },
+    {
+      "n": 23,
+      "text": "Radio static with old commander voice chatter",
+      "theme": "war"
+    },
+    {
+      "n": 24,
+      "text": "Plane engines rumbling overhead during air raid",
+      "theme": "war"
+    },
+    {
+      "n": 25,
+      "text": "Rifle bolt loading with distant mortar shell",
+      "theme": "war"
+    },
+    {
+      "n": 26,
+      "text": "Distant screaming and chaos in battlefield fog",
+      "theme": "war"
+    },
+    {
+      "n": 27,
+      "text": "Soldiers whispering orders under breath",
+      "theme": "war"
+    },
+    {
+      "n": 28,
+      "text": "Sandbags rustling and barbed wire creaking",
+      "theme": "war"
+    },
+    {
+      "n": 29,
+      "text": "Explosions muffled through gas mask breathing",
+      "theme": "war"
+    },
+    {
+      "n": 30,
+      "text": "Pages flipping in war journal under candlelight",
+      "theme": "war"
+    },
+    {
+      "n": 31,
+      "text": "Cannon firing from a wooden fortress",
+      "theme": "colonial"
+    },
+    {
+      "n": 32,
+      "text": "Horse-drawn carriage rattling on cobblestone",
+      "theme": "colonial"
+    },
+    {
+      "n": 33,
+      "text": "Ink pen scratching on parchment during a declaration",
+      "theme": "colonial"
+    },
+    {
+      "n": 34,
+      "text": "Bayonet clanking against musket",
+      "theme": "colonial"
+    },
+    {
+      "n": 35,
+      "text": "Powder horn pouring into musket barrel",
+      "theme": "colonial"
+    },
+    {
+      "n": 36,
+      "text": "Colonial crowd murmuring at town hall",
+      "theme": "colonial"
+    },
+    {
+      "n": 37,
+      "text": "Fire crackling in a lantern-lit cabin",
+      "theme": "colonial"
+    },
+    {
+      "n": 38,
+      "text": "Marching drums of revolutionaries in the distance",
+      "theme": "colonial"
+    },
+    {
+      "n": 39,
+      "text": "Bell tower ringing out over a colonial town",
+      "theme": "colonial"
+    },
+    {
+      "n": 40,
+      "text": "Leather boots squeaking on wooden floorboards",
+      "theme": "colonial"
+    },
+    {
+      "n": 41,
+      "text": "Gears turning fast followed by sudden silence",
+      "theme": "transition"
+    },
+    {
+      "n": 42,
+      "text": "Wind ripping through as the past materializes",
+      "theme": "transition"
+    },
+    {
+      "n": 43,
+      "text": "Heartbeat slowing before reality fades away",
+      "theme": "transition"
+    },
+    {
+      "n": 44,
+      "text": "Stone age fire crackling suddenly after silence",
+      "theme": "transition"
+    },
+    {
+      "n": 45,
+      "text": "Layers of whispers in multiple languages as time distorts",
+      "theme": "transition"
+    },
+    {
+      "n": 46,
+      "text": "Sudden flash and reverb as time resets",
+      "theme": "transition"
+    },
+    {
+      "n": 47,
+      "text": "Quick rewind sound followed by ambient crowd noises",
+      "theme": "transition"
+    },
+    {
+      "n": 48,
+      "text": "Ambient change from modern traffic to ancient silence",
+      "theme": "transition"
+    },
+    {
+      "n": 49,
+      "text": "Clock ticking backwards with each footstep",
+      "theme": "transition"
+    },
+    {
+      "n": 50,
+      "text": "Footsteps fading into new environment with echo morphing",
+      "theme": "transition"
+    },
+    {
+      "n": 51,
+      "text": "Heavy footsteps echoing in an empty hall",
+      "theme": "villain"
+    },
+    {
+      "n": 52,
+      "text": "Metallic mask breathing like a supervillain",
+      "theme": "villain"
+    },
+    {
+      "n": 53,
+      "text": "Crackling electricity surging through armor",
+      "theme": "villain"
+    },
+    {
+      "n": 54,
+      "text": "Glitchy portal opening with deep rumble",
+      "theme": "villain"
+    },
+    {
+      "n": 55,
+      "text": "Dramatic whoosh as a cape flutters in slow motion",
+      "theme": "villain"
+    },
+    {
+      "n": 56,
+      "text": "Distant thunder growl before a villain appears",
+      "theme": "villain"
+    },
+    {
+      "n": 57,
+      "text": "Ancient gate slowly creaking open",
+      "theme": "villain"
+    },
+    {
+      "n": 58,
+      "text": "Low-pitched demonic whispering in background",
+      "theme": "villain"
+    },
+    {
+      "n": 59,
+      "text": "Magma bubbling near a lava throne",
+      "theme": "villain"
+    },
+    {
+      "n": 60,
+      "text": "Mechanical gears grinding like a villain's lair activating",
+      "theme": "villain"
+    },
+    {
+      "n": 61,
+      "text": "Squishy cheese plop onto a surface",
+      "theme": "comedy"
+    },
+    {
+      "n": 62,
+      "text": "Loud slap like someone smacked a block of cheese",
+      "theme": "comedy"
+    },
+    {
+      "n": 63,
+      "text": "Tiny mouse squeak with comedic echo",
+      "theme": "comedy"
+    },
+    {
+      "n": 64,
+      "text": "Slippery banana peel slip sound",
+      "theme": "comedy"
+    },
+    {
+      "n": 65,
+      "text": "Cartoonish gulp after seeing something scary",
+      "theme": "comedy"
+    },
+    {
+      "n": 66,
+      "text": "Sudden fart with dramatic reverb",
+      "theme": "comedy"
+    },
+    {
+      "n": 67,
+      "text": "Old fridge humming suspiciously",
+      "theme": "comedy"
+    },
+    {
+      "n": 68,
+      "text": "Cheese melting sizzle with absurd intensity",
+      "theme": "comedy"
+    },
+    {
+      "n": 69,
+      "text": "Microwave ding followed by explosion",
+      "theme": "comedy"
+    },
+    {
+      "n": 70,
+      "text": "Toaster pop with exaggerated spring noise",
+      "theme": "comedy"
+    },
+    {
+      "n": 71,
+      "text": "Sword unsheathing with high-pitched metallic ring",
+      "theme": "action"
+    },
+    {
+      "n": 72,
+      "text": "Heartbeat slowing down before emotional dialogue",
+      "theme": "action"
+    },
+    {
+      "n": 73,
+      "text": "Wind howling as a character turns their back",
+      "theme": "action"
+    },
+    {
+      "n": 74,
+      "text": "Dramatic punch impact with echo",
+      "theme": "action"
+    },
+    {
+      "n": 75,
+      "text": "Glass shattering in slow motion",
+      "theme": "action"
+    },
+    {
+      "n": 76,
+      "text": "Eyes glowing with high-pitched charging sound",
+      "theme": "action"
+    },
+    {
+      "n": 77,
+      "text": "Crackling aura building up around body",
+      "theme": "action"
+    },
+    {
+      "n": 78,
+      "text": "Echoey footstep as hero walks away",
+      "theme": "action"
+    },
+    {
+      "n": 79,
+      "text": "Explosion echoing through a destroyed city",
+      "theme": "action"
+    },
+    {
+      "n": 80,
+      "text": "Crows cawing in the distance on a gloomy hill",
+      "theme": "action"
+    },
+    {
+      "n": 81,
+      "text": "Clock ticking with echo before time jump",
+      "theme": "magic"
+    },
+    {
+      "n": 82,
+      "text": "Dimensional rift tearing with bass distortion",
+      "theme": "magic"
+    },
+    {
+      "n": 83,
+      "text": "Ancient spell chant with reverb",
+      "theme": "magic"
+    },
+    {
+      "n": 84,
+      "text": "Flames igniting in a ritual circle",
+      "theme": "magic"
+    },
+    {
+      "n": 85,
+      "text": "Pages of a magic book flipping fast",
+      "theme": "magic"
+    },
+    {
+      "n": 86,
+      "text": "Water dripping in underground temple",
+      "theme": "magic"
+    },
+    {
+      "n": 87,
+      "text": "Sands shifting as portal opens in ancient Egypt",
+      "theme": "magic"
+    },
+    {
+      "n": 88,
+      "text": "Roar of an unknown ancient creature far away",
+      "theme": "magic"
+    },
+    {
+      "n": 89,
+      "text": "Time machine charging with deep synth hum",
+      "theme": "magic"
+    },
+    {
+      "n": 90,
+      "text": "Sudden flash with high-pitched time warp pulse",
+      "theme": "magic"
+    },
+    {
+      "n": 91,
+      "text": "Ancient bell echoing through a ruined temple",
+      "theme": "magic"
+    },
+    {
+      "n": 92,
+      "text": "Shimmering force field powering up",
+      "theme": "magic"
+    },
+    {
+      "n": 93,
+      "text": "Footsteps crunching on frosty grass",
+      "theme": "magic"
+    },
+    {
+      "n": 94,
+      "text": "Whispers swirling around during a time distortion",
+      "theme": "magic"
+    },
+    {
+      "n": 95,
+      "text": "Steam releasing from a mechanical device",
+      "theme": "magic"
+    },
+    {
+      "n": 96,
+      "text": "Lantern flame flickering in a cave",
+      "theme": "magic"
+    },
+    {
+      "n": 97,
+      "text": "Deep echo of something massive moving underground",
+      "theme": "magic"
+    },
+    {
+      "n": 98,
+      "text": "Magical rune activating with layered hums",
+      "theme": "magic"
+    },
+    {
+      "n": 99,
+      "text": "Cracked stone collapsing slowly in ruins",
+      "theme": "magic"
+    },
+    {
+      "n": 100,
+      "text": "Distant portal closing with a pulsing zap",
+      "theme": "magic"
+    }
+  ]
+}

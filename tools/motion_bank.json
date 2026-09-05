@@ -1,0 +1,464 @@
+{
+  "source": "AI Video Bootcamp - Kling AI Cinematic Camera Movement Toolkit",
+  "version": 1,
+  "rules": {
+    "lead_with_camera": "Always start your prompt with the camera angle and build from there, this way Kling recognizes it immediately.",
+    "think_ahead": "Always create your images in a way that will complement the camera movement. If you say 'tracking over the shoulder' but there is no character in your scene, or 'the camera dives underwater' but there is no water nearby, Kling will get confused."
+  },
+  "requirements": {
+    "subject": {
+      "label": "a person in frame",
+      "fix": "describe who is in the shot in the Subject tab"
+    },
+    "shoulder": {
+      "label": "the subject seen from behind, shoulder or head in frame",
+      "fix": "the still must be shot from behind the character, not face-on"
+    },
+    "space": {
+      "label": "room around the subject for the camera to travel",
+      "fix": "use a wider shot - 'environmental' rather than a tight portrait"
+    },
+    "environment": {
+      "label": "a described setting",
+      "fix": "fill in the Setting field; the move reveals the surroundings"
+    },
+    "water": {
+      "label": "water in or near the scene",
+      "fix": "the setting must mention water - a lake, the sea, a pool"
+    },
+    "face": {
+      "label": "the face clearly visible",
+      "fix": "use a portrait or talking-head shot so there is a face to push into"
+    },
+    "foreground": {
+      "label": "objects between the camera and the subject",
+      "fix": "mention foreground detail - crowds, tents, branches, doorways"
+    },
+    "height": {
+      "label": "sky, height or something to descend from",
+      "fix": "the setting needs vertical scale - outdoors, a tall space"
+    },
+    "object": {
+      "label": "a specific object to circle or focus on",
+      "fix": "name the object in the Action field"
+    },
+    "obstacle": {
+      "label": "something for the camera to emerge from behind",
+      "fix": "mention a tree, wall, doorway or pillar in the setting"
+    },
+    "atmosphere": {
+      "label": "fog, smoke, mist or dust to move through",
+      "fix": "add the element to the setting - mist, smoke, haze"
+    },
+    "portal": {
+      "label": "a mirror, window or doorway to pass through",
+      "fix": "name the portal in the setting"
+    },
+    "second_subject": {
+      "label": "two people in frame",
+      "fix": "the still needs a second character"
+    }
+  },
+  "movements": {
+    "handheld": {
+      "name": "Handheld Camera Movement",
+      "category": "core",
+      "does": "Simulates a camera held by a human. Creates realism, tension or chaos.",
+      "lead": "first-person handheld camera",
+      "detail": "slight camera shake, natural instability",
+      "requires": ["subject"],
+      "image_hints": {"composition": ["candid moment", "unstaged composition"]},
+      "example": "first-person handheld camera walking through a destroyed city street at sunset, slight camera shake, rubble and fire in the background, cinematic lighting"
+    },
+    "dolly-in": {
+      "name": "Slow Dolly In",
+      "category": "core",
+      "does": "Moves closer to the subject to build emotional intensity or focus.",
+      "lead": "cinematic slow dolly in toward",
+      "detail": "camera begins far and pushes in",
+      "requires": ["subject", "face"],
+      "image_hints": {"shot": "portrait"},
+      "example": "cinematic slow dolly in toward a crying soldier sitting alone in the rain, camera begins far and pushes in toward his face, moody lighting"
+    },
+    "dolly-out": {
+      "name": "Slow Dolly Out",
+      "category": "core",
+      "does": "Moves away from the subject. Shows isolation, departure, or reveals the environment.",
+      "lead": "slow dolly out from",
+      "detail": "widening to reveal the surroundings",
+      "requires": ["subject", "environment", "space"],
+      "image_hints": {"shot": "environmental"},
+      "example": "slow dolly out from a woman standing on a cliff overlooking a vast ocean, hair blowing in the wind, wide cinematic shot"
+    },
+    "track-behind": {
+      "name": "Smooth Tracking Behind Character",
+      "category": "core",
+      "does": "Follows a character from behind. Immersive - the viewer walks with them.",
+      "lead": "camera smoothly tracking behind",
+      "detail": "first-person style, steady follow",
+      "requires": ["subject", "shoulder", "environment"],
+      "image_hints": {"shot": "environmental"},
+      "example": "camera smoothly tracking behind a cloaked traveler walking through a snowy forest, first-person style, ambient wind"
+    },
+    "over-shoulder": {
+      "name": "Over-the-Shoulder Shot",
+      "category": "core",
+      "does": "Camera sits behind a character facing their view, shoulder in frame. Dialogue and perspective.",
+      "lead": "over-the-shoulder shot of",
+      "detail": "shoulder and part of the head visible in frame",
+      "requires": ["subject", "shoulder"],
+      "image_hints": {"composition": ["foreground and background separation"]},
+      "example": "over-the-shoulder shot of a warrior watching enemy troops gather in the valley below, shoulder and part of helmet visible in frame, dramatic sunset"
+    },
+    "orbit-360": {
+      "name": "360 Orbit Around Subject",
+      "category": "core",
+      "does": "Circles the subject to show every angle. Builds suspense, power or awe.",
+      "lead": "camera slowly orbits around",
+      "detail": "circling to reveal every angle",
+      "requires": ["subject", "space"],
+      "image_hints": {"shot": "environmental", "composition": ["natural framing"]},
+      "example": "camera slowly orbits around a levitating sorcerer glowing with energy in a dark cave, magical symbols floating in the air"
+    },
+    "crane-up": {
+      "name": "Crane Shot Up",
+      "category": "core",
+      "does": "Starts low and rises, revealing the environment. Transcendence, scale.",
+      "lead": "crane shot rising above",
+      "detail": "revealing the surroundings as it climbs",
+      "requires": ["subject", "environment", "height"],
+      "image_hints": {"shot": "environmental"},
+      "example": "crane shot rising above a knight kneeling in prayer on a battlefield, revealing the ruins around him and a blood-red sky"
+    },
+    "crane-down": {
+      "name": "Crane Shot Down",
+      "category": "core",
+      "does": "Descends from above into the action. Godlike perspective, destiny.",
+      "lead": "top-down crane shot slowly descending toward",
+      "detail": "closing in from above",
+      "requires": ["subject", "height"],
+      "image_hints": {"shot": "environmental"},
+      "example": "top-down crane shot slowly descending toward a young girl standing in the center of a glowing ancient rune circle"
+    },
+    "pan-right": {
+      "name": "Slow Pan Right",
+      "category": "core",
+      "does": "Moves horizontally from a fixed position. Reveals a new environment or shifts subject.",
+      "lead": "slow pan right across",
+      "detail": "sweeping horizontally to reveal",
+      "requires": ["environment"],
+      "image_hints": {"shot": "environmental"},
+      "example": "slow pan right across the rooftops of a medieval city at dawn, smoke rising from chimneys, warm morning light"
+    },
+    "pov": {
+      "name": "First-Person POV Camera",
+      "category": "core",
+      "does": "Mimics what a character sees. Deeply immersive.",
+      "lead": "first-person POV",
+      "detail": "as if seen through the character's own eyes",
+      "requires": ["environment"],
+      "image_hints": {"composition": ["natural framing"]},
+      "example": "first-person POV walking into a pyramid chamber lit by torches, dust in the air, ancient hieroglyphs on the walls"
+    },
+    "top-down": {
+      "name": "Top-Down (Bird's Eye) View",
+      "category": "core",
+      "does": "Direct overhead shot. Abstraction, scale, surveillance.",
+      "lead": "top-down view of",
+      "detail": "looking straight down from above",
+      "requires": ["environment", "height"],
+      "image_hints": {"shot": "environmental"},
+      "example": "top-down view of a battlefield with soldiers clashing, chaos unfolding below, fog creeping across the field"
+    },
+    "low-angle": {
+      "name": "Low-Angle Shot",
+      "category": "core",
+      "does": "Looks up at the subject, making them powerful, intimidating, iconic.",
+      "lead": "low-angle cinematic shot of",
+      "detail": "camera looking up from below",
+      "requires": ["subject"],
+      "image_hints": {"composition": ["low-angle shot"]},
+      "example": "low-angle cinematic shot of a giant robot standing in a city square, sunlight flaring behind its head, people running"
+    },
+    "high-angle": {
+      "name": "High-Angle Shot",
+      "category": "core",
+      "does": "Looks down at the subject, making them small or vulnerable.",
+      "lead": "high-angle shot of",
+      "detail": "camera looking down from above",
+      "requires": ["subject", "environment"],
+      "image_hints": {"composition": ["high-angle shot"]},
+      "example": "high-angle shot of a child standing alone in a vast, empty courtyard, snow falling gently"
+    },
+    "push-in-face": {
+      "name": "Push-In Zoom on Face",
+      "category": "core",
+      "does": "Moves closer to the face during a realisation or emotional shift.",
+      "lead": "slow cinematic zoom in on",
+      "detail": "closing on the face as the expression shifts",
+      "requires": ["subject", "face"],
+      "image_hints": {"shot": "portrait"},
+      "example": "slow cinematic zoom in on a woman's face as she realizes her lover is gone, tears forming, soft morning light"
+    },
+    "pull-out-reveal": {
+      "name": "Pull-Out Environmental Reveal",
+      "category": "core",
+      "does": "Starts close and pulls back to reveal setting or scale. Shocking reveals.",
+      "lead": "camera starts close on",
+      "detail": "then slowly pulls out to reveal the full scene",
+      "requires": ["subject", "environment", "space"],
+      "image_hints": {"shot": "environmental"},
+      "example": "starts on close-up of a warrior's hand gripping a sword, slowly pulls out to reveal he's surrounded by thousands of enemy troops on a foggy battlefield"
+    },
+    "wide-static": {
+      "name": "Wide Static Shot with Foreground Movement",
+      "category": "core",
+      "does": "Still camera on the whole environment while something crosses the foreground.",
+      "lead": "wide static camera watching",
+      "detail": "the camera holds still while movement crosses the frame",
+      "requires": ["environment", "foreground"],
+      "image_hints": {"shot": "environmental"},
+      "example": "wide static camera watching a samurai walk past in the foreground with cherry blossoms falling gently, distant temple in background"
+    },
+    "corner-follow": {
+      "name": "Camera Follows Character Turning a Corner",
+      "category": "core",
+      "does": "Continuity and flow - exploring a space alongside the character.",
+      "lead": "camera follows",
+      "detail": "tracking as they turn a corner",
+      "requires": ["subject", "shoulder", "environment"],
+      "image_hints": {"shot": "environmental"},
+      "example": "camera follows a thief sneaking through an alley and turning a corner, rain-soaked pavement, flickering neon lights"
+    },
+    "reveal-behind-object": {
+      "name": "Reveal Shot from Behind an Object",
+      "category": "core",
+      "does": "Peeks from behind an obstacle to reveal something dramatic.",
+      "lead": "camera slowly peeks from behind",
+      "detail": "emerging to reveal the subject",
+      "requires": ["obstacle", "environment"],
+      "image_hints": {"composition": ["foreground and background separation"]},
+      "example": "camera slowly peeks from behind a tree to reveal a dragon sleeping in a forest clearing, breath fog rising from its nose"
+    },
+    "track-alongside": {
+      "name": "Medium Tracking Shot Alongside Character",
+      "category": "core",
+      "does": "Moves sideways with the subject at medium distance. Motion with focus.",
+      "lead": "medium tracking shot moving parallel to",
+      "detail": "travelling sideways alongside them",
+      "requires": ["subject", "space"],
+      "image_hints": {"shot": "environmental"},
+      "example": "medium tracking shot moving parallel to a woman running through the desert in slow motion, sand kicking up behind her"
+    },
+    "tilt-up-approach": {
+      "name": "Upward Tilt While Approaching Subject",
+      "category": "core",
+      "does": "Begins low, tilts up while closing in. Reveals majesty or scale.",
+      "lead": "camera tilts upward while moving toward",
+      "detail": "rising to take in the full height",
+      "requires": ["subject", "height"],
+      "image_hints": {"composition": ["low-angle shot"]},
+      "example": "camera tilts upward while moving toward a glowing crystal monolith, shadows flickering on cavern walls"
+    },
+    "descend-behind": {
+      "name": "Slow Descend Behind Subject from Above",
+      "category": "core",
+      "does": "Drops from above and settles behind the character to track them.",
+      "lead": "camera descends from above behind",
+      "detail": "settling in behind them to follow",
+      "requires": ["subject", "shoulder", "height"],
+      "image_hints": {"shot": "environmental"},
+      "example": "camera descends from above behind a spaceship pilot walking toward their ship in a hangar, sparks flying from welding droids"
+    },
+    "over-head-track": {
+      "name": "Over-the-Head Tracking Shot",
+      "category": "core",
+      "does": "Tracks directly over a character's head as they move through a space.",
+      "lead": "over-the-head camera tracks",
+      "detail": "following directly above them",
+      "requires": ["subject", "environment"],
+      "image_hints": {"shot": "environmental"},
+      "example": "over-the-head camera tracks a knight walking through castle corridors lit by torches, shadows dancing on the walls"
+    },
+    "through-object": {
+      "name": "Camera Moves Through Object",
+      "category": "core",
+      "does": "Passes through a physical object into a new scene. Magical, cinematic.",
+      "lead": "camera passes through",
+      "detail": "crossing into a new space on the other side",
+      "requires": ["portal"],
+      "image_hints": {},
+      "example": "camera passes through a mirror and into a fantasy world, transitioning from a bedroom into a floating castle"
+    },
+    "fall-to-ground": {
+      "name": "First-Person Camera Falls to Ground",
+      "category": "core",
+      "does": "Disorienting collapse or defeat.",
+      "lead": "first-person camera falls to the ground",
+      "detail": "vision tilted, blurred and fading",
+      "requires": ["environment"],
+      "image_hints": {},
+      "example": "first-person camera falls to the ground during a battlefield scene, vision tilted, blurred, and fading"
+    },
+    "push-through-fog": {
+      "name": "Push Through Fog or Mist",
+      "category": "core",
+      "does": "Atmosphere and mystery - the subject emerges as the camera penetrates the haze.",
+      "lead": "camera slowly pushes through",
+      "detail": "the haze parting to reveal the subject",
+      "requires": ["atmosphere", "subject"],
+      "image_hints": {},
+      "example": "camera slowly pushes through thick jungle mist to reveal an ancient stone statue covered in vines"
+    },
+    "timelapse-pullout": {
+      "name": "Time-Lapse Pull-Out",
+      "category": "core",
+      "does": "Retreating camera with time passing around it. Epic, magical.",
+      "lead": "camera slowly pulling back from",
+      "detail": "as light shifts and clouds roll past in fast motion",
+      "requires": ["environment", "space"],
+      "image_hints": {"shot": "environmental"},
+      "example": "camera slowly pulling back from a mountaintop temple as the sun rises and clouds roll over the peaks in fast motion"
+    },
+    "track-obstructed": {
+      "name": "Tracking Shot with Foreground Obstructions",
+      "category": "core",
+      "does": "Follows the subject with objects passing between camera and subject. Realism and depth.",
+      "lead": "tracking shot behind",
+      "detail": "objects occasionally passing in front of the lens",
+      "requires": ["subject", "foreground", "environment"],
+      "image_hints": {"shot": "environmental"},
+      "example": "tracking shot behind a woman walking through a marketplace with people, tents, and fabrics occasionally passing in front of the lens"
+    },
+    "spiral-object": {
+      "name": "Spiral Around Object on Ground",
+      "category": "core",
+      "does": "Circles a small item on the ground. Focus and reverence.",
+      "lead": "spiral camera around",
+      "detail": "circling low and close",
+      "requires": ["object"],
+      "image_hints": {},
+      "example": "spiral camera around a glowing magical amulet lying on cracked stone, ancient runes pulsing with light"
+    },
+    "rising-shoulder-reveal": {
+      "name": "Rising Reveal from Behind Subject's Shoulder",
+      "category": "core",
+      "does": "Starts low behind, rises and tilts up to reveal what they are looking at.",
+      "lead": "camera slowly rises behind",
+      "detail": "tilting up to reveal what they see",
+      "requires": ["subject", "shoulder", "environment"],
+      "image_hints": {"shot": "environmental"},
+      "example": "camera slowly rises behind a cloaked figure standing at the edge of a cliff, revealing a massive futuristic city below"
+    },
+    "reverse-tracking": {
+      "name": "Reverse Tracking (Walking Toward Camera)",
+      "category": "core",
+      "does": "Camera retreats while the subject walks toward it. Emotional focus and pacing.",
+      "lead": "reverse tracking shot of",
+      "detail": "the camera retreating as they walk toward it, eyes locked on the lens",
+      "requires": ["subject", "face", "environment"],
+      "image_hints": {"shot": "talking-head"},
+      "example": "reverse tracking shot of a man walking slowly through a hallway of flickering lights, eyes locked on the camera"
+    },
+    "dive-underwater": {
+      "name": "Camera Dives Underwater",
+      "category": "niche",
+      "does": "Submerges beneath the surface. Transitions, mood shifts, hidden discoveries.",
+      "lead": "camera slowly descends from above the surface into",
+      "detail": "bubbles rising, sunlight fading above",
+      "requires": ["water"],
+      "image_hints": {},
+      "example": "camera slowly descends from above the ocean surface into the deep blue water, bubbles rising, sunlight fading, sea creatures gliding past"
+    },
+    "follow-into-water": {
+      "name": "Camera Follows Character Into Water",
+      "category": "niche",
+      "does": "Follows a person as they enter water. Transformation, rebirth, escape.",
+      "lead": "camera follows",
+      "detail": "continuing as they disappear beneath the surface, ripples and light refraction",
+      "requires": ["subject", "water"],
+      "image_hints": {},
+      "example": "camera follows a warrior walking into a sacred lake, then continues following as they disappear beneath the water's surface, ripples and light refraction surrounding them"
+    },
+    "through-fire": {
+      "name": "Camera Passes Through Fire or Smoke",
+      "category": "niche",
+      "does": "Moves through intense elements. Chaos, memory, emergence.",
+      "lead": "camera slowly moves forward through",
+      "detail": "the smoke parting to reveal what lies beyond",
+      "requires": ["atmosphere"],
+      "image_hints": {},
+      "example": "camera slowly moves forward through thick smoke and burning debris, revealing a lone firefighter standing in the aftermath of an explosion"
+    },
+    "through-mirror": {
+      "name": "Camera Moves Through a Mirror or Portal",
+      "category": "niche",
+      "does": "Boundary-crossing effect for magical or sci-fi transitions.",
+      "lead": "camera passes directly through",
+      "detail": "entering the world on the other side",
+      "requires": ["portal"],
+      "image_hints": {},
+      "example": "camera passes directly through a floating mirror in the forest, entering a glowing realm filled with floating rocks and golden light"
+    },
+    "surface-from-water": {
+      "name": "Camera Surfaces From Underwater",
+      "category": "niche",
+      "does": "The reverse of a dive. Rebirth, realisation, escape.",
+      "lead": "camera emerges from beneath",
+      "detail": "droplets clinging to the lens as it breaks the surface",
+      "requires": ["water", "environment"],
+      "image_hints": {},
+      "example": "camera emerges from beneath murky lake water into a mist-covered landscape, droplets clinging to the lens, revealing a ruined castle in the distance"
+    },
+    "fall-from-sky": {
+      "name": "Camera Falls From the Sky",
+      "category": "niche",
+      "does": "Rapid fall through cloud and wind. Dreams, impact, arrival.",
+      "lead": "camera plummets from the clouds above toward",
+      "detail": "spinning and falling, wind roaring past the lens",
+      "requires": ["environment", "height"],
+      "image_hints": {"shot": "environmental"},
+      "example": "camera plummets from the clouds above, spinning and falling toward a burning battlefield below, wind roaring past the lens"
+    },
+    "combo-push-tilt": {
+      "name": "Combo: Push-In + Tilt Up",
+      "category": "combo",
+      "does": "Builds emotional intensity and grandeur at the same time.",
+      "lead": "camera pushes in and tilts up toward",
+      "detail": "rising as it closes in",
+      "requires": ["subject", "height"],
+      "image_hints": {"composition": ["low-angle shot"]},
+      "example": "camera pushes in and tilts up toward a queen standing on palace stairs as golden banners flow behind her, epic fantasy tone"
+    },
+    "combo-crane-orbit": {
+      "name": "Combo: Crane Down + Orbit",
+      "category": "combo",
+      "does": "Sweeping entrance that circles as it descends. Mythic, divine.",
+      "lead": "camera cranes down and slowly orbits around",
+      "detail": "descending while circling",
+      "requires": ["subject", "space", "height"],
+      "image_hints": {"shot": "environmental"},
+      "example": "camera cranes down and slowly orbits around a warrior standing on a battlefield surrounded by fallen enemies and lightning in the sky"
+    },
+    "combo-pov-fall": {
+      "name": "Combo: First-Person + Handheld + Sudden Fall",
+      "category": "combo",
+      "does": "Fully immersive chaotic storytelling. Battle or collapse.",
+      "lead": "first-person handheld camera running through",
+      "detail": "shaking violently, then falling to the ground",
+      "requires": ["environment"],
+      "image_hints": {},
+      "example": "first-person handheld camera running through a collapsing cave, shaking violently, then falling to the ground as debris crashes down"
+    },
+    "combo-track-push": {
+      "name": "Combo: Track Behind + Push-In Reveal",
+      "category": "combo",
+      "does": "Follows the subject, then pushes in to emphasise emotion or a reveal.",
+      "lead": "camera tracks behind",
+      "detail": "then pushes in as they turn",
+      "requires": ["subject", "shoulder", "environment"],
+      "image_hints": {"shot": "environmental"},
+      "example": "camera tracks behind a girl walking through a cornfield, then pushes in as she turns and sees a UFO hovering in the sky"
+    }
+  }
+}

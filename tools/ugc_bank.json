@@ -1,0 +1,303 @@
+{
+  "source": "AI Video Bootcamp - AI Advertisement Workflow Checklist, Social Media AD Structure, and the five-step UGC method",
+  "version": 1,
+  "note": "The ad material as data. Beat timing is capped, not proportional: the checklist demands the product appear within 5-10 seconds, and ANY percentage split breaks that as the ad gets longer. An even split puts beat 4 at 18s in a 30s ad; even a front-loaded 52% split puts it at 31s in a 60s ad. So the setup (beats 1-3) is capped in absolute seconds and beat 4 absorbs the remaining time. See `timing`.",
+  "timing": {
+    "note": "setup = min(setup_share * total, setup_cap). close = min(close_share * total, close_cap). Beat 4 takes what is left, because the product demonstration is the part that should grow when an ad gets longer - the hook and the CTA do not.",
+    "setup_share": 0.52,
+    "setup_cap": 9.0,
+    "close_share": 0.22,
+    "close_cap": 10.0,
+    "product_by": 10.0,
+    "product_after": 4.0
+  },
+  "platforms": {
+    "tiktok": {
+      "label": "TikTok / Reels",
+      "purpose": "tiktok-ugc",
+      "aspect": "9:16",
+      "lengths": [15, 20, 30],
+      "default_length": 20,
+      "pacing": "fast",
+      "hook_seconds": 3,
+      "first_clip_seconds": 3,
+      "cta_style": "spoken and on-screen",
+      "tone": "vertical, phone-shot, deliberately unpolished - native beats polished here",
+      "note": "Hook first. If the first clip runs past 3 seconds people scroll before the cut."
+    },
+    "youtube": {
+      "label": "YouTube",
+      "purpose": "youtube-ad",
+      "aspect": "16:9",
+      "lengths": [30, 45, 60],
+      "default_length": 45,
+      "pacing": "slower",
+      "hook_seconds": 5,
+      "first_clip_seconds": 5,
+      "cta_style": "spoken, repeated at the end",
+      "tone": "longer, value-driven, storytelling - you have room to earn attention",
+      "note": "The only platform where the story can breathe. Still show the product by 10s."
+    },
+    "instagram": {
+      "label": "Instagram",
+      "purpose": "instagram-post",
+      "aspect": "4:5",
+      "lengths": [15, 20, 30],
+      "default_length": 20,
+      "pacing": "medium",
+      "hook_seconds": 3,
+      "first_clip_seconds": 3,
+      "cta_style": "on-screen, brand-consistent",
+      "tone": "aesthetic, polished, brand-heavy - the opposite of the TikTok cut",
+      "note": "Looks matter more than rawness here. Same ad, different grade."
+    },
+    "meta-google": {
+      "label": "Meta / Google Ads",
+      "purpose": "ad-creative",
+      "aspect": "4:5",
+      "lengths": [15, 20, 30],
+      "default_length": 15,
+      "pacing": "fast",
+      "hook_seconds": 3,
+      "first_clip_seconds": 3,
+      "cta_style": "explicit, clickable, stated once and clearly",
+      "tone": "transactional, clickable, concise - this is a click, not a vibe",
+      "note": "Shortest and most direct. The CTA is the point, not a garnish."
+    }
+  },
+  "beats": [
+    {
+      "key": "pain",
+      "n": 1,
+      "label": "Call out the pain",
+      "role": "Name the problem so precisely that the right person stops scrolling.",
+      "must_do": "Say the specific, embarrassing, daily version of the problem - not the category.",
+      "weight": 0.18,
+      "shot": "selfie",
+      "movement": "handheld",
+      "sells": "feeling",
+      "examples": [
+        "Your hair gets greasy 5 hours after washing it.",
+        "You're shedding more hair in the shower than your dog.",
+        "You bought a £20 shampoo and it made it worse."
+      ],
+      "note": "This is where A/B variants come from - write three, test three."
+    },
+    {
+      "key": "relatable",
+      "n": 2,
+      "label": "Make it relatable",
+      "role": "Show you know what they have already tried and why it failed.",
+      "must_do": "List the failed attempts by name. Recognition is what earns the next five seconds.",
+      "weight": 0.18,
+      "shot": "talking-head",
+      "movement": "push-in-face",
+      "sells": "feeling",
+      "examples": [
+        "You've tried everything - drugstore brands, salon brands, TikTok hacks - and still your scalp's a mess and your ends feel like straw."
+      ]
+    },
+    {
+      "key": "shift",
+      "n": 3,
+      "label": "Offer a shift",
+      "role": "Turn the problem around. Either declare the change, or ask what if.",
+      "must_do": "Pivot from what is wrong to what could be different - without naming the product yet.",
+      "weight": 0.16,
+      "shot": "talking-head",
+      "movement": "dolly-in",
+      "sells": "feeling",
+      "forms": ["declarative", "question"],
+      "examples": [
+        "That's why we made a shampoo that actually works with your hair - not against it.",
+        "What if you could go 3 days without washing your hair - and still feel fresh?"
+      ]
+    },
+    {
+      "key": "solution",
+      "n": 4,
+      "label": "Introduce the product solution",
+      "role": "Name the product and say what it actually is.",
+      "must_do": "Name it, then say the mechanism plainly. This beat MUST start inside 5-10 seconds.",
+      "weight": 0.26,
+      "shot": "product-demo",
+      "movement": "orbit-360",
+      "sells": "mechanism",
+      "examples": [
+        "It's called LumaWash. A shampoo made with zero sulfates, zero harsh chemicals - and a formula that balances your scalp naturally."
+      ],
+      "note": "The one beat where specification language is correct. 'Sell the feeling' governs beats 1-3; by here the ad has earned the right to say what the thing does."
+    },
+    {
+      "key": "proof",
+      "n": 5,
+      "label": "Stack social proof and urgency",
+      "role": "Prove other people bought it, then give a reason to act now.",
+      "must_do": "BOTH halves. Proof without urgency is the common failure, and it looks finished.",
+      "weight": 0.22,
+      "shot": "product-demo",
+      "movement": "dolly-out",
+      "sells": "mechanism",
+      "requires": ["proof", "urgency"],
+      "examples": [
+        "Over 10,000 bottles sold last month.",
+        "Customers say their hair changed in just 3 washes.",
+        "And this week only, we're giving 20% off to first-time customers."
+      ]
+    }
+  ],
+  "emotions": {
+    "note": "Step 4 - forget the product. People do not buy a formula, they buy how they expect to feel. Beats 1-3 are written in this vocabulary.",
+    "options": {
+      "relief": {
+        "label": "Relief",
+        "feeling": "the problem finally stopping",
+        "say": "you stop thinking about it",
+        "not": "clinically proven formulation"
+      },
+      "confidence": {
+        "label": "Confidence",
+        "feeling": "being seen the way you want to be seen",
+        "say": "you walk in and you are not worrying about it",
+        "not": "17 active ingredients"
+      },
+      "belonging": {
+        "label": "Belonging",
+        "feeling": "not being the only one",
+        "say": "everyone you know has this problem and nobody says it",
+        "not": "market-leading category share"
+      },
+      "frustration": {
+        "label": "Frustration",
+        "feeling": "having been let down before",
+        "say": "you already wasted money on three of these",
+        "not": "superior to competing products"
+      },
+      "aspiration": {
+        "label": "Aspiration",
+        "feeling": "the version of your life that works",
+        "say": "mornings stop being a fight",
+        "not": "optimised daily routine system"
+      },
+      "fear-of-missing-out": {
+        "label": "Fear of missing out",
+        "feeling": "everyone else already knows",
+        "say": "your friend already switched and did not tell you",
+        "not": "limited stock availability notice"
+      }
+    },
+    "feature_words": [
+      "ingredients", "formulation", "specification", "specifications", "technology",
+      "patented", "clinically", "percent", "%", "mg", "ml", "ph level",
+      "engineered", "advanced formula", "proprietary", "molecules", "peptides",
+      "award-winning", "industry-leading", "state-of-the-art", "cutting-edge"
+    ],
+    "feeling_words": [
+      "you", "your", "feel", "feels", "felt", "still", "finally", "again",
+      "tired", "sick of", "embarrassed", "worried", "hate", "love", "wish",
+      "stop", "without", "every morning", "every day", "nobody", "everyone"
+    ]
+  },
+  "cta_words": [
+    "tap", "click", "shop", "buy", "get", "grab", "order", "try", "swipe",
+    "link in bio", "learn more", "sign up", "book", "download", "code",
+    "off", "free", "today", "now"
+  ],
+  "proof_words": [
+    "sold", "customers", "reviews", "rated", "people", "users", "trusted",
+    "bought", "say", "results", "stars", "recommended", "testimonial", "loved"
+  ],
+  "urgency_words": [
+    "this week", "today only", "this week only", "ends", "limited", "while stocks",
+    "before", "last chance", "now", "hurry", "only", "first-time", "expires",
+    "running out", "don't miss"
+  ],
+  "checklist": [
+    {
+      "section": "1. Foundations - know your goal",
+      "items": [
+        {"text": "The objective is stated (awareness, traffic, conversions)", "check": "manual"},
+        {"text": "The target audience is written down: age, pain points, desires, niche", "check": "auto", "rule": "audience"},
+        {"text": "The platform is chosen", "check": "auto", "rule": "platform"},
+        {"text": "The ad length is set and inside the platform's range", "check": "auto", "rule": "length"},
+        {"text": "The CTA type is decided", "check": "auto", "rule": "cta"}
+      ]
+    },
+    {
+      "section": "2. Hook (social only)",
+      "items": [
+        {"text": "It grabs attention instantly", "check": "manual"},
+        {"text": "It is visually disruptive or emotionally engaging", "check": "manual"},
+        {"text": "The hook lands inside the platform's hook window", "check": "auto", "rule": "hook"},
+        {"text": "The first clip is under 3 seconds", "check": "auto", "rule": "first_clip"}
+      ]
+    },
+    {
+      "section": "3. Scripting and storyboard",
+      "items": [
+        {"text": "A clear, short script exists", "check": "auto", "rule": "copy"},
+        {"text": "Each scene is planned visually - camera angle and framing", "check": "auto", "rule": "shots"},
+        {"text": "It follows a proven arc (problem to agitation to solution)", "check": "auto", "rule": "beats"},
+        {"text": "The product or offer is shown within 5-10 seconds", "check": "auto", "rule": "product_by_10s"}
+      ]
+    },
+    {
+      "section": "4. Visual planning - AI video prep",
+      "items": [
+        {"text": "Image generation tool chosen", "check": "auto", "rule": "provider"},
+        {"text": "Video generation tool chosen", "check": "manual"},
+        {"text": "Lipsync / voice tool chosen", "check": "manual"},
+        {"text": "Editing tool chosen", "check": "manual"},
+        {"text": "Script writing tool chosen", "check": "manual"},
+        {"text": "Outputs match the brand tone and style", "check": "manual"},
+        {"text": "Subtitles added if needed", "check": "manual"},
+        {"text": "It matches what the client asked for", "check": "manual"}
+      ]
+    },
+    {
+      "section": "5. Visual and emotional impact",
+      "items": [
+        {"text": "Cinematic or native for the platform, deliberately", "check": "manual"},
+        {"text": "The stills are scroll-stopping and real-looking", "check": "auto", "rule": "realism"},
+        {"text": "Consistent lighting and camera motion across shots", "check": "auto", "rule": "identity"},
+        {"text": "The advert targets an emotion", "check": "auto", "rule": "emotion"},
+        {"text": "You know how the viewer is left feeling", "check": "manual"}
+      ]
+    },
+    {
+      "section": "6. Optimisation for platform",
+      "items": [
+        {"text": "Correct aspect ratio", "check": "auto", "rule": "aspect"},
+        {"text": "Platform-native pacing", "check": "auto", "rule": "platform"},
+        {"text": "Thumbnail / opening frame chosen for stopping power", "check": "manual"},
+        {"text": "CTA clearly visible or spoken", "check": "auto", "rule": "cta"}
+      ]
+    },
+    {
+      "section": "7. Testing and feedback",
+      "items": [
+        {"text": "Previewed on mobile before publishing", "check": "manual"},
+        {"text": "A/B versions ready with different hooks", "check": "auto", "rule": "variants"},
+        {"text": "Feedback asked from peers or a test audience", "check": "manual"},
+        {"text": "Best performer saved for future reference", "check": "manual"}
+      ]
+    }
+  ],
+  "publishing": {
+    "note": "Reference only - the app does not act on any of this, in the way the film glossary defines terms without using them. Platform craft, not tooling.",
+    "items": [
+      {"topic": "Export", "text": "Upload 1080p at 30fps. 4K at 60fps gets downscaled by TikTok and looks worse, not better."},
+      {"topic": "Aspect", "text": "9:16 for TikTok and Reels, 16:9 for YouTube and TV, 4:5 for feed posts."},
+      {"topic": "First clip", "text": "Keep the opening shot under 3 seconds. A slow first cut is where viewers leave."},
+      {"topic": "On-screen text", "text": "Add text. If people are reading, they are still watching - it buys watch time."},
+      {"topic": "Hashtags", "text": "Four at most. More than that and the algorithm gets a confused signal about the topic."},
+      {"topic": "Cadence", "text": "Three to five posts a day is the ceiling, and leave 1-2 hours between them."},
+      {"topic": "Consistency", "text": "Post at the same time daily, so metrics reflect the video rather than the hour."},
+      {"topic": "The metric", "text": "Watch time is the one that matters. If viewers drop at 2 seconds, the hook is the problem, not the offer."},
+      {"topic": "Momentum", "text": "If one video is working, post the next one while it is still moving. Do not wait days."},
+      {"topic": "Removing a post", "text": "Private a video rather than deleting it."},
+      {"topic": "Cross-posting", "text": "The video is the hard part. Once it exists, posting it to every platform costs minutes."},
+      {"topic": "Niche", "text": "Keep every post inside one niche so the platform knows who to show it to."}
+    ]
+  }
+}

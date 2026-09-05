@@ -1,0 +1,581 @@
+{
+  "source": "Story structure for short-form animal video. NOT transcribed from the course: its Cats Niche, Storytelling and CapCut lessons are video files. The Kling movement keys and the realism vocabulary this builds on ARE from the course (motion_bank.json, prompt_bank.json).",
+  "version": 2,
+  "note": "A scene is one clip. Kling 3.0 generates any whole second from 3 to 15, so clip_seconds is what the scene keeps, rounded up to a whole second. The hook is a real 3-second clip rather than a 5-second one trimmed to 3. edit_seconds still exists because a trim is sometimes wanted, but generated and kept are now nearly the same number instead of differing by 2x. The scene COUNT comes from the runtime, not from the arc: the arc gives the shape and its repeatable beat expands to fill the time, because a beat that will not fit in one clip has to become two scenes.",
+  "clip_seconds": {
+    "min": 3,
+    "max": 15,
+    "default": 5,
+    "why": "Kling 3.0's documented duration range is '3' to '15' whole seconds. Anything outside it is a request the API will reject."
+  },
+  "video_models": {
+    "kling-3.0/video": {
+      "label": "Kling 3.0",
+      "duration": {
+        "min": 3,
+        "max": 15,
+        "type": "string"
+      },
+      "aspect_ratio": [
+        "16:9",
+        "9:16",
+        "1:1"
+      ],
+      "mode": [
+        "std",
+        "pro",
+        "4K"
+      ],
+      "sound": [
+        false,
+        true
+      ],
+      "multi_shots": [
+        false,
+        true
+      ],
+      "defaults": {
+        "mode": "std",
+        "sound": false,
+        "multi_shots": false,
+        "aspect_ratio": "9:16"
+      },
+      "note": "std and sound are the two price multipliers. Defaults are the cheapest combination that still looks right; sound overlaps what the Sound section already does in ElevenLabs."
+    }
+  },
+  "hook_seconds": 3.0,
+  "default_seconds": 30,
+  "default_arc": "classic",
+  "default_format": "story",
+  "default_style": "photoreal",
+  "aspect": "9:16",
+  "styles": {
+    "photoreal": {
+      "label": "Photoreal",
+      "note": "A real-looking cat doing an absurdly human thing. The comedy comes from the gap between how real it looks and what it is doing.",
+      "gate": "realism_lint",
+      "overrides": {},
+      "extra": [
+        "visible individual fur strands",
+        "whisker detail",
+        "wet nose texture",
+        "natural animal anatomy"
+      ]
+    },
+    "stylised": {
+      "label": "Stylised / 3D animated",
+      "note": "A 3D animated short-film look. Judged by story_lint's own style check, NOT by realism_lint - every word here is on that linter's banned list, and correctly so.",
+      "gate": "style",
+      "overrides": {
+        "core": [
+          "3D animated short film still",
+          "expressive character animation",
+          "feature-animation quality"
+        ],
+        "camera": [
+          "cinematic animation lighting"
+        ],
+        "lens": [
+          "shallow depth of field",
+          "soft focus falloff"
+        ],
+        "texture": [
+          "groomed fur simulation",
+          "subsurface scattering on fur",
+          "soft ambient occlusion"
+        ],
+        "colour": [
+          "warm saturated palette",
+          "high key colour grading"
+        ],
+        "grain": [
+          "clean render",
+          "soft bloom used lightly"
+        ]
+      },
+      "extra": [
+        "oversized expressive eyes",
+        "exaggerated squash and stretch",
+        "appealing character design"
+      ],
+      "expects": {
+        "animation": [
+          "animated",
+          "animation",
+          "3d",
+          "cg",
+          "render",
+          "stylised",
+          "stylized",
+          "cartoon"
+        ],
+        "character": [
+          "character",
+          "expressive",
+          "appealing",
+          "squash",
+          "eyes"
+        ],
+        "lighting": [
+          "lighting",
+          "bounce",
+          "key light",
+          "ambient",
+          "bloom",
+          "occlusion"
+        ],
+        "surface": [
+          "fur",
+          "groom",
+          "subsurface",
+          "texture",
+          "shading"
+        ],
+        "colour": [
+          "colour",
+          "color",
+          "palette",
+          "grading",
+          "saturated"
+        ],
+        "depth": [
+          "depth of field",
+          "focus",
+          "bokeh",
+          "falloff"
+        ]
+      },
+      "negatives": [
+        "no photorealism",
+        "no live-action footage",
+        "no uncanny realism",
+        "no text, logo or watermark"
+      ]
+    }
+  },
+  "beats": {
+    "hook": {
+      "label": "Hook",
+      "role": "The absurd image, immediately. No setup, no establishing shot.",
+      "must_do": "Open ON the strange thing. If the first frame could be any cat video, it is wrong.",
+      "shot": "portrait",
+      "movements": [
+        "push-in-face",
+        "handheld"
+      ],
+      "repeatable": false,
+      "max_edit_seconds": 3.0
+    },
+    "setup": {
+      "label": "Setup",
+      "role": "Establish the cat's normal, so there is something to break.",
+      "must_do": "Show where it lives and what it thinks it is doing.",
+      "shot": "environmental",
+      "movements": [
+        "pull-out-reveal",
+        "high-angle"
+      ],
+      "repeatable": false
+    },
+    "escalation": {
+      "label": "Escalation",
+      "role": "It gets worse, or bigger, or more committed.",
+      "must_do": "Each escalation must raise the stakes on the one before it. Repeating the same level reads as padding and is where people scroll.",
+      "shot": "environmental",
+      "movements": [
+        "track-alongside",
+        "low-angle",
+        "orbit-360",
+        "over-head-track"
+      ],
+      "repeatable": true
+    },
+    "twist": {
+      "label": "Twist",
+      "role": "The turn - what the viewer did not see coming.",
+      "must_do": "Change what the scene means, not just what is in it.",
+      "shot": "portrait",
+      "movements": [
+        "dolly-in",
+        "push-in-face"
+      ],
+      "repeatable": false
+    },
+    "payoff": {
+      "label": "Payoff",
+      "role": "The punchline, or the resolution. The reason to have watched.",
+      "must_do": "Land it and stop. A payoff that keeps going is the second most common reason watch time collapses at the end.",
+      "shot": "environmental",
+      "movements": [
+        "dolly-out",
+        "timelapse-pullout"
+      ],
+      "repeatable": false
+    }
+  },
+  "arcs": {
+    "short": {
+      "label": "Short (3 scenes)",
+      "beats": [
+        "hook",
+        "escalation",
+        "payoff"
+      ],
+      "note": "The whole shape in three cuts. Hardest to get wrong."
+    },
+    "classic": {
+      "label": "Classic (5 scenes)",
+      "beats": [
+        "hook",
+        "setup",
+        "escalation",
+        "twist",
+        "payoff"
+      ],
+      "note": "Setup, escalation, turn, land it. The default."
+    },
+    "escalating": {
+      "label": "Escalating (7 scenes)",
+      "beats": [
+        "hook",
+        "setup",
+        "escalation",
+        "escalation",
+        "escalation",
+        "twist",
+        "payoff"
+      ],
+      "note": "Three rising escalations. Each must top the last or it is padding."
+    },
+    "epic": {
+      "label": "Epic (9 scenes)",
+      "beats": [
+        "hook",
+        "setup",
+        "escalation",
+        "escalation",
+        "escalation",
+        "escalation",
+        "twist",
+        "payoff",
+        "payoff"
+      ],
+      "note": "Nine clips is real money and nine chances for the cat to drift. Only worth it when the escalation genuinely has four steps."
+    }
+  },
+  "requirement_labels": {
+    "subject": "the cat in frame",
+    "shoulder": "the cat seen from behind",
+    "face": "the cat's face clearly visible",
+    "second_subject": "a second animal or person in frame"
+  },
+  "capcut": {
+    "note": "Reference only - the app does not act on any of this, in the way the film glossary defines terms without using them. The course does have a 'Mastering CapCut' lesson, but it is a video file, so none of this is transcribed from it. It is general edit-bay craft.",
+    "steps": [
+      {
+        "step": "1. Start 9:16 at 30fps",
+        "text": "New project, aspect 9:16, 1080x1920. Do not shoot for 4K60 - TikTok downscales it and it looks worse, not better."
+      },
+      {
+        "step": "2. Drop the clips in story order",
+        "text": "Import all of them at once and lay them end to end before trimming anything. You are checking the story reads, not the edit."
+      },
+      {
+        "step": "3. Trim to the sheet, hook first",
+        "text": "Every clip is 5 or 10 seconds and almost none of it survives. Use the in/out points on the CapCut tab. The hook is the one that matters: 3 seconds, cut on the movement, not before it."
+      },
+      {
+        "step": "4. Cut on motion, not on silence",
+        "text": "Place each cut while something is still moving. A cut on a still frame reads as a mistake; a cut mid-movement is invisible."
+      },
+      {
+        "step": "5. Captions, one line at a time",
+        "text": "Add the caption text per scene. Keep it to one line, high enough to clear the platform's UI. Auto-captions are for the narration, not for these - type these yourself so they land on the cut."
+      },
+      {
+        "step": "6. Three audio tracks, in this order",
+        "text": "Ambience underneath everything at about -30dB, key effects on the action frames, accents on the cuts. Then music last, ducked under the narration - never the other way round."
+      },
+      {
+        "step": "7. Let the sound cross the cut",
+        "text": "Pull the next scene's audio a few frames earlier than its picture (a J-cut). It is the single cheapest thing that makes an edit feel professional, and it costs nothing."
+      },
+      {
+        "step": "8. Watch it once on mute",
+        "text": "Most people will. If the story does not read from the pictures and the captions alone, fix that before you touch anything else."
+      },
+      {
+        "step": "9. Export 1080p, 30fps, high bitrate",
+        "text": "Then check the first three seconds one more time on a phone, at arm's length, with the sound off."
+      }
+    ],
+    "cuts": {
+      "hook->setup": "hard cut",
+      "setup->escalation": "match cut",
+      "escalation->escalation": "hard cut",
+      "escalation->twist": "J cut",
+      "twist->payoff": "hard cut",
+      "payoff->payoff": "L cut",
+      "default": "hard cut"
+    }
+  },
+  "formats": {
+    "story": {
+      "label": "Story (narrative arc)",
+      "note": "One cat, an escalating arc, captions and narration. Every scene gets its own camera move.",
+      "default_arc": "classic",
+      "default_clip": 5,
+      "scene_fields": [
+        "caption",
+        "narration",
+        "action"
+      ],
+      "camera": "motion_bank",
+      "checks": [
+        "arc",
+        "clips",
+        "trims",
+        "runtime",
+        "hook",
+        "identity",
+        "moves_vary",
+        "actions_vary",
+        "moves_fit",
+        "words",
+        "style",
+        "prompts"
+      ],
+      "default_seconds": 30
+    },
+    "trade": {
+      "label": "Working cats (one-take gags)",
+      "note": "Two cats in costume doing a real job until it goes wrong. One locked-off camera per take, no captions, no narration - the gag is physical and it happens inside a single shot.",
+      "source": "Measured from four reference videos in Downloads/video: cut detection found NO cuts inside a take, every camera is locked off, the takes run about 10 seconds, and the two costumed ones put two cats in frame in hard hats and hi-vis. This format encodes what those videos do, not what the course says.",
+      "default_arc": "shift",
+      "default_clip": 10,
+      "scene_fields": [
+        "task",
+        "mishap"
+      ],
+      "camera": {
+        "lead": "locked-off camera holding on",
+        "detail": "the camera does not move at all for the whole take",
+        "why": "Every reference video holds a single fixed frame and lets the action happen inside it. A push-in or an orbit reads as a different genre."
+      },
+      "checks": [
+        "arc",
+        "clips",
+        "trims",
+        "runtime",
+        "identity",
+        "costume",
+        "pair",
+        "locked_off",
+        "tasks_vary",
+        "moves_fit",
+        "style",
+        "prompts"
+      ],
+      "beats": {
+        "setup": {
+          "label": "On site",
+          "role": "Establish the pair, the costume and the job, all in one frame.",
+          "must_do": "Both cats visible, both in uniform, the tools where you can see them. If it could be any cat video, it is wrong.",
+          "shot": "environmental",
+          "repeatable": false
+        },
+        "task": {
+          "label": "The job",
+          "role": "One task, done seriously, and then it goes wrong.",
+          "must_do": "A whole beat inside one take: they work, something fails, they react. Never split that across two clips - the reference videos never do.",
+          "shot": "environmental",
+          "repeatable": true
+        },
+        "payoff": {
+          "label": "Aftermath",
+          "role": "The two of them sitting in what they have done.",
+          "must_do": "Stop on the consequence. Both cats still in frame, the damage visible, nobody fixing anything.",
+          "shot": "environmental",
+          "repeatable": false
+        }
+      },
+      "arcs": {
+        "single": {
+          "label": "One take (1 job)",
+          "note": "A single 10-second gag, which is what most of these videos are.",
+          "beats": [
+            "task"
+          ]
+        },
+        "shift": {
+          "label": "A shift (2 jobs)",
+          "note": "Two tasks, two mishaps. The reference construction video exactly.",
+          "beats": [
+            "task",
+            "task"
+          ]
+        },
+        "day": {
+          "label": "A day's work (4+)",
+          "note": "Arrive, work, work, and sit in the wreckage.",
+          "beats": [
+            "setup",
+            "task",
+            "task",
+            "payoff"
+          ]
+        }
+      },
+      "default_seconds": 20,
+      "capcut": {
+        "note": "No hook trim and no captions here - the reference videos are unbroken takes with nothing burned on screen. Assembly is mostly picking the take and laying sound under it.",
+        "steps": [
+          {
+            "step": "1. Start 9:16 at 30fps",
+            "text": "New project, aspect 9:16, 1080x1920. Do not shoot for 4K60 - it downscales and looks worse, not better."
+          },
+          {
+            "step": "2. One take per gag, not a cut-up",
+            "text": "Each clip IS the scene - drop it in whole. If a take runs long, trim from the END after the mishap lands, never mid-action."
+          },
+          {
+            "step": "3. Cut on the reaction, not before it",
+            "text": "Let the mishap fully land and hold half a second on the aftermath before the next take starts. Cutting away early is where the joke gets lost."
+          },
+          {
+            "step": "4. Three audio tracks, in this order",
+            "text": "Ambience underneath everything at about -30dB, key effects on the task, one accent on the mishap and nowhere else."
+          },
+          {
+            "step": "5. Let the sound cross the cut",
+            "text": "Pull the next take's ambience a few frames earlier than its picture - a hard cut on both at once reads as two clips, not one place."
+          },
+          {
+            "step": "6. Watch it once on mute",
+            "text": "There is no caption to fall back on. If the costume and the job are not readable from the first frame alone, it needs a wider or a longer hold before the mishap."
+          },
+          {
+            "step": "7. Export 1080p, 30fps, high bitrate",
+            "text": "Check the very first frame on a phone at arm's length - that single frame is what decides whether someone stops scrolling."
+          }
+        ],
+        "cuts": {
+          "hook->setup": "hard cut",
+          "setup->escalation": "match cut",
+          "escalation->escalation": "hard cut",
+          "escalation->twist": "J cut",
+          "twist->payoff": "hard cut",
+          "payoff->payoff": "L cut",
+          "default": "hard cut"
+        }
+      }
+    }
+  },
+  "trades": {
+    "construction": {
+      "label": "Construction site",
+      "wardrobe": "yellow hard hats, orange hi-vis vests over blue denim shirts, and leather tool belts",
+      "setting": "a half-built concrete floor, rebar and scaffolding, a grey city skyline behind, overcast daylight",
+      "tasks": [
+        "shovelling wet cement beside a green wheelbarrow",
+        "smoothing wet plaster onto a wall with a trowel",
+        "carrying a stack of bricks across the slab",
+        "measuring a beam with a tape and arguing about it"
+      ],
+      "mishaps": [
+        "one shoves the other and it lands flat on its back in the dirt",
+        "one walks through the fresh plaster and leaves a line of paw prints in it",
+        "the wheelbarrow tips and empties over both of them",
+        "the stack of bricks collapses in slow, total silence"
+      ],
+      "props": "a green wheelbarrow, a shovel, a plasterer's float, a bucket of grey cement",
+      "note": "The reference video. Hard hat and hi-vis is the single most recognisable image in this genre."
+    },
+    "woodcutting": {
+      "label": "Woodcutting yard",
+      "wardrobe": "a red hard hat, and a padded work jacket",
+      "setting": "a muddy yard behind a wooden cabin, a tall stack of split logs, bare trees and fog",
+      "tasks": [
+        "splitting a log on a chopping block",
+        "stacking split logs against the cabin wall",
+        "dragging a branch across the yard"
+      ],
+      "mishaps": [
+        "the axe misses the block entirely and the two of them brawl",
+        "the log stack slides down the moment the last one goes on",
+        "one drops its end of the branch and walks off"
+      ],
+      "props": "a long-handled axe, a wooden chopping block, a wheelbarrow of kindling",
+      "note": "The other reference video: one continuous take, the hat ends up in the dirt."
+    },
+    "kitchen": {
+      "label": "Restaurant kitchen",
+      "wardrobe": "white chef's jackets and small folded chef's hats",
+      "setting": "a steel commercial kitchen, gas rings lit, steam, hanging pans",
+      "tasks": [
+        "tossing vegetables in a steel pan over a gas flame",
+        "plating something very carefully with tweezers",
+        "kneading dough on a floured steel counter"
+      ],
+      "mishaps": [
+        "the pan catches and both of them flinch backwards from the flame",
+        "the plate is knocked as it is carried and lands face down",
+        "one sits directly in the flour"
+      ],
+      "props": "a steel pan, a gas hob, a bowl of dough, a service bell",
+      "note": ""
+    },
+    "garage": {
+      "label": "Mechanic's garage",
+      "wardrobe": "navy overalls with an oil-stained chest patch, and one backwards cap",
+      "setting": "a small garage, a car on a lift, tool chests, a concrete floor with oil marks",
+      "tasks": [
+        "draining oil into a pan under a raised car",
+        "changing a wheel with an impact wrench",
+        "peering into an engine bay together"
+      ],
+      "mishaps": [
+        "the oil pan overflows across the floor and they both step in it",
+        "the wheel rolls away across the garage on its own",
+        "the bonnet drops shut on nothing, and they both stare at it"
+      ],
+      "props": "a car on a lift, an impact wrench, a drip pan, a red tool chest",
+      "note": ""
+    },
+    "delivery": {
+      "label": "Parcel delivery",
+      "wardrobe": "brown courier uniforms with a shoulder bag each",
+      "setting": "a suburban front path, a van with its door open at the kerb, morning light",
+      "tasks": [
+        "carrying a parcel far too large between them",
+        "reading a clipboard at a front door",
+        "loading the back of the van"
+      ],
+      "mishaps": [
+        "the parcel splits and its contents go everywhere on the path",
+        "the door opens and both of them freeze mid-argument",
+        "the van door rolls shut on its own with them outside it"
+      ],
+      "props": "a cardboard parcel, a clipboard, a delivery van with an open rear door",
+      "note": ""
+    },
+    "farm": {
+      "label": "Farmyard",
+      "wardrobe": "green wellington boots and canvas dungarees",
+      "setting": "a muddy farmyard, a red barn, straw bales, low winter sun",
+      "tasks": [
+        "forking straw into a wheelbarrow",
+        "carrying a full bucket between them",
+        "opening a gate that will not open"
+      ],
+      "mishaps": [
+        "the fork goes through the bottom of the barrow",
+        "the bucket empties over both of them",
+        "the gate swings back and takes them both with it"
+      ],
+      "props": "a pitchfork, a metal bucket, straw bales, a five-bar gate",
+      "note": ""
+    }
+  },
+  "trades_note": "Vocabulary, not rules - the same idea as motion_bank and sound_bank. Seeded from the reference videos: costume first, then a real job, then one physical thing going wrong. The comedy is the deadpan competence, so the mishap has to be an accident the cats take seriously."
+}
