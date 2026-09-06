@@ -85,6 +85,25 @@ python tests/run_all.py
 One command runs every suite — no test framework, no dependencies beyond PyQt6, Qt runs
 offscreen so nothing pops up a window.
 
+## Building a Windows .exe
+
+```bash
+pip install pyinstaller        # build-only — not in requirements.txt
+pyinstaller AIVideoStudio.spec
+```
+
+The result is `dist/AI Video Studio/AI Video Studio.exe` — a folder build, not a single file,
+and deliberately so: `AIVideoStudio.spec` lays everything out flat beside the exe, mirroring this
+repo's own layout exactly (`tools/`, `assets/`, and — once you create them — `.env` and `temp/`
+all sit right next to it). That is what lets your character library, generation history and API
+keys survive between launches; a one-file build re-extracts to a fresh temp folder every time it
+runs, which would quietly throw all of that away on every close.
+
+First launch: copy `.env.example` (already sitting next to the built exe) to `.env` and fill in
+your keys, exactly like the `Getting started` step above — just in the built folder instead of
+the repo. Everything else — the character library, `temp/outputs/`, ratings — builds up next to
+the exe from there, the same way it does when running `python gui.py` from the repo.
+
 ## Project layout
 
 ```

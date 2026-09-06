@@ -12,6 +12,12 @@ __pycache__/
 *.pyc
 .venv/
 
+# PyInstaller build output — regenerate with `pyinstaller AIVideoStudio.spec`.
+# The built exe's own folder carries a REAL .env once you drop your keys next
+# to it (see README) — never commit dist/ for exactly that reason.
+build/
+dist/
+
 # editor / OS cruft
 .vscode/
 .idea/

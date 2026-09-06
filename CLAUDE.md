@@ -455,6 +455,23 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   moved on. Patch the instance method itself before calling the real trigger (`win.generate_videos
   = lambda *a, **k: None`, restored after) - the same `win.pool.submit = fake_submit` pattern
   already used for Compose's per-generation overrides, just for the video pool's entry point.
+- **`AIVideoStudio.spec` ships `tools/` as loose data files, never as PyInstaller-analysed
+  modules.** Every `ROOT =` in this codebase is `Path(__file__).resolve().parent(.parent)`, and
+  `tools/` has no `__init__.py` - every module there is imported as a bare top-level name
+  (`import build_prompt as bp`) via a runtime `sys.path.insert()`. The first attempt used
+  `pathex=["tools"]` so PyInstaller's analyser could find those imports, and it built fine - but
+  a pathex-discovered module with no package path is flattened to look like it lives directly
+  beside the exe, not inside `tools/`: `Path(__file__).resolve().parent` (one parent, `tools/*.py`'s
+  own bank-file lookup) pointed AT the app root instead of `tools/`, and `Path(__file__).resolve()
+  .parent.parent` (every `tools/*.py`'s own `ROOT`) pointed ONE LEVEL ABOVE the app root entirely -
+  `temp/outputs/` would have been created as a sibling of the whole distribution folder, not
+  inside it. Caught by actually running the built exe, not by reading the spec. The fix ships
+  `tools/` as real, loose `.py` + `.json` files (`datas=[("tools", "tools"), ...]`, no `pathex`) -
+  each module's `__file__` is then a real on-disk path exactly where it is in the source repo, so
+  every existing `ROOT` computation resolves exactly as it does in dev mode. `--contents-directory .`
+  (the spec's `EXE(contents_directory=".")`) is what makes this possible at all - it restores the
+  pre-6.0 flat layout, without which even a correct `tools/` would land inside a `_internal/`
+  subfolder a level away from where `.env`/`temp/` are expected to sit.
 - **Run `python tests/run_all.py` before calling anything done.** 1040 checks, no dependencies
   beyond PyQt6, Qt runs offscreen.
 
