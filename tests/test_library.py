@@ -32,6 +32,13 @@ REAL_BEFORE = sorted(p.name for p in REAL_DIR.glob("*.json")) if REAL_DIR.exists
 TEMP_DIR = Path(tempfile.mkdtemp(prefix="aivs-characters-"))
 assets.CHARACTERS_DIR = TEMP_DIR
 
+# Same isolation, one level up: MainWindow itself reads AIVS_SETTINGS_APP at
+# import time to pick which QSettings key it opens, so this must be set
+# before that import too - otherwise the window this suite builds still
+# reads/writes the user's real saved provider/model/theme/geometry.
+import os  # noqa: E402
+os.environ.setdefault("AIVS_SETTINGS_APP", "Studio-Tests")
+
 from ui.main_window import MainWindow  # noqa: E402
 from ui.theme import ThemeManager  # noqa: E402
 

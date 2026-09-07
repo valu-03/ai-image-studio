@@ -19,6 +19,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 import brief as brief_tool  # noqa: E402
 import generate_image as gi  # noqa: E402  (path set above)
 import generate_video as gv  # noqa: E402
+import refine_image as refine_tool  # noqa: E402
 
 MAX_CONCURRENCY = 3
 
@@ -72,6 +73,49 @@ class LlmTask(QRunnable):
             self.signals.failed.emit(self.action, "{}: {}".format(type(exc).__name__, exc))
         finally:
             self.signals.done.emit(self.action)
+
+
+class RefineSignals(QObject):
+    """Signals for one refine-loop run - its own class, not LlmSignals, because
+    the loop is the one action in this project that reports progress mid-call
+    (LlmTask's actions are all a single request; this one is up to N of them)."""
+
+    progress = pyqtSignal(str)         # a stage message, straight from on_stage
+    finished = pyqtSignal(object)      # the whole report dict from refine_image.refine()
+    failed = pyqtSignal(str)
+    done = pyqtSignal(int)             # WorkerPool-shaped, even though this never runs in one
+
+
+class RefineTask(QRunnable):
+    """Compose's "Refine until real" button, off the UI thread.
+
+    Everything that decides what a "weak layer" means, or what to try next,
+    lives in tools/refine_image.py - this only moves the (possibly several
+    minutes long) call off the main loop and reports what came back.
+    """
+
+    def __init__(self, bank, spec, **kwargs):
+        super().__init__()
+        self.bank = bank
+        self.spec = spec
+        self.kwargs = kwargs
+        self.signals = RefineSignals()
+
+    def run(self):
+        try:
+            result = refine_tool.refine(
+                self.bank, self.spec,
+                on_stage=lambda message: self.signals.progress.emit(message),
+                **self.kwargs,
+            )
+            if not result.get("ok"):
+                self.signals.failed.emit(result.get("error", "Unknown failure"))
+                return
+            self.signals.finished.emit(result)
+        except Exception as exc:  # a worker must never take the app down
+            self.signals.failed.emit("{}: {}".format(type(exc).__name__, exc))
+        finally:
+            self.signals.done.emit(0)
 
 
 class GenerationSignals(QObject):

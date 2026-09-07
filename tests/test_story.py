@@ -100,18 +100,24 @@ print("=== THE SHARED BANK IS NOT TOUCHED ===")
 # If the stylised look were ever made to pass by loosening realism_lint or
 # prompt_bank, every other section's 8/8 contract would weaken with it.
 HASHES = {
-    "tools/prompt_bank.json": "4869572f065c772c",
+    # Bumped for the missing "subtle rim light" lighting term (version 5 -> 6)
+    # - the PDF's own canonical lighting list had it, prompt_bank.json's
+    # generatable terms didn't, so realism_lint could detect it but
+    # build_prompt.compose() could never produce it. Every other layer's
+    # terms, the negatives/banned/warn lists and the shot presets are
+    # untouched.
+    "tools/prompt_bank.json": "a4bbd2212e9803bf",
     # Bumped for checks_for() - a pure additive reshape of lint()'s own
     # output into GateTree's {key, label, passed, fix, ok_text} rows for
     # Cats' Custom Prompt tab. DETECT, lint(), find_terms() and the banned/
     # warn logic are byte-for-byte unchanged; nothing about the gate widened.
     "tools/realism_lint.py": "95efaad0f06a9478",
-    # Bumped for the "negatives" and "style_presets" lists (build_motion.py's
-    # negative_tail()/style_preset()) - a standing artifact guard and concrete
-    # camera/grade vocabulary, replacing the vague "cinematic lighting"
-    # every video prompt used to carry. The 40 movements themselves, their
-    # requires/image_hints, and the two toolkit rules are untouched.
-    "tools/motion_bank.json": "53340b578f556b4b",
+    # Bumped for a larger style_presets list (version 2 -> 3) - ten more
+    # camera/lighting/grade combinations drawn from the same PDF vocabulary
+    # the image side already had, cycled by seed the same way the original
+    # six were. The 40 movements themselves, their requires/image_hints, the
+    # two toolkit rules, and the negatives list are untouched.
+    "tools/motion_bank.json": "24e5d16237c3c574",
 }
 for name, expected in HASHES.items():
     got = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()[:16]

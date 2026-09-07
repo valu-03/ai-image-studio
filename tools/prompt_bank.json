@@ -1,6 +1,6 @@
 {
   "source": "AI Video Bootcamp - Phase 2 ARCHITECT - Lesson 20: Creating More Realistic Avatars",
-  "version": 5,
+  "version": 6,
   "default_model": "Nano Banana Pro",
   "layers": {
     "core": {
@@ -58,6 +58,7 @@
         "overcast daylight",
         "practical lighting",
         "studio softbox lighting",
+        "subtle rim light",
         "chiaroscuro lighting",
         "harsh midday sunlight"
       ]

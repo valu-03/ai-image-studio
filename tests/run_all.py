@@ -23,6 +23,8 @@ ORDER = [
     "test_brief.py",
     "test_generate.py",
     "test_upscale.py",
+    "test_refine.py",
+    "test_midjourney.py",
     "test_lighting.py",
     "test_composition.py",
     "test_autofill.py",
@@ -92,6 +94,14 @@ def main(argv):
     if PRICING_PATH.exists():
         test_pricing.write_bytes(PRICING_PATH.read_bytes())
     env.setdefault("AIVS_PRICING_FILE", str(test_pricing))
+    # Same reasoning again: MainWindow reads AIVS_SETTINGS_APP at import time
+    # to pick which QSettings key it opens. Every GUI suite now also sets
+    # this itself (so it isolates when run standalone, not just under this
+    # runner), but a central default here is the same belt-and-braces this
+    # file already applies to the other three - a suite added later that
+    # forgets its own setdefault still cannot reach the user's real saved
+    # provider/model/theme/window geometry.
+    env.setdefault("AIVS_SETTINGS_APP", "Studio-Tests")
 
     total_ok = total_fail = 0
     failed_suites = []

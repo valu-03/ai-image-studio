@@ -9,7 +9,7 @@ import os
 import sys
 from pathlib import Path
 
-from PyQt6.QtCore import QSettings, pyqtSignal
+from PyQt6.QtCore import QSettings, QThreadPool, pyqtSignal
 from PyQt6.QtGui import QAction, QKeySequence
 from PyQt6.QtWidgets import (
     QButtonGroup,
@@ -32,6 +32,7 @@ import generate_image as gi  # noqa: E402
 import generate_video as gv  # noqa: E402
 import history as hist  # noqa: E402
 import upscale_image as up  # noqa: E402
+import refine_image as ri  # noqa: E402
 
 from . import assets, tokens as T  # noqa: E402
 from .views import (  # noqa: E402
@@ -50,10 +51,19 @@ from .workers import (  # noqa: E402
     BatchSession,
     CreditsTask,
     GenerationPool,
+    RefineTask,
     VideoPool,
     VideoSession,
     WorkerPool,
 )
+
+# AIVS_SETTINGS_APP: the same isolation seam as history.py's AIVS_HISTORY_FILE
+# and generate_image.py's AIVS_ENV_FILE - every test that builds a MainWindow
+# was, until now, reading and writing the user's REAL QSettings (provider,
+# model, theme, form_mode, learned, and the saved window geometry) under the
+# real "AI Video Studio"/"Studio" key, with nothing redirecting it away. A
+# test must not be able to reach the live data at all.
+SETTINGS_APP = os.environ.get("AIVS_SETTINGS_APP", "Studio")
 
 # The rail is organised by category: what you are making, then what you learn
 # from what you made, then configuration.
@@ -84,7 +94,7 @@ class MainWindow(QMainWindow):
         assets.ensure_output_dirs()
         self.theme = theme
         self.bank = bp.load_bank()
-        self.settings = QSettings("AI Video Studio", "Studio")
+        self.settings = QSettings("AI Video Studio", SETTINGS_APP)
         self.pool = GenerationPool(self)
         self.video_pool = VideoPool(2, self)
         self.provider = gi.DEFAULT_PROVIDER
@@ -96,6 +106,12 @@ class MainWindow(QMainWindow):
         self._batch = None
         self.credits_left = None
         self._credits_pool = WorkerPool(1, self)
+        # The refine loop is a multi-round, potentially minutes-long call - its
+        # own small pool, the same way Brief/Compose's autofill/upgrade calls
+        # already run on their own local QThreadPool rather than the per-job
+        # GenerationPool, which is shaped for parallel single generations.
+        self._refine_pool = QThreadPool(self)
+        self._refine_pool.setMaxThreadCount(1)
         # The one running clip submission, or None between batches - the video
         # equivalent of `_batch`, replacing `_video_target`/`_video_seconds`/
         # `_video_done`/`_video_total`.
@@ -282,6 +298,7 @@ class MainWindow(QMainWindow):
 
         self.compose_view.generate_requested.connect(self.generate_single)
         self.compose_view.upscale_requested.connect(self.upscale_image)
+        self.compose_view.refine_requested.connect(self.refine_image)
         self.variants_view.spec_provider = self.current_spec_bundle
         self.variants_view.generate_requested.connect(self.generate_batch)
         # The ads view reads the open character so the presenter is the one you
@@ -467,6 +484,71 @@ class MainWindow(QMainWindow):
         options = self.request_options(self.compose_view.editor.spec())
         options.update(self.compose_view.options_override())
         self.pool.submit([(0, up.UPSCALE_PROMPT, None, [path])], provider, model, options)
+
+    def refine_image(self):
+        """Compose's opt-in "Refine until real" - critique, strengthen the
+        weak layer, retry, up to 2 more times.
+
+        Not a new job shape underneath: `tools/refine_image.refine()` is a
+        loop of the exact same `generate_image.generate()` and
+        `brief.critique_image()` calls `upscale_image()`/Brief's own critique
+        action already use - it runs as one background task rather than
+        through `self.pool` because it is a multi-step, multi-minute call,
+        not a single independent image job.
+        """
+        if self.pool.busy or self._refine_pool.activeThreadCount():
+            self.statusBar().showMessage("A generation is already running")
+            return
+        provider = self.compose_view.provider_override() or self.provider
+        cfg = gi.PROVIDERS.get(provider, {})
+        model = (self.compose_view.model_override() or self.model
+                 or gi.env_value(cfg.get("model_var", "")) or cfg.get("default_model"))
+        max_retries = 2
+        if not self.confirm_spend(model, max_retries + 1, "images (up to)", max_retries + 1):
+            self.statusBar().showMessage("Cancelled - nothing was generated")
+            return
+
+        spec = self.compose_view.editor.spec()
+        self.compose_view.set_refining(True)
+        task = RefineTask(
+            self.bank, spec, provider=provider, model=model, max_retries=max_retries,
+            start_image=self.compose_view.current_image,
+            start_prompt=self.compose_view.prompt_text(),
+            start_selected=getattr(self.compose_view, "last_layers", {}),
+        )
+        task.signals.progress.connect(self.statusBar().showMessage)
+        task.signals.finished.connect(self.on_refine_finished)
+        task.signals.failed.connect(self.on_refine_failed)
+        task.signals.done.connect(lambda _n: self.compose_view.set_refining(False))
+        self._refine_pool.start(task)
+
+    def on_refine_finished(self, result):
+        attempts = result.get("attempts") or []
+        final = result.get("result") or {}
+        if final.get("image"):
+            self.compose_view.show_image(final["image"])
+
+        last = attempts[-1] if attempts else {}
+        critique_error = last.get("critique_error")
+        if critique_error:
+            self.statusBar().showMessage(
+                "Generated, but couldn't check it: {}".format(critique_error))
+            return
+
+        failing = (last.get("critique") or {}).get("failing_layers", [])
+        score = final.get("score", "?")
+        if len(attempts) == 1 and not failing:
+            self.statusBar().showMessage("Already looks real - no retry needed ({}/8)".format(score))
+        elif failing:
+            self.statusBar().showMessage(
+                "Stopped after {} attempt(s) - still weak on: {} ({}/8)".format(
+                    len(attempts), ", ".join(failing), score))
+        else:
+            self.statusBar().showMessage(
+                "Fixed after {} attempt(s) ({}/8)".format(len(attempts), score))
+
+    def on_refine_failed(self, reason):
+        self.statusBar().showMessage("Refine failed: {}".format(reason))
 
     def generate_batch(self, jobs):
         if self.pool.busy:
@@ -735,6 +817,18 @@ class MainWindow(QMainWindow):
         geometry = self.settings.value("geometry")
         if geometry:
             self.restoreGeometry(geometry)
+            # restoreGeometry can hand back a size smaller than setMinimumSize
+            # already in force (it restores raw saved geometry rather than
+            # going through the normal resize() path that would clamp it) -
+            # a window saved narrow in an older session, or before a tab
+            # picked up new controls, stays narrower than today's content
+            # needs, and every button in it silently truncates with nothing
+            # in this codebase ever detecting it (that only happens on a
+            # user's real, persisted geometry - never on a fresh app launch,
+            # which is all the test suite ever exercises). Re-assert the
+            # floor explicitly rather than trust restoreGeometry to have.
+            if self.width() < 1100 or self.height() < 700:
+                self.resize(max(self.width(), 1100), max(self.height(), 700))
         # A settings file written before the provider swap names gemini, openrouter
         # or fal - none of which exist now. Migrate rather than boot pointed at a
         # provider that is gone.

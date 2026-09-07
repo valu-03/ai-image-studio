@@ -17,6 +17,12 @@ The rules come from the Kling toolkit PDF, not from taste:
   6. One action, not a chain       - "walking while talking while eating"
      confuses a video model the same way two competing movements do; a
      combo movement's own lead/detail text is exempt (see chains_actions)
+  7. Negative guard present        - every prompt built through compose() or
+     assemble_template() appends negative_tail(bank) unconditionally; this
+     rule catches a prompt that lost that guard some other way (a hand edit,
+     or a future path that forgets to call it) instead of assuming it never
+     can. The image side has checked this since the beginning
+     (realism_lint.negatives_present) - video never did, until now.
 
 Usage:
     python tools/motion_lint.py temp/outputs/prompts/motion-orbit-360-x.txt
@@ -134,6 +140,22 @@ def chains_actions(text, bank=None, movement=None):
     return any(marker in body for marker in CHAIN_MARKERS)
 
 
+def negatives_present(text, bank):
+    """Rule 7: did the standing artifact guard actually reach the prompt?
+
+    Unlike the image side's negatives_present() - which has to detect a "no
+    X" pattern because a prompt could phrase it any number of ways - a Kling
+    prompt's negative tail is always the bank's own literal, comma-joined
+    phrase list (negative_tail() in build_motion.py). So this checks for the
+    literal terms rather than a phrasing pattern; anything less exact would
+    also accept a prompt that merely mentions "warped" in passing.
+    """
+    lower = text.lower()
+    negatives = bank.get("negatives") or bm.DEFAULT_NEGATIVES
+    missing = [n for n in negatives if n.lower() not in lower]
+    return not missing, missing
+
+
 def lint(text, bank, movement=None, spec=None):
     """Return (checks, warnings). checks is a list of (name, ok, detail)."""
     lower = text.lower()
@@ -185,6 +207,14 @@ def lint(text, bank, movement=None, spec=None):
         not chained,
         "single action" if not chained
         else "split this into separate shots - one action per prompt",
+    ))
+
+    guarded, missing_negatives = negatives_present(text, bank)
+    checks.append((
+        "Negative guard present",
+        guarded,
+        "artifact guard present" if guarded
+        else "append: " + ", ".join(missing_negatives),
     ))
 
     warnings = []

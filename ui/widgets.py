@@ -169,6 +169,10 @@ class ImagePreview(QLabel):
         self._placeholder = placeholder
         self.setProperty("class", "preview")
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        # QLabel defaults to no wrap - the placeholder text has one deliberate
+        # \n, but without this a narrow column truncates the rest of either
+        # line mid-word instead of reflowing it onto a new one.
+        self.setWordWrap(True)
         # Small enough that a card holding one can always still shrink. A 240px
         # floor made the Brief view's card taller than a 700px window could
         # give it, and Qt resolves that by overlapping the items. The size

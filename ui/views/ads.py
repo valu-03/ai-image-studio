@@ -224,7 +224,17 @@ class AdsView(QWidget):
             "One line per beat, as \"key: text\". Beats 1-3 sell the feeling; beat 4 is "
             "where the product's specifics belong; beat 5 needs proof AND urgency."))
         copy_card.body.addWidget(self.script, 1)
-        copy_card.setMinimumWidth(330)
+        # 330 was a guess that never accounted for draft_row's own two widgets -
+        # at the 1100px-floor window the button lost 71px to the badge sharing
+        # its row, eliding "Draft the copy with AI" down to "Draft the copy w...".
+        # Floor it to what that specific row actually needs instead of a number
+        # nobody measured, the same self-healing pattern as the caption floor
+        # above.
+        copy_card.setMinimumWidth(max(
+            330,
+            self.draft_button.sizeHint().width() + T.SPACE["sm"]
+            + self.draft_badge.sizeHint().width() + 2 * T.CARD_PADDING + 12,
+        ))
         form.body.addStretch(1)
 
         # Stacked, the form and the script asked for more height than the tab
@@ -233,7 +243,12 @@ class AdsView(QWidget):
         # scroll area means a shorter window scrolls rather than crushing them.
         form_scroll = QScrollArea()
         form_scroll.setWidgetResizable(True)
-        form_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        # AsNeeded, never Off: a resizable QScrollArea does not shrink its
+        # content below that content's own minimum - it CLIPS, and with the
+        # bar off nothing (no scrollbar, no overlap, no elision) reveals the
+        # missing part. See CLAUDE.md; Compose lost 274px of every button
+        # this way. test_layout.py now fails on it.
+        form_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         form_scroll.setFrameShape(QScrollArea.Shape.NoFrame)
         form_scroll.setWidget(form)
         form_scroll.setMinimumWidth(320)

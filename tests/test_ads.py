@@ -20,6 +20,10 @@ os.environ["AIVS_ENV_FILE"] = str(_EMPTY_ENV)
 # A modal "are you sure" nobody can click is a hang, not a safeguard, so the
 # spend confirmation is answered for us. It still prints the estimate.
 os.environ.setdefault("AIVS_ASSUME_YES", "1")
+# MainWindow reads AIVS_SETTINGS_APP at import time to pick which QSettings
+# key it opens - without this the GUI test read AND WROTE the user's real
+# saved provider/model/theme/window geometry.
+os.environ.setdefault("AIVS_SETTINGS_APP", "Studio-Tests")
 
 from PyQt6.QtWidgets import QApplication
 

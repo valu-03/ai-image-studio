@@ -190,10 +190,40 @@ check("a bank with no negatives key falls back rather than crashing",
       bm.negative_tail({}) == ", ".join(bm.DEFAULT_NEGATIVES))
 
 print()
+print("=== RULE 7: the negative guard is now checked, not just appended ===")
+# Images have checked for this since the beginning (realism_lint.negatives_present);
+# video never did, so a prompt that lost the tail some other way would still
+# score a clean PASS. This closes that gap.
+good, _ = bm.compose(bank, "orbit-360", SPECS[0])
+present, missing = ml.negatives_present(good, bank)
+check("a normally-composed prompt carries every negative term", present, str(missing))
+checks, _ = ml.lint(good, bank, "orbit-360", SPECS[0])
+by_name = {n: ok for n, ok, _ in checks}
+check("...and the check shows up in lint()'s own output", by_name["Negative guard present"])
+
+stripped = good.replace(bm.negative_tail(bank), "").rstrip(", ")
+present, missing = ml.negatives_present(stripped, bank)
+check("a prompt with the tail stripped is caught", not present, str(missing))
+checks, _ = ml.lint(stripped, bank, "orbit-360", SPECS[0])
+by_name = {n: ok for n, ok, _ in checks}
+check("...and fails the gate for exactly that reason",
+      not by_name["Negative guard present"])
+
+partial = good.replace("no extra fingers", "").replace(", , ", ", ")
+present, missing = ml.negatives_present(partial, bank)
+check("losing even one negative term is caught, not just all-or-nothing",
+      not present and missing == ["no extra fingers"], str(missing))
+
+print()
 print("=== concrete style presets, not vague words ===")
 check("style_presets is a real, non-empty bank list",
       isinstance(bank.get("style_presets"), list) and len(bank["style_presets"]) >= 3,
       str(bank.get("style_presets")))
+check("the preset list was meaningfully enriched, not left at the original 6",
+      len(bank["style_presets"]) >= 12, str(len(bank["style_presets"])))
+check("every preset is still a concrete phrase, not a duplicate",
+      len(set(bank["style_presets"])) == len(bank["style_presets"]),
+      str(bank["style_presets"]))
 check("no preset uses the vague words the Reddit retrospective warned against",
       not any(word in preset.lower() for preset in bank["style_presets"]
               for word in ("cinematic", "professional", "high quality")),

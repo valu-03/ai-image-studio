@@ -83,8 +83,14 @@ def new_id():
     return datetime.now().strftime("%Y%m%d-%H%M%S-%f")[:22]
 
 
-def append(spec, prompt, layers, score, passed, detailed=False, image=None):
-    """Record one generated prompt. Returns the entry id."""
+def append(spec, prompt, layers, score, passed, detailed=False, image=None, note=""):
+    """Record one generated prompt. Returns the entry id.
+
+    `note` is additive - every existing call site omits it and gets the same
+    blank string as before. It exists so a caller that generates outside the
+    normal one-shot flow (tools/refine_image.py's retry loop) can tag which
+    attempt an entry was, without a second, breaking schema for "traceable".
+    """
     entry = {
         "id": new_id(),
         "ts": datetime.now().isoformat(timespec="seconds"),
@@ -100,7 +106,7 @@ def append(spec, prompt, layers, score, passed, detailed=False, image=None):
         "prompt": prompt,
         "image": image or "",
         "rating": None,
-        "note": "",
+        "note": note or "",
     }
     HISTORY.parent.mkdir(parents=True, exist_ok=True)
     with HISTORY.open("a", encoding="utf-8") as fh:

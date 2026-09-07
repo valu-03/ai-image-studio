@@ -8,6 +8,7 @@ from PyQt6.QtCore import Qt, QThreadPool, QTimer, pyqtSignal
 from PyQt6.QtGui import QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QComboBox,
+    QGridLayout,
     QHBoxLayout,
     QInputDialog,
     QLabel,
@@ -30,6 +31,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 import build_prompt as bp  # noqa: E402
 import generate_image as gi  # noqa: E402
 import history as hist  # noqa: E402
+import midjourney_export as mx  # noqa: E402
 
 from .. import assets, tokens as T  # noqa: E402
 from ..lint_panel import LintPanel  # noqa: E402
@@ -44,6 +46,7 @@ class ComposeView(QWidget):
 
     generate_requested = pyqtSignal(str, list)
     upscale_requested = pyqtSignal(str)
+    refine_requested = pyqtSignal()
     status = pyqtSignal(str)
 
     def __init__(self, bank, parent=None):
@@ -82,14 +85,19 @@ class ComposeView(QWidget):
         save_button.setIconSize(assets.ICON_SIZE)
         save_button.clicked.connect(self.save_spec)
 
-        library_buttons = QHBoxLayout()
-        library_buttons.setSpacing(T.SPACE["sm"])
+        # Vertical, not a row: "Load" + "Save character" side by side needed
+        # 358px and the column's floor gives this card about 259px - a row
+        # elided "Save character" down to roughly "Save char...". Stacked, each
+        # button gets the column's full width, which comfortably fits either
+        # label on its own.
+        library_buttons = QVBoxLayout()
+        library_buttons.setSpacing(T.SPACE["xs"])
         library_buttons.addWidget(load_button)
         library_buttons.addWidget(save_button)
-        library_buttons.addStretch(1)
 
-        # Five buttons will not fit one row in a 330px column, so the editing
-        # actions get their own, quieter row.
+        # Five buttons will not fit one row in this column, so the editing
+        # actions get their own, quieter group - stacked for the same reason
+        # as library_buttons above (New alone fit, but Rename/Delete did not).
         new_button = QPushButton("New")
         new_button.setProperty("class", "ghost")
         new_button.clicked.connect(self.new_character)
@@ -100,12 +108,18 @@ class ComposeView(QWidget):
         delete_button.setProperty("class", "danger")
         delete_button.clicked.connect(self.delete_character)
 
-        crud_buttons = QHBoxLayout()
-        crud_buttons.setSpacing(T.SPACE["sm"])
-        crud_buttons.addWidget(new_button)
-        crud_buttons.addWidget(rename_button)
+        # New+Rename together still fit one row (193px of ~259 available);
+        # only Delete needs to drop to its own - one extra row of height
+        # instead of two, since library_card's height is tight too.
+        new_rename_row = QHBoxLayout()
+        new_rename_row.setSpacing(T.SPACE["sm"])
+        new_rename_row.addWidget(new_button)
+        new_rename_row.addWidget(rename_button)
+
+        crud_buttons = QVBoxLayout()
+        crud_buttons.setSpacing(T.SPACE["xs"])
+        crud_buttons.addLayout(new_rename_row)
         crud_buttons.addWidget(delete_button)
-        crud_buttons.addStretch(1)
 
         # The same three actions on the list itself. F2/Delete are scoped to the
         # widget, not the window, so they cannot fire while typing in the form.
@@ -126,7 +140,11 @@ class ComposeView(QWidget):
 
         editor_scroll = QScrollArea()
         editor_scroll.setWidgetResizable(True)
-        editor_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        # AsNeeded, not Off - same reasoning as below_preview_scroll further
+        # down: the editor's own minimum runs 27px past this column at the
+        # 1100px floor, and with the bar off that 27px was cut off the right
+        # of every field rather than scrolled to.
+        editor_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         editor_scroll.setWidget(self.editor)
 
         left = QWidget()
@@ -156,13 +174,16 @@ class ComposeView(QWidget):
         copy_button.setIconSize(assets.ICON_SIZE)
         copy_button.clicked.connect(self.copy_prompt)
 
+        # Form label + combo on one row, Reshuffle + Copy each on their own -
+        # all four on one row needed 503px and the prompt column's floor gives
+        # this card about 238px, eliding both buttons down to roughly a third
+        # of their label. Neither button even fits paired with the other at
+        # that floor, so each gets its own row rather than a shared one.
         controls = QHBoxLayout()
         controls.setSpacing(T.SPACE["sm"])
         controls.addWidget(QLabel("Form"))
         controls.addWidget(self.form_mode)
-        controls.addWidget(shuffle)
         controls.addStretch(1)
-        controls.addWidget(copy_button)
 
         self.prompt_view = QPlainTextEdit()
         self.prompt_view.setReadOnly(True)
@@ -173,6 +194,8 @@ class ComposeView(QWidget):
         prompt_card.body.setSpacing(T.SPACE["sm"])
         prompt_card.body.addWidget(TitleLabel("Prompt"))
         prompt_card.body.addLayout(controls)
+        prompt_card.body.addWidget(shuffle)
+        prompt_card.body.addWidget(copy_button)
         prompt_card.body.addWidget(self.prompt_view, 1)
 
         self.lint = LintPanel({})
@@ -189,7 +212,13 @@ class ComposeView(QWidget):
         # --- right: image + rating ---------------------------------------- #
         self.preview = ImagePreview("No image yet.\nGenerate, or drop one in with Set reference.")
 
-        self.generate_button = QPushButton("Generate image")
+        # Short labels, real tooltips: a user screenshot showed every button in
+        # this column - "Generate image" included - cut off mid-word at a
+        # narrow width this session's own offscreen tests never reproduced
+        # (see CLAUDE.md's font/geometry-restore notes). Shortening every
+        # label here is a cheap, unconditional safety margin regardless of
+        # whatever produced that width.
+        self.generate_button = QPushButton("Generate")
         self.generate_button.setProperty("class", "primary")
         self.generate_button.setIcon(assets.icon("generate"))
         self.generate_button.setIconSize(assets.ICON_SIZE)
@@ -204,13 +233,46 @@ class ComposeView(QWidget):
         # all. Not a new provider call: tools/upscale_image.py is generate()
         # with this image as the sole reference and a fixed instruction prompt,
         # so it needs an image already on screen and nothing else.
-        self.upscale_button = QPushButton("Upscale to 4K")
+        self.upscale_button = QPushButton("Upscale")
         self.upscale_button.setProperty("class", "ghost")
         self.upscale_button.setToolTip(
-            "Preserves composition, lighting and identity; adds micro-detail. "
-            "Do this before sending the still to Videos.")
+            "Upscale to 4K. Preserves composition, lighting and identity; adds "
+            "micro-detail. Do this before sending the still to Videos.")
         self.upscale_button.setEnabled(False)
         self.upscale_button.clicked.connect(self.request_upscale)
+
+        # The manual loop this app has always required: generate -> notice
+        # it's off -> figure out which realism layer is weak -> re-prompt by
+        # hand. This automates the last two steps, capped and opt-in - never
+        # automatic, since each retry is a real paid generation. Needs an
+        # image on screen to critique (the just-generated one, or a loaded
+        # one) and OPENROUTER_API_KEY for the critique step; a missing key
+        # is reported after the fact (same as every other AI helper here),
+        # not pre-disabled, since nothing else in this view pre-checks a key.
+        self.refine_button = QPushButton("Refine")
+        self.refine_button.setProperty("class", "ghost")
+        self.refine_button.setToolTip(
+            "Refine until real: critiques the result and retries up to 2 more "
+            "times, strengthening whichever realism layer looks weak. Needs an "
+            "image and an OpenRouter key. Each retry is a real paid generation.")
+        self.refine_button.setEnabled(False)
+        self.refine_button.clicked.connect(self.request_refine)
+
+        # Midjourney has no official API - this is a pure text reformat, not a
+        # new provider, the same spirit as Cats' "Copy sound cue" button: hand
+        # you something to paste in yourself. It started out next to the
+        # prompt's own "Copy" button, but that row was already at its exact
+        # width limit - even a 23px icon-only button pushed the "Form" label
+        # below its own text width. This column is vertical, not horizontal,
+        # and has the room a labelled button actually needs.
+        self.copy_mj_button = QPushButton("Copy (MJ)")
+        self.copy_mj_button.setProperty("class", "ghost")
+        self.copy_mj_button.setIcon(assets.icon("copy"))
+        self.copy_mj_button.setIconSize(assets.ICON_SIZE)
+        self.copy_mj_button.setToolTip(
+            "Copy for Midjourney: this prompt, reformatted with Midjourney's own "
+            "--ar/--style/--no/--v syntax - paste it into Midjourney yourself.")
+        self.copy_mj_button.clicked.connect(self.copy_midjourney_prompt)
 
         # The reference controls live in the editor's Identity tab; this is the
         # read-out so you can see the lock state next to the result.
@@ -256,29 +318,98 @@ class ComposeView(QWidget):
         # narrow column. A four-row QFormLayout here crushed every field in
         # this view below its minimum height at the 700px floor; captions
         # live in tooltips instead of a label column.
-        options_row = QHBoxLayout()
-        options_row.setSpacing(T.SPACE["xs"])
-        options_row.addWidget(self.gen_provider)
-        options_row.addWidget(self.gen_model, 1)
-        options_row.addWidget(self.gen_resolution)
-        options_row.addWidget(self.gen_output_format)
+        #
+        # Every one of these MUST be able to compress. A QComboBox reports its
+        # widest item as its minimum width by default, so "(use Settings)" x3
+        # pinned this row's minimum at ~438px inside a column whose content
+        # area is ~190px at its floor - and because the row lives in a
+        # QScrollArea with the horizontal bar off, that 250px overhang was not
+        # squeezed, wrapped or scrolled to. It was silently CLIPPED, taking the
+        # right-hand side of every button underneath it off-screen with it
+        # (the buttons were 462px wide inside a 188px viewport). Nothing in
+        # test_layout.py could see it: the widgets all had their full
+        # requested geometry, they were simply drawn outside the visible area.
+        for combo in (self.gen_provider, self.gen_resolution, self.gen_output_format):
+            combo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+            combo.setMinimumContentsLength(6)
+            combo.setMinimumWidth(56)
+        self.gen_model.setMinimumWidth(56)
 
-        right_card = Card()
-        right_card.body.setSpacing(T.SPACE["md"])
-        right_card.body.addWidget(TitleLabel("Result"))
-        right_card.body.addWidget(self.preview, 1)
-        right_card.body.addLayout(rating_row)
-        right_card.body.addWidget(self.reference_label)
-        right_card.body.addWidget(MutedLabel("Generation options"))
-        right_card.body.addLayout(options_row)
+        # 2x2, not 1x4: even compressed to 56px each, four across still needed
+        # 236px of a 188px viewport. Two across needs 116px and fits with room
+        # to spare, at the cost of one extra row of height in a box that
+        # already scrolls vertically.
+        options_row = QGridLayout()
+        options_row.setSpacing(T.SPACE["xs"])
+        options_row.setContentsMargins(0, 0, 0, 0)
+        options_row.addWidget(self.gen_provider, 0, 0)
+        options_row.addWidget(self.gen_model, 0, 1)
+        options_row.addWidget(self.gen_resolution, 1, 0)
+        options_row.addWidget(self.gen_output_format, 1, 1)
+        options_row.setColumnStretch(0, 1)
+        options_row.setColumnStretch(1, 1)
 
         # Stacked, not a shared row: side by side in this column's 230-460px
         # width, "Generate image" elided to a few characters - the crushed-
         # below-minimum layout check does not catch a QPushButton eliding its
         # own text (only QLabel wrapping and widget-vs-widget overlap), so
         # this was only visible in an actual screenshot, not the test gate.
-        right_card.body.addWidget(self.upscale_button)
-        right_card.body.addWidget(self.generate_button)
+        # 2x2 as well, for height this time rather than width: stacked 1x4 the
+        # primary "Generate" button fell below the fold of the scroll area
+        # holding it, so the main action of the whole view needed a scroll to
+        # reach. Two rows of two keeps it on screen.
+        buttons_col = QGridLayout()
+        buttons_col.setSpacing(T.SPACE["xs"])
+        buttons_col.setContentsMargins(0, 0, 0, 0)
+        buttons_col.addWidget(self.upscale_button, 0, 0)
+        buttons_col.addWidget(self.copy_mj_button, 0, 1)
+        buttons_col.addWidget(self.refine_button, 1, 0)
+        buttons_col.addWidget(self.generate_button, 1, 1)
+        buttons_col.setColumnStretch(0, 1)
+        buttons_col.setColumnStretch(1, 1)
+
+        # Everything below the preview, in a QScrollArea - not because four
+        # buttons is an intrinsically bad idea, but because two earlier
+        # attempts at fitting them by trimming spacing alone (first to "sm",
+        # then to "xs") only shrank the visible symptom instead of fixing the
+        # cause: at the 700px minimum window this card's total natural height
+        # genuinely exceeds what it is given, and a QVBoxLayout with nothing
+        # left to shrink does not clip cleanly - past a point it pushes
+        # consecutive widgets into outright overlap (confirmed directly with
+        # QRect.intersects(), the same check test_layout.py's own overlap
+        # scan uses - which never caught it, because that scan only walks
+        # each QWidget's own direct layout items; a widget added via
+        # addLayout() inside a widget's layout is invisible to it, not a
+        # QWidget of its own). A QScrollArea makes the card scroll instead of
+        # silently overlapping - the same fix Settings already uses for a
+        # page of stacked cards that cannot all fit at once.
+        below_preview = QWidget()
+        below_preview_col = QVBoxLayout(below_preview)
+        below_preview_col.setContentsMargins(0, 0, 0, 0)
+        below_preview_col.setSpacing(T.SPACE["md"])
+        below_preview_col.addLayout(rating_row)
+        below_preview_col.addWidget(self.reference_label)
+        below_preview_col.addWidget(MutedLabel("Generation options"))
+        below_preview_col.addLayout(options_row)
+        below_preview_col.addLayout(buttons_col)
+
+        below_preview_scroll = QScrollArea()
+        below_preview_scroll.setWidgetResizable(True)
+        # AsNeeded, never Off. A resizable QScrollArea will not shrink its
+        # content below that content's own minimum size - it clips instead,
+        # and with the bar off there is no scrollbar, no overlap and no
+        # elision to reveal it, so the missing 274px were invisible to every
+        # automated check this project has. If a future control in here
+        # regresses the minimum again, a scrollbar says so out loud.
+        below_preview_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        below_preview_scroll.setFrameShape(QScrollArea.Shape.NoFrame)
+        below_preview_scroll.setWidget(below_preview)
+
+        right_card = Card()
+        right_card.body.setSpacing(T.SPACE["md"])
+        right_card.body.addWidget(TitleLabel("Result"))
+        right_card.body.addWidget(self.preview, 1)
+        right_card.body.addWidget(below_preview_scroll)
 
         # Floors for all three, or the splitter falls back to an even split when
         # the window is small and hands the prompt a 237px column. They sum to
@@ -288,8 +419,13 @@ class ComposeView(QWidget):
         # hands it the slack and starves the prompt, which is the column that
         # actually benefits from being wide.
         left.setMaximumWidth(420)
-        middle.setMinimumWidth(280)
-        right_card.setMinimumWidth(230)
+        middle.setMinimumWidth(260)
+        # 230 starved this column: the result card holds four buttons, four
+        # override controls, the rating and two paragraphs, and at 230 the
+        # requested sizes below scaled it down to ~219px of which ~190 is
+        # usable - not enough for two controls side by side, so everything
+        # inside stacked and the primary Generate button fell below the fold.
+        right_card.setMinimumWidth(258)
         right_card.setMaximumWidth(460)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
@@ -300,7 +436,11 @@ class ComposeView(QWidget):
         # Sizes must sit inside the min/max above: setSizes overrides a
         # maximum rather than clamping to it, so asking for 500 here would have
         # quietly defeated the 420 ceiling. Spare width goes to the prompt.
-        splitter.setSizes([380, 470, 300])
+        # These are scaled proportionally when they do not fit (they sum to
+        # 1150 against the 838px canvas a 1100px window has), so the RATIO is
+        # what actually decides the result card's width, not the floor - which
+        # is why the result column came out at ~219px while its floor said 230.
+        splitter.setSizes([300, 330, 262])
         splitter.setStretchFactor(0, 0)
         splitter.setStretchFactor(1, 1)
         splitter.setStretchFactor(2, 0)
@@ -752,6 +892,17 @@ class ComposeView(QWidget):
         QGuiApplication.clipboard().setText(self.prompt_text())
         self.status.emit("Prompt copied to clipboard")
 
+    def copy_midjourney_prompt(self):
+        from PyQt6.QtGui import QGuiApplication
+
+        prompt = self.prompt_text()
+        if not prompt.strip():
+            self.status.emit("Nothing to copy yet — build a prompt first")
+            return
+        text = mx.to_midjourney(self.bank, self.editor.spec(), prompt)
+        QGuiApplication.clipboard().setText(text)
+        self.status.emit("Midjourney-formatted prompt copied to clipboard")
+
     def confirm_if_failing(self, question):
         if self.passing:
             return True
@@ -785,16 +936,31 @@ class ComposeView(QWidget):
             return
         self.upscale_requested.emit(str(self.current_image))
 
+    def request_refine(self):
+        if not self.current_image:
+            self.status.emit("Generate or load an image first")
+            return
+        self.refine_requested.emit()
+
     def set_busy(self, busy):
         self.generate_button.setEnabled(not busy)
-        self.generate_button.setText("Generating…" if busy else "Generate image")
+        self.generate_button.setText("Generating…" if busy else "Generate")
         self.upscale_button.setEnabled(not busy and bool(self.current_image))
+        self.refine_button.setEnabled(not busy and bool(self.current_image))
+
+    def set_refining(self, busy):
+        """Distinct from set_busy(): the refine loop can take several minutes
+        (up to 3 generations plus 3 critiques), so Generate/Upscale stay
+        disabled the same way, but the label says what is actually happening."""
+        self.set_busy(busy)
+        self.refine_button.setText("Refining…" if busy else "Refine")
 
     def show_image(self, path):
         self.current_image = path
         if self.preview.load(path):
             self.rating.setEnabled(True)
             self.upscale_button.setEnabled(True)
+            self.refine_button.setEnabled(True)
             if self.entry_id:
                 hist.rate(self.entry_id, None, image=str(path))
             self.status.emit("Saved {}".format(Path(path).name))

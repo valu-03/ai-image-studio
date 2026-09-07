@@ -88,14 +88,24 @@ class CustomPromptTab(QWidget):
 
         left_scroll = QScrollArea()
         left_scroll.setWidgetResizable(True)
-        left_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        # AsNeeded, never Off: a resizable QScrollArea does not shrink its
+        # content below that content's own minimum - it CLIPS, and with the
+        # bar off nothing (no scrollbar, no overlap, no elision) reveals the
+        # missing part. See CLAUDE.md; Compose lost 274px of every button
+        # this way. test_layout.py now fails on it.
+        left_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         left_scroll.setFrameShape(QScrollArea.Shape.NoFrame)
         left_scroll.setWidget(left)
         left_scroll.setMinimumWidth(320)
 
         right_scroll = QScrollArea()
         right_scroll.setWidgetResizable(True)
-        right_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        # AsNeeded, never Off: a resizable QScrollArea does not shrink its
+        # content below that content's own minimum - it CLIPS, and with the
+        # bar off nothing (no scrollbar, no overlap, no elision) reveals the
+        # missing part. See CLAUDE.md; Compose lost 274px of every button
+        # this way. test_layout.py now fails on it.
+        right_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         right_scroll.setFrameShape(QScrollArea.Shape.NoFrame)
         right_scroll.setWidget(right)
         right_scroll.setMinimumWidth(320)

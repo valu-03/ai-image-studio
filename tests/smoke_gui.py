@@ -50,10 +50,25 @@ PRE_EXISTING = set(p.name for p in IMAGES_DIR.glob("*.png"))
 if HISTORY.exists():
     HISTORY.unlink()
 
-from PyQt6.QtWidgets import QApplication
+# Same reasoning as AIVS_ENV_FILE/AIVS_HISTORY_FILE above, one layer further
+# in: MainWindow reads AIVS_SETTINGS_APP at import time to pick which
+# QSettings key it opens. Without this, every GUI test read AND WROTE the
+# user's real saved provider/model/theme/window geometry.
+os.environ.setdefault("AIVS_SETTINGS_APP", "Studio-Tests")
+
+from PyQt6.QtWidgets import QApplication, QMessageBox
 from ui.main_window import MainWindow
 from ui.theme import ThemeManager
 import history as hist
+
+# A modal nobody can click is a hang, not a safeguard - same reasoning as
+# AIVS_ASSUME_YES for the cost-confirmation dialog, here for
+# ComposeView.confirm_if_failing()'s "this prompt hasn't passed" one. Belt
+# and braces: the fixed spec below is chosen to score 8/8 so this should
+# never actually fire, but a suite that can hang silently on a future change
+# is worse than one that answers "proceed anyway" and lets the real checks
+# below catch whatever is actually wrong.
+QMessageBox.question = staticmethod(lambda *a, **k: QMessageBox.StandardButton.Yes)
 
 app = QApplication(sys.argv)
 theme = ThemeManager(app)
@@ -106,8 +121,15 @@ check("12px card radius", "border-radius: 12px" in sheet)
 print("--- compose + live lint ---")
 # QSettings persists the last form mode; pin it so the run is deterministic.
 win.compose_view.form_mode.setCurrentIndex(0)
-win.compose_view.library.setCurrentRow(0)
-win.compose_view.load_selected()
+# A FIXED spec, not "whichever character happens to be first in the user's
+# real library" - `library.setCurrentRow(0); load_selected()` used to load
+# that, and a real saved character with a shot_custom naming no camera
+# device legitimately scores 7/8 (tools/README.md documents that this is the
+# gate working correctly, not a bug) - which used to hang this whole suite
+# outright (see the QMessageBox.question patch above) the moment the user's
+# library held anything other than an empty one. Same rule as everywhere
+# else a test must not depend on the user's live data.
+win.compose_view.editor.load_spec({"subject": "a woman in her thirties", "seed": 0})
 win.compose_view.rebuild()
 check("prompt composed", len(win.compose_view.prompt_text()) > 100)
 check("passes 8/8", win.compose_view.passing, win.compose_view.lint.badge.text())

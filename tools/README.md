@@ -38,6 +38,9 @@ Scripts the agent calls to get things done. Workflows hold the sequence; tools h
 | `build_sound.py` | Source + action → one prompt; a scene → its three layers (ambience, key, accent). Everything it emits is pre-scored by `sound_lint`. | no |
 | `sound_lint.py` | The sound gate: describes an event, short enough, and is an effect rather than music or speech. The 100 examples are its fixture. | no |
 | `make_icons.py` | Regenerates the SVG icon set into `assets/icons/`, including the application mark (`app.svg` - an aperture whose opening is a play triangle). Run after editing a glyph. `ICON_NAMES` is what `tests/test_layout.py` checks `ui/assets.py` against. | no |
+| `upscale_image.py` | The course's "upscale before you animate" rule: `generate_image.generate()` with the image being upscaled as its own sole reference and a fixed 4K instruction prompt instead of a written one. | yes |
+| `refine_image.py` | Generate, critique the result through `brief.critique_image()`, strengthen whichever realism layer came back weak using only the bank's own vocabulary, and retry - capped at 2 retries. Closes the loop that used to be entirely manual. | yes (Kie/Higgsfield for the image, OpenRouter for the critique) |
+| `midjourney_export.py` | Reformats an already-built, already-scored prompt into Midjourney's own `--ar`/`--style`/`--stylize`/`--no`/`--v` syntax, for pasting into Midjourney by hand. Text only - Midjourney has no official API. | no |
 
 ### Shared entry points
 
@@ -49,8 +52,10 @@ that is what keeps the two from ever disagreeing.
 ### Two gates, one contract
 
 `realism_lint.py` scores a still prompt out of 8; `motion_lint.py` scores a video prompt out
-of 5. Both print named fixes and exit 1 on failure, so a workflow or the GUI can gate on
-either without special-casing which kind of prompt it is holding.
+of 7 (leads with camera, names a subject, one dominant movement, describes motion, no
+contradictions, one action not a chain, and the negative-artifact guard is actually present).
+Both print named fixes and exit 1 on failure, so a workflow or the GUI can gate on either
+without special-casing which kind of prompt it is holding.
 
 ### Composition guides
 
@@ -147,7 +152,7 @@ example through the linter.
 
 ### Three gates, one contract
 
-`realism_lint.py` scores a still out of 8, `motion_lint.py` a video prompt out of 5, and
+`realism_lint.py` scores a still out of 8, `motion_lint.py` a video prompt out of 7, and
 `ad_lint.py` an advert out of 9. All three print named fixes and exit 1 on failure.
 
 `ad_lint`'s two subtle checks are worth knowing. The **emotion check is scoped to beats 1-3**:

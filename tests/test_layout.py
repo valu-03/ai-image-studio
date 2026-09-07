@@ -23,14 +23,19 @@ import sys
 from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+# MainWindow reads AIVS_SETTINGS_APP at import time to pick which QSettings
+# key it opens - without this every GUI test read AND WROTE the user's real
+# saved provider/model/theme/window geometry.
+os.environ.setdefault("AIVS_SETTINGS_APP", "Studio-Tests")
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tools"))
 
+from PyQt6.QtCore import Qt  # noqa: E402
 from PyQt6.QtWidgets import (  # noqa: E402
     QAbstractScrollArea, QAbstractSpinBox, QApplication, QComboBox, QLabel,
-    QLineEdit, QPushButton, QStackedLayout, QTabWidget, QWidget)
+    QLineEdit, QPushButton, QScrollArea, QStackedLayout, QTabWidget, QWidget)
 
 import make_icons  # noqa: E402
 from ui import assets  # noqa: E402
@@ -54,6 +59,37 @@ theme = ThemeManager(app)
 # --------------------------------------------------------------------------- #
 # The three inspections
 # --------------------------------------------------------------------------- #
+def leaf_widgets(layout):
+    """Every real widget under a layout, descending through addLayout() nesting.
+
+    A nested layout added via addLayout() has no QWidget of its own - its items
+    still position widgets in the SAME parent's coordinate space as the outer
+    layout, so their geometry() stays directly comparable to their layout
+    siblings'. Stop at a real widget rather than recursing into IT: if that
+    widget owns its own layout, findChildren already visits it separately as
+    its own "parent", and its children's geometry() is relative to it, not to
+    this outer one - flattening across that boundary would compare
+    incomparable coordinates.
+
+    This is the exact blind spot that let four buttons overlap on screen while
+    layout_overlaps() reported zero: they were stacked in a QVBoxLayout added
+    via addLayout() rather than addWidget(), so itemAt(index).widget() saw
+    only None where that nested layout lived.
+    """
+    found = []
+    for index in range(layout.count()):
+        item = layout.itemAt(index)
+        widget = item.widget()
+        if widget is not None:
+            if widget.isVisible() and not widget.size().isEmpty():
+                found.append(widget)
+            continue
+        nested = item.layout()
+        if nested is not None:
+            found.extend(leaf_widgets(nested))
+    return found
+
+
 def layout_overlaps(root):
     """[(parent, a, b)] for widgets that share a layout and intersect."""
     found = []
@@ -62,11 +98,7 @@ def layout_overlaps(root):
         # A stacked layout puts every page at the same geometry on purpose.
         if layout is None or isinstance(layout, QStackedLayout):
             continue
-        items = []
-        for index in range(layout.count()):
-            widget = layout.itemAt(index).widget()
-            if widget is not None and widget.isVisible() and not widget.size().isEmpty():
-                items.append(widget)
+        items = leaf_widgets(layout)
         for i, first in enumerate(items):
             for second in items[i + 1:]:
                 if first.geometry().intersects(second.geometry()):
@@ -85,6 +117,46 @@ def clipped_labels(root):
         # 2px of slack: Qt's own width rounding is not worth a failure.
         if label.sizeHint().width() > label.width() + 2:
             bad.append(label)
+    return bad
+
+
+def clipped_buttons(root):
+    """Buttons too narrow for their own label - a QPushButton never wraps, so
+    a tight row silently elides its text ("Generate imag...") or clips it
+    outright instead of failing loudly. clipped_labels() only ever looked at
+    QLabel; this is the same check for QPushButton, closing that gap.
+    """
+    bad = []
+    for button in root.findChildren(QPushButton):
+        if not button.isVisible() or not button.text().strip():
+            continue
+        # 2px of slack: Qt's own width rounding is not worth a failure.
+        if button.sizeHint().width() > button.width() + 2:
+            bad.append(button)
+    return bad
+
+
+def clipped_scrollareas(root):
+    """Scroll areas whose content is wider than the viewport with the bar off.
+
+    The failure mode every other check here is blind to. A resizable
+    QScrollArea will not shrink its content below that content's own minimum
+    size - it clips. With the horizontal bar off there is no scrollbar, no
+    overlap, no elision and no crush to give it away: the widgets all get the
+    full geometry they asked for, they are just drawn outside the visible
+    area. That is how Compose's result card sat with 274px of every button
+    (frame included) off the right-hand edge, on every launch, at every window
+    size, while this file reported six clean checks.
+    """
+    bad = []
+    for area in root.findChildren(QAbstractScrollArea):
+        content = area.widget() if isinstance(area, QScrollArea) else None
+        if content is None or not area.isVisible():
+            continue
+        over = content.width() - area.viewport().width()
+        off = area.horizontalScrollBarPolicy() == Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        if over > 2 and off:
+            bad.append((area, over))
     return bad
 
 
@@ -131,10 +203,7 @@ def overflowing(root):
         if in_scroll_area(parent):
             continue
         box = parent.contentsRect().adjusted(-2, -2, 2, 2)   # 2px of slack
-        for index in range(layout.count()):
-            widget = layout.itemAt(index).widget()
-            if widget is None or not widget.isVisible() or widget.size().isEmpty():
-                continue
+        for widget in leaf_widgets(layout):
             if not box.contains(widget.geometry()):
                 out.append((parent, widget))
     return out
@@ -226,7 +295,8 @@ for theme_name in ("dark", "light"):
         win.resize(width, height)
         app.processEvents()
 
-        overlaps = clipped = escaped = spilled = squashed = cut = 0
+        overlaps = clipped = elided = escaped = spilled = squashed = cut = 0
+        hidden = 0
         worst = []
         spills = []
         squashes = []
@@ -249,6 +319,16 @@ for theme_name in ("dark", "light"):
                     if len(worst) < 4:
                         worst.append("{}: clipped {!r}".format(
                             label, widget.text()[:40]))
+                for button in clipped_buttons(view):
+                    elided += 1
+                    if len(worst) < 4:
+                        worst.append("{}: elided button {!r}".format(
+                            label, button.text()[:40]))
+                for area, over in clipped_scrollareas(view):
+                    hidden += 1
+                    if len(worst) < 4:
+                        worst.append("{}: {}px clipped inside a scroll area".format(
+                            label, over))
                 for preview, parent in escaped_previews(view):
                     escaped += 1
                     if len(worst) < 4:
@@ -276,6 +356,10 @@ for theme_name in ("dark", "light"):
               "{} overlap(s)  {}".format(overlaps, "; ".join(worst)))
         check("{} - no clipped label".format(tag), clipped == 0,
               "{} clipped  {}".format(clipped, "; ".join(worst)))
+        check("{} - no button text is elided".format(tag), elided == 0,
+              "{} elided  {}".format(elided, "; ".join(worst)))
+        check("{} - no scroll area hides its own content".format(tag), hidden == 0,
+              "{} clipped  {}".format(hidden, "; ".join(worst)))
         check("{} - previews stay in their cards".format(tag), escaped == 0,
               "{} escaped".format(escaped))
         check("{} - nothing spills out of its card".format(tag), spilled == 0,

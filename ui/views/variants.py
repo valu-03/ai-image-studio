@@ -94,11 +94,20 @@ class VariantsView(QWidget):
         self.adopt_button.clicked.connect(self.adopt_selected)
         self.adopt_button.setEnabled(False)
 
+        # Two rows, not one: mode + count + all four action buttons in a single
+        # QHBoxLayout demanded more width than the 1100px-floor window has,
+        # eliding "Build prompts"/"Generate all"/"Pick as winner" by up to
+        # 100px. Splitting settings from actions roughly halves what either
+        # row needs.
+        settings_row = QHBoxLayout()
+        settings_row.setSpacing(T.SPACE["sm"])
+        settings_row.addWidget(self.mode)
+        settings_row.addWidget(self.count_label)
+        settings_row.addWidget(self.count)
+        settings_row.addStretch(1)
+
         controls = QHBoxLayout()
         controls.setSpacing(T.SPACE["sm"])
-        controls.addWidget(self.mode)
-        controls.addWidget(self.count_label)
-        controls.addWidget(self.count)
         controls.addWidget(self.build_button)
         controls.addWidget(self.generate_button)
         controls.addWidget(self.cancel_button)
@@ -137,6 +146,7 @@ class VariantsView(QWidget):
         card.body.setSpacing(T.SPACE["md"])
         card.body.addWidget(TitleLabel("Variant sampling"))
         card.body.addWidget(self.hint)
+        card.body.addLayout(settings_row)
         card.body.addLayout(controls)
         card.body.addWidget(self.progress)
         card.body.addWidget(scroll, 1)

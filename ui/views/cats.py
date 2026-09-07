@@ -348,7 +348,15 @@ class CatsView(QWidget):
         self.script_help = MutedLabel("")
         script_card.body.addWidget(self.script_help)
         script_card.body.addWidget(self.script_box, 1)
-        script_card.setMinimumWidth(330)
+        # 330 was a guess that never accounted for write_row's own two widgets -
+        # at the 1100px-floor window the button lost width to the badge sharing
+        # its row, eliding "Auto-fill the whole story". Same fix as Ads' matching
+        # draft_row/copy_card: floor it to what the row actually needs.
+        script_card.setMinimumWidth(max(
+            330,
+            self.write_button.sizeHint().width() + T.SPACE["sm"]
+            + self.write_badge.sizeHint().width() + 2 * T.CARD_PADDING + 12,
+        ))
 
         # Seven labelled rows and a scene-by-scene script both want the whole
         # height of the tab. Stacked, they asked for 700px of a 537px page, and
@@ -357,7 +365,12 @@ class CatsView(QWidget):
         # side they each get the full height, and the width is there for it.
         form_scroll = QScrollArea()
         form_scroll.setWidgetResizable(True)
-        form_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        # AsNeeded, never Off: a resizable QScrollArea does not shrink its
+        # content below that content's own minimum - it CLIPS, and with the
+        # bar off nothing (no scrollbar, no overlap, no elision) reveals the
+        # missing part. See CLAUDE.md; Compose lost 274px of every button
+        # this way. test_layout.py now fails on it.
+        form_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         form_scroll.setFrameShape(QScrollArea.Shape.NoFrame)
         form_scroll.setWidget(form)
         # The scroll area is the belt to the splitter's braces: on a short window
@@ -477,7 +490,14 @@ class CatsView(QWidget):
         gate.body.addLayout(video_row)
         gate.body.addWidget(self.video_button)
         gate.body.addWidget(self.cost_note)
-        gate.setMinimumWidth(300)
+        # 300 never accounted for the two full-width primary buttons stacked
+        # inside it - "Generate every scene" lost 20px at the 1100px floor.
+        # Same self-healing floor as script_card/copy_card above.
+        gate.setMinimumWidth(max(
+            300,
+            max(self.generate_button.sizeHint().width(),
+                self.video_button.sizeHint().width()) + 2 * T.CARD_PADDING + 12,
+        ))
 
         # Side by side, not stacked. Nine scenes and twelve checks are both
         # lists, and stacking them split 537px of page between two things that
@@ -519,7 +539,12 @@ class CatsView(QWidget):
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        # AsNeeded, never Off: a resizable QScrollArea does not shrink its
+        # content below that content's own minimum - it CLIPS, and with the
+        # bar off nothing (no scrollbar, no overlap, no elision) reveals the
+        # missing part. See CLAUDE.md; Compose lost 274px of every button
+        # this way. test_layout.py now fails on it.
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         scroll.setFrameShape(QScrollArea.Shape.NoFrame)
         scroll.setWidget(self.prompts_body)
 
@@ -797,7 +822,12 @@ class CatsView(QWidget):
 
         steps = QScrollArea()
         steps.setWidgetResizable(True)
-        steps.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        # AsNeeded, never Off: a resizable QScrollArea does not shrink its
+        # content below that content's own minimum - it CLIPS, and with the
+        # bar off nothing (no scrollbar, no overlap, no elision) reveals the
+        # missing part. See CLAUDE.md; Compose lost 274px of every button
+        # this way. test_layout.py now fails on it.
+        steps.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         steps.setFrameShape(QScrollArea.Shape.NoFrame)
         steps.setWidget(self.steps_body)
 

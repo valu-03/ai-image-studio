@@ -1,10 +1,25 @@
 """Custom lighting input, end to end through the real UI."""
+import os
 import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tools"))
+
+# Before MainWindow is imported: it reads AIVS_SETTINGS_APP at import time to
+# pick which QSettings key it opens. Without this every GUI test read AND
+# WROTE the user's real saved provider/model/theme/window geometry.
+os.environ.setdefault("AIVS_SETTINGS_APP", "Studio-Tests")
+# This suite's own variant-build step below used to write straight into the
+# REAL history.jsonl (no redirect existed) and then delete exactly the rows
+# it added back out - fine as long as nothing crashed in between, but a
+# crash between the write and that cleanup would have left fake rows
+# permanently mixed into the user's real log. Redirect instead of trusting
+# the cleanup to always run.
+os.environ.setdefault(
+    "AIVS_HISTORY_FILE", str(Path(tempfile.gettempdir()) / "aivs-lighting-history.jsonl"))
 
 from PyQt6.QtWidgets import QApplication
 from ui.main_window import MainWindow
@@ -20,8 +35,14 @@ app.processEvents()
 cv = win.compose_view
 ed = cv.editor
 cv.form_mode.setCurrentIndex(0)
-cv.library.setCurrentRow(0)
-cv.load_selected()
+# A FIXED spec, not whichever character happens to be first in the user's
+# real library - `library.setCurrentRow(0); load_selected()` used to load
+# that, and a real saved character can legitimately score below 8/8 for
+# reasons that have nothing to do with lighting (a shot_custom naming no
+# camera device, say - tools/README.md documents that as the gate working
+# correctly). This suite is about the lighting override specifically, so it
+# needs a base spec guaranteed to be 8/8 on every other layer.
+ed.load_spec({"subject": "a woman in her thirties", "seed": 0})
 
 fails = []
 
@@ -109,10 +130,8 @@ check("all variants use it",
 check("all variants 8/8", all(e["score"] == 8 for e in recent),
       str([e["score"] for e in recent]))
 
-# don't leave test rows in the log
-remaining = hist.load()[:-3]
-hist.save_all(remaining)
-if not remaining and hist.HISTORY.exists():
+# don't leave test rows in the (isolated) log
+if hist.HISTORY.exists():
     hist.HISTORY.unlink()
 
 print()

@@ -24,9 +24,19 @@ PORT = 8799
 mock_api.serve(PORT)
 os.environ["AIVS_API_BASE"] = "http://127.0.0.1:{}/text".format(PORT)
 os.environ["OPENROUTER_API_KEY"] = "ui-llm-key"
+# Redirect, not backup-and-restore: history.py reads AIVS_HISTORY_FILE at
+# import time, and a crash between backing up the real log and restoring it
+# would have left the user's real history overwritten with test entries.
+os.environ.setdefault(
+    "AIVS_HISTORY_FILE", str(Path(_tempfile.gettempdir()) / "aivs-newui-history.jsonl"))
+# MainWindow reads AIVS_SETTINGS_APP at import time to pick which QSettings
+# key it opens - without this the GUI test read AND WROTE the user's real
+# saved provider/model/theme/window geometry.
+os.environ.setdefault("AIVS_SETTINGS_APP", "Studio-Tests")
 
-HISTORY = ROOT / "temp" / "outputs" / "history.jsonl"
-backup = HISTORY.read_bytes() if HISTORY.exists() else None
+HISTORY = Path(os.environ["AIVS_HISTORY_FILE"])
+if HISTORY.exists():
+    HISTORY.unlink()
 
 from PyQt6.QtWidgets import QApplication, QMessageBox
 from ui.main_window import MainWindow
@@ -538,9 +548,7 @@ check("no match shows nothing", vv.glossary_tree.topLevelItemCount() == 0)
 vv.search.setText("")
 win.go_to("images")
 
-if backup is not None:
-    HISTORY.write_bytes(backup)
-elif HISTORY.exists():
+if HISTORY.exists():
     HISTORY.unlink()
 
 print()

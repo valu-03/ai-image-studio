@@ -181,7 +181,12 @@ class SettingsView(QWidget):
         # line. Scrolling is the correct answer for a page of settings.
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        # AsNeeded, never Off: a resizable QScrollArea does not shrink its
+        # content below that content's own minimum - it CLIPS, and with the
+        # bar off nothing (no scrollbar, no overlap, no elision) reveals the
+        # missing part. See CLAUDE.md; Compose lost 274px of every button
+        # this way. test_layout.py now fails on it.
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         scroll.setFrameShape(QScrollArea.Shape.NoFrame)
         scroll.setWidget(body)
 

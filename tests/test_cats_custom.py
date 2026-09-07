@@ -24,6 +24,9 @@ os.environ.setdefault("AIVS_ASSUME_YES", "1")
 # import that could touch history.py, same rule every other GUI suite follows.
 os.environ.setdefault(
     "AIVS_HISTORY_FILE", str(Path(tempfile.gettempdir()) / "aivs-tests-history.jsonl"))
+# Same rule, one layer further in: MainWindow reads AIVS_SETTINGS_APP at
+# import time to pick which QSettings key it opens.
+os.environ.setdefault("AIVS_SETTINGS_APP", "Studio-Tests")
 
 from PyQt6.QtWidgets import QApplication
 

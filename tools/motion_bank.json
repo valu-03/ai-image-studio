@@ -1,6 +1,6 @@
 {
   "source": "AI Video Bootcamp - Kling AI Cinematic Camera Movement Toolkit",
-  "version": 2,
+  "version": 3,
   "rules": {
     "lead_with_camera": "Always start your prompt with the camera angle and build from there, this way Kling recognizes it immediately.",
     "think_ahead": "Always create your images in a way that will complement the camera movement. If you say 'tracking over the shoulder' but there is no character in your scene, or 'the camera dives underwater' but there is no water nearby, Kling will get confused."
@@ -20,7 +20,17 @@
     "shot on a smartphone camera, warm golden hour grade",
     "shot on a mirrorless camera, muted earthy color grade",
     "shot on a vintage film camera, soft desaturated grade",
-    "shot on a handheld camcorder, high-contrast documentary grade"
+    "shot on a handheld camcorder, high-contrast documentary grade",
+    "shot on a DSLR, soft window light, natural color grading",
+    "shot on a mirrorless camera, golden hour sunlight, warm daylight bias",
+    "shot on 35mm film, overcast daylight, muted earthy grade",
+    "shot on a documentary-style camera, natural daylight, realistic contrast",
+    "shot on a street photography camera, candid natural light, natural color balance",
+    "shot on a studio portrait camera, soft window light, neutral photographic grading",
+    "shot on an iPhone, raw handheld look, natural color grading",
+    "shot on a full-frame camera with a 50mm lens, golden hour sunlight, warm color balance",
+    "shot on a vintage 16mm film camera, warm desaturated grade",
+    "shot on a mirrorless camera with a 35mm lens, soft natural daylight, true-to-life color grading"
   ],
   "requirements": {
     "subject": {

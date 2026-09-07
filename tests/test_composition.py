@@ -5,12 +5,27 @@ the bank fills the rest. That is the behaviour worth defending here, along with
 the one that would break the app quietly - a guide the linter cannot detect,
 which would drop the composition layer to zero and fail the 8/8 gate.
 """
+import os
 import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tools"))
+
+# Before MainWindow is imported: it reads AIVS_SETTINGS_APP at import time to
+# pick which QSettings key it opens. Without this every GUI test read AND
+# WROTE the user's real saved provider/model/theme/window geometry.
+os.environ.setdefault("AIVS_SETTINGS_APP", "Studio-Tests")
+# This suite's own variant-build step below used to write straight into the
+# REAL history.jsonl (no redirect existed) and then delete exactly the rows
+# it added back out - fine as long as nothing crashed in between, but a
+# crash between the write and that cleanup would have left fake rows
+# permanently mixed into the user's real log. Redirect instead of trusting
+# the cleanup to always run.
+os.environ.setdefault(
+    "AIVS_HISTORY_FILE", str(Path(tempfile.gettempdir()) / "aivs-composition-history.jsonl"))
 
 from PyQt6.QtWidgets import QApplication
 
@@ -222,9 +237,7 @@ check("all variants use it",
 check("all variants 8/8", all(e["score"] == 8 for e in recent),
       str([e["score"] for e in recent]))
 
-remaining = hist.load()[:-3]
-hist.save_all(remaining)
-if not remaining and hist.HISTORY.exists():
+if hist.HISTORY.exists():
     hist.HISTORY.unlink()
 
 print("--- back to (none) ---")

@@ -472,7 +472,226 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   (the spec's `EXE(contents_directory=".")`) is what makes this possible at all - it restores the
   pre-6.0 flat layout, without which even a correct `tools/` would land inside a `_internal/`
   subfolder a level away from where `.env`/`temp/` are expected to sit.
-- **Run `python tests/run_all.py` before calling anything done.** 1040 checks, no dependencies
+- **A `realism_lint.py` `DETECT` key is deliberately broader than what `prompt_bank.json` can
+  generate** - a prompt may say "shot on a full-frame camera" by hand and still satisfy the lens
+  layer, even though no bank term produces that exact phrase. Most such gaps are intentional
+  (free-text headroom, drawn from the bootcamp PDF's worked-example prose rather than its
+  canonical per-category bullet list). One genuinely was not: `"subtle rim light"` is in the
+  PDF's own 8-item lighting list and in `DETECT`, but `prompt_bank.json`'s `lighting.terms` had
+  swapped it out for two bank-invented additions - detectable, never generatable. Found by
+  auditing every layer's `DETECT` list against the PDF's canonical list, not by guessing; fixed
+  by adding the missing term and bumping `prompt_bank.json`'s `version`. Before adding a term
+  "to be safe," check whether the gap is this kind (a real, PDF-sourced omission) or the
+  intentional free-text-headroom kind - widening `DETECT` further is never the fix either way.
+- **Video prompts are now gated on the negative-tail guard actually being present, the same way
+  images always have been.** `build_motion.compose()`/`assemble_template()` always append
+  `negative_tail(bank)`, but nothing ever checked that it survived - a hand edit or a future
+  code path that forgot to call it would still score a clean PASS. `motion_lint.negatives_present()`
+  (rule 7) checks for the bank's literal negative terms, not a phrasing pattern - a Kling prompt's
+  tail is always the same comma-joined bank phrases, unlike an image prompt's freely-worded "no
+  X," so exact-term matching is the correct check here, not a weaker one.
+- **`motion_bank.json`'s `style_presets` grew from 6 to 16** (version 2 -> 3), combining the same
+  PDF camera/lighting/grade vocabulary the image side already had (DSLR/mirrorless/smartphone/
+  documentary/vintage-film/handheld camera types x golden-hour/window-light/overcast-daylight
+  lighting x muted/earthy/warm colour grades) - richer photographic language per Kling clip, not
+  just the original 6 phrases cycling on repeat. Style vocabulary only; `MOTION_VERBS`,
+  `CONTRADICTIONS` and the 40 movements themselves are untouched. Two early drafts used "cinematic
+  color balance," which an existing test already banned (the Reddit-retrospective rule against
+  vague words like "cinematic"/"professional"/"high quality") - `prompt_bank.json`'s own colour
+  layer uses that exact phrase and gets away with it because it names a real, specific grade in
+  context there; the lesson is that a word banned in one bank is not automatically safe to reuse
+  in a different one just because it looks concrete in isolation.
+- **`tools/refine_image.py` closes the one loop that was still 100% manual: generate -> notice
+  it's off -> figure out which realism layer is weak -> re-prompt by hand.** It does not invent a
+  new critique mechanism - `brief.critique_image()` already asks a vision model which of the 8
+  named `realism_lint` layers look weak, already whitelisted against exactly those 8 names (the
+  same discipline as every other AI-assisted feature's key whitelist). `refine_image.refine()`
+  adds the missing back half: act on the critique. `strengthen()` pulls MORE of a weak layer's own
+  already-vetted terms via `spec["overrides"]` for a `pick > 1` layer (core/lens/texture/colour/
+  composition/grain - stacking more never contradicts), but SWAPS to a different single term for a
+  `pick: 1` layer (camera/lighting) instead of stacking, because `prompt_bank.json`'s own lighting
+  note warns that mixing two sources contradicts itself the same way two cameras would - "strengthen
+  this layer" cannot mean the same operation for both kinds without breaking that rule. Capped at
+  2 retries (3 generations total, confirmed by cost before running, same `confirm_spend()`/
+  `pricing.json` machinery every other batch already uses) - opt-in via Compose's "Refine until
+  real" button, never automatic, since every retry is a real paid generation. Every attempt is
+  logged through `history.append()`'s new optional `note` param (purely additive - every existing
+  call site is unaffected) so a refine-loop attempt is traceable in the outcome log later.
+- **`RefineTask` (`ui/workers.py`) runs on its own small `QThreadPool`, not `MainWindow.pool`
+  (`GenerationPool`).** The refine loop is one call that can take several minutes and makes its
+  own decisions about whether to submit another generation - the opposite of `GenerationPool`'s
+  job shape (many independent single-image jobs dispatched at once). This is the same reasoning
+  Brief/Compose's autofill/upgrade `LlmTask` calls already follow, each on their own local
+  `QThreadPool` rather than the per-job pool - a multi-step or long-running call gets its own
+  small pool; `GenerationPool`/`VideoPool` stay for what they were built for, parallel single jobs.
+- **`tools/midjourney_export.py` is a text-only reformat, not a new provider.** Midjourney has no
+  official public API - every third-party service that automates it puppets the Discord bot,
+  against Midjourney's own terms. `to_midjourney()` takes an already-built, already-`realism_lint`-
+  passed prompt and appends Midjourney's own parameter syntax (`--ar` from `spec["aspect"]`,
+  `--style raw --stylize 50` as a photoreal-leaning default, `--no <terms>` translated from
+  `prompt_bank.json`'s own sentence-form negatives, `--v 6.1`) for the user to paste into
+  Midjourney themselves - the same spirit as Cats' "Copy sound cue" button. It deliberately does
+  NOT strip the negatives/aspect-ratio prose `compose()` already appended to the prompt before
+  adding the MJ-native versions: `prompt` is natural-language text, not structured data, and
+  trimming the tail of an already-assembled sentence to remove what looks redundant is exactly the
+  fragile text-surgery this project avoids elsewhere (see `AiSuggestionBadge`'s hardcoded-string
+  lesson, above). Seeing the same instruction twice - once as prose, once as a native parameter -
+  is redundant, not wrong. A reference image gets a plain-text note naming the file to attach by
+  hand in Discord, never an automated `--cref`/`--sref` URL, since that would need hosting the
+  image somewhere - out of scope for a text-only export.
+- **A GUI suite that loads "whichever character is first in the library" depends on the user's
+  live data, and it can silently HANG, not just fail.** `smoke_gui.py` and `test_lighting.py`
+  both did `library.setCurrentRow(0); load_selected()` to get a base spec - fine while the
+  library was empty, but the moment a real saved character exists whose `shot_custom` names no
+  capture device (a legitimate 7/8, per the `pick`-precedence rule above), `ComposeView.
+  request_generate()`'s `confirm_if_failing()` pops a real `QMessageBox.question()` with nobody
+  offscreen to click it. That is a genuine hang (confirmed: ~14 minutes of wall time against
+  1.7s of CPU time, no open sockets - not a slow computation, a blocked wait), not merely a
+  wrong score - and it was sitting latent the whole time this project had an empty character
+  library, surfaced only once the user had one real saved character. Fixed both suites to
+  `editor.load_spec({"subject": "...", "seed": 0})` a fixed spec instead (the same "a test must
+  never depend on the user's live data" rule as everywhere else), and `smoke_gui.py` additionally
+  monkeypatches `QMessageBox.question` to auto-answer, belt-and-braces, so a future spec that
+  happens to score below 8/8 fails a check instead of hanging the whole suite.
+- **`tests/test_layout.py`'s overlap/spill scans used to be blind inside a nested layout added
+  via `addLayout()`.** They walked `QWidget.layout()`'s direct items only - a widget added through
+  a layout-inside-a-layout (`right_card.body.addLayout(buttons_col)`, `buttons_col.addWidget(...)`)
+  was invisible, because `buttons_col` itself is never a `QWidget` `findChildren()` can reach.
+  Real consequence, not a theoretical one: cramming a 4th button into Compose's result column this
+  way left all four **genuinely overlapping on screen** (confirmed directly with the exact
+  `QRect.intersects()` call the scan itself uses) while `test_layout.py` reported zero overlaps.
+  **Now actually closed**, not just documented: `layout_overlaps()`/`overflowing()` use a shared
+  `leaf_widgets()` helper that recurses through `item.layout()` (an `addLayout()` nesting stays in
+  the same widget's coordinate space, so geometry is still directly comparable) and only stops at
+  a real `item.widget()` - which `findChildren()` will visit separately as its own parent anyway.
+  Re-running the improved gate immediately surfaced a second, real, pre-existing overlap it had
+  never been able to see: Videos' Motion tab `prompt_card` at the 1100x700 floor, where
+  `form_scroll`'s own 220px minimum plus the four rows and cost note after it demanded more height
+  than the card had, and a `QVBoxLayout` forced smaller than its own minimum does not shrink - it
+  lets later rows draw on top of earlier ones. Fixed the same way as the Compose case: everything
+  in `prompt_card` below the two title labels now scrolls as one `QScrollArea` unit instead.
+- **`tests/test_layout.py` never checked a `QPushButton`'s own width against its text.**
+  `clipped_labels()` only ever covered `QLabel`; a button has zero shrink tolerance
+  (`minimumSizeHint() == sizeHint()` for `QPushButton`), so anything narrower than its sizeHint
+  silently elides or clips the label with no error anywhere. Added `clipped_buttons()`, the same
+  shape as `clipped_labels()`, wired into the same per-size/theme sweep. It immediately found real,
+  pre-existing elision in six different rows across the app at the 1100x700 floor (some persisting
+  even at the 1440x900 default) - "Reshuffle"/"Copy" and "Save character"/"Rename"/"Delete" in
+  Compose, "Build prompts"/"Generate all"/"Pick as winner" in Variants, "Draft the copy with AI" in
+  Ads, "Auto-fill the whole story" and "Generate every scene" in Cats - all invisible to every
+  other check because nothing overlapped and nothing was too narrow, a button just silently drew
+  less text than it was told to. Fixed per-case: Ads/Cats' single-button-plus-badge cards got a
+  self-healing `setMinimumWidth(max(<old guess>, button.sizeHint().width() + badge.sizeHint().width()
+  + spacing + 2*CARD_PADDING + slack))`, the same pattern `ads.py`'s own caption-width floor already
+  used; Variants' seven-widget `controls` row split into a settings row (mode/count) and an actions
+  row; Compose's `controls` row (Form/combo/Reshuffle/Copy) and its library card's button rows
+  (Load/Save, New/Rename/Delete) don't have that kind of slack to spend - they sit inside a
+  `QSplitter` whose per-pane floors already sum to the window's own minimum width - so those went
+  vertical instead (each button on its own line, or paired only where the pair's combined sizeHint
+  actually fits), which then cost height instead of width and had to be balanced against
+  `library_card`'s own tight vertical budget (New+Rename share a row, only Delete gets its own, to
+  keep the added height inside what the card already had).
+- **A resizable `QScrollArea` never shrinks its content below that content's own minimum size -
+  unlike a plain layout, which will squeeze content smaller and let it overlap instead, a
+  scroll area just clips silently, and with the horizontal scrollbar off that clipping is
+  invisible.** Found by actually looking at real screenshots of the Motion tab (offscreen Qt
+  renders no text, but box geometry is still visible) after the `below_title_scroll` fix above:
+  the five-field form plus four action rows plus cost note wanted 705px and the column's own
+  `QScrollArea` viewport was 407px - 298px of the form's OWN fields (Shot type, Subject, Action,
+  Style, Camera movement) were silently cut off the right edge with no scrollbar to reach them,
+  every time, on every launch, at the declared minimum window size. Root cause: `actions`,
+  `audio_row`, `still_row` and `options` each paired a big non-shrinking button
+  (`apply_button` 372px, `copy_cue_button`, `choose_still_button`/`clear_still_button`,
+  `generate_button` 279px - `QPushButton.minimumSizeHint() == sizeHint()`, zero give) with other
+  controls in one row, and the row's true minimum (not just its sizeHint) exceeded the viewport.
+  Fixed by splitting each of those four rows in two - the big button gets its own row, the
+  shrinkable controls (badges, combos, the flexible `audio_cues_field`) share the other - which
+  dropped the content's real minimum from 705px to 407px, an exact fit. Also switched
+  `below_title_scroll`'s horizontal scrollbar from `AlwaysOff` to `AsNeeded` as a safety net: if a
+  future row regresses this, a scrollbar appears rather than silently clipping a field again.
+  Lesson for review, not just this file: an "all green" `test_layout.py` run is necessary but was
+  not sufficient here - it checks widget-level geometry, not whether a `QScrollArea`'s chosen
+  content is actually the size the viewport can show. A quick real screenshot of anything wrapped
+  in a new scroll area is worth taking before calling a layout fix done.
+- **The offscreen Qt platform used for every test in this project has an EMPTY font database -
+  zero families, not a substitute font.** `QFontDatabase.families()` returns `[]` under
+  `QT_QPA_PLATFORM=offscreen`; every `sizeHint()` measured that way (which is most of the button-
+  width work two bullets up) comes from Qt's built-in synthetic fallback, which gave `'W'` and
+  `'i'` the identical 13px advance width - nothing like the real, installed "Inter" font
+  (`exactMatch: True` under the native `windows` platform) this app actually renders with, which
+  measured the same strings meaningfully narrower. Confirmed directly: re-running the native
+  platform (no `QT_QPA_PLATFORM` override at all - this machine is real Windows, not a headless
+  CI box) against the exact buttons flagged in a user screenshot showed them fitting comfortably
+  (best case 462px available against a 161px need), meaning the pixel-level width numbers this
+  session computed offscreen do not reflect the real font at all, only the RELATIVE reasoning
+  ("put the big non-shrinking button on its own row") - which still holds, since that conclusion
+  doesn't depend on exact character widths. **Not fixed** - no attempt was made to give the
+  offscreen platform a real font database in this pass; take offscreen-measured pixel widths as a
+  directional signal only, and prefer a native-platform (or real-screenshot) check before trusting
+  an exact number from `sizeHint()` in this environment.
+- **Every GUI test that builds a `MainWindow` was reading AND WRITING the user's real, live
+  `QSettings` - provider, model, theme, form_mode, learned, and the saved window geometry -
+  through the entire history of this project, in all nine suites that construct one.**
+  `MainWindow.__init__` opened `QSettings("AI Video Studio", "Studio")` unconditionally; nothing
+  redirected it, unlike every other piece of live state this project is careful about
+  (`AIVS_ENV_FILE`, `AIVS_HISTORY_FILE`, `AIVS_PRICING_FILE`, `assets.CHARACTERS_DIR`). Confirmed
+  destructively, by accident, investigating the bug below: a probe script that simulated a saved
+  narrow window by writing to the SAME real `QSettings` key left the user's actual saved geometry
+  erased once removed again. Fixed by a new `AIVS_SETTINGS_APP` env var (`ui/main_window.py`'s
+  `SETTINGS_APP` module constant, read once at import time, same shape as the other seams) - every
+  suite that builds a `MainWindow` now sets it before that import, `tests/run_all.py` sets a
+  central default too. **If you write a new suite that imports `ui.main_window`, set
+  `AIVS_SETTINGS_APP` first** - the central default only protects suites run through
+  `run_all.py`, not a standalone `python tests/whatever.py`.
+- **Two suites (`test_composition.py`, `test_lighting.py`) wrote real variant-build rows straight
+  into the REAL `history.jsonl` and deleted exactly those rows back out afterward - correct only
+  as long as nothing crashed in between.** Neither had ever set `AIVS_HISTORY_FILE`, unlike every
+  other suite that touches history; a failed `check()` partway through would have left synthetic
+  8/8 rows permanently mixed into the user's real outcome log, silently biasing
+  `history.weights()`. Two more (`test_autofill_gui.py`, `test_newui.py`) did the safer-looking
+  backup-the-real-file-then-restore-it pattern, which has the same crash-shaped hole. All four now
+  redirect to their own isolated `AIVS_HISTORY_FILE` instead, matching the pattern every other
+  history-touching suite already used - a full redirect, not a backup, is the only version of this
+  that survives a crash.
+- **A restored window geometry can be narrower than a `setMinimumSize` already in force, and
+  nothing in this codebase noticed.** `MainWindow.restore_state()` calls `self.restoreGeometry()`
+  from a value `QSettings` last saved - if that was ever a size smaller than today's 1100x700 floor
+  (an older build, or the window manually resized down before this session's newest content was
+  added), `restoreGeometry()` hands the window back a size the constructor's own
+  `setMinimumSize(1100, 700)` was supposed to rule out. Confirmed directly: writing a synthetic
+  saved 900x600 geometry reproduced the exact symptom from a user's real screenshot (a Result card
+  and options row cropped mid-word, on a build whose own offscreen tests all reported 0 elided
+  buttons) - the app was not too narrow, the RESTORED window was. This is precisely why the
+  measured pixel-width bugs above never surfaced through any test: every suite constructs a fresh
+  `MainWindow` and calls `.resize()` or `.show()` at the declared floor - none of them go through
+  `restore_state()`'s geometry-restoring path at all, so this class of bug is structurally
+  invisible to the whole test suite. Fixed by re-asserting the floor immediately after
+  `restoreGeometry()` in `restore_state()` rather than trusting it to have respected the minimum.
+- **THE bug behind the cut-off buttons, and the reason every check above missed it: a resizable
+  `QScrollArea` with `ScrollBarAlwaysOff` does not squeeze, wrap or scroll content that is too
+  wide - it CLIPS, silently.** Compose's result card had a 188px viewport around 462px of content
+  whose minimum could not shrink, so **274px of every button - frame included - was drawn off the
+  right-hand edge on every launch, at every window size, in both themes**. Nothing detected it
+  because nothing was wrong by any existing measure: every widget got exactly the geometry it
+  asked for, nothing overlapped, no label was too narrow, no control was crushed, no button
+  elided. They were simply painted outside the visible rectangle. Two causes, both fixed:
+  (1) four `QComboBox`es in one row, each reporting its widest item ("(use Settings)") as its
+  minimum width, pinned the content at 462px - combos now carry
+  `setSizeAdjustPolicy(AdjustToMinimumContentsLengthWithIcon)` + `setMinimumContentsLength(6)` +
+  a 56px floor so they can compress, and sit in a 2x2 `QGridLayout` rather than 1x4;
+  (2) the result column was starved - `setSizes()` scales its arguments PROPORTIONALLY when they
+  overflow the canvas, so the ratio, not `setMinimumWidth`, decided the real width (a 230px floor
+  still came out ~219px). Sizes now sum near the real 838px canvas instead of 1150.
+  **The rule: never `ScrollBarAlwaysOff` on a resizable QScrollArea.** All eight in this codebase
+  are now `AsNeeded`; `test_layout.py`'s new `clipped_scrollareas()` check fails the build on any
+  new one, and it caught three further live instances (Ads 144px, Cats 260px and 99px) the moment
+  it was written.
+- **Also fixed while in there:** `ImagePreview` never called `setWordWrap(True)`, so its "No image
+  yet..." placeholder ran off the edge instead of reflowing; the four result-card buttons were
+  stacked 1x4, which pushed the primary **Generate** button below the fold of its own scroll area
+  (now 2x2); and their labels are now short (Generate/Upscale/Refine/Copy (MJ)) with the full
+  description in the tooltip.
+- **Run `python tests/run_all.py` before calling anything done.** 1108 checks, no dependencies
   beyond PyQt6, Qt runs offscreen.
 
 ---

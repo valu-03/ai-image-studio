@@ -167,7 +167,12 @@ class VideosView(QWidget):
         form_holder_layout.addWidget(self.prompt_view)
         form_scroll = QScrollArea()
         form_scroll.setWidgetResizable(True)
-        form_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        # AsNeeded, never Off: a resizable QScrollArea does not shrink its
+        # content below that content's own minimum - it CLIPS, and with the
+        # bar off nothing (no scrollbar, no overlap, no elision) reveals the
+        # missing part. See CLAUDE.md; Compose lost 274px of every button
+        # this way. test_layout.py now fails on it.
+        form_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         form_scroll.setFrameShape(QScrollArea.Shape.NoFrame)
         form_scroll.setWidget(form_holder)
         form_scroll.setMinimumHeight(220)
@@ -190,12 +195,22 @@ class VideosView(QWidget):
         self.apply_button.clicked.connect(self.apply_hints)
         self.apply_button.setEnabled(False)
 
+        # apply_button alone needs 372px and cannot shrink - paired with the
+        # badge and copy button the row wanted 672px against the ~407px this
+        # column actually has once its own QScrollArea refuses to compress it
+        # any further (a resizable scroll area never goes below the content's
+        # own minimum size - unlike a plain layout, it will not silently
+        # overlap instead, so the excess was just clipped off-screen instead).
+        # Splitting it onto its own row is the fix, not a wider scrollbar.
         actions = QHBoxLayout()
         actions.setSpacing(T.SPACE["sm"])
         actions.addWidget(self.lint_badge)
-        actions.addStretch(1)
-        actions.addWidget(self.apply_button)
         actions.addWidget(copy_button)
+        actions.addStretch(1)
+
+        apply_row = QHBoxLayout()
+        apply_row.addWidget(self.apply_button)
+        apply_row.addStretch(1)
 
         # [AUDIO CUES] - no scene or sound sheet exists here to attach to, so
         # this is a standalone suggestion: the same ElevenLabs key-effect shape
@@ -212,12 +227,17 @@ class VideosView(QWidget):
         copy_cue_button.setProperty("class", "ghost")
         copy_cue_button.clicked.connect(self.copy_audio_cue)
 
+        # copy_cue_button gets its own row for the same reason apply_button
+        # does above - the field can shrink, the button cannot.
         audio_row = QHBoxLayout()
         audio_row.setSpacing(T.SPACE["sm"])
         audio_row.addWidget(MutedLabel("Audio cue"))
         audio_row.addWidget(self.audio_cues_field, 1)
         audio_row.addWidget(self.audio_badge)
-        audio_row.addWidget(copy_cue_button)
+
+        audio_button_row = QHBoxLayout()
+        audio_button_row.addWidget(copy_cue_button)
+        audio_button_row.addStretch(1)
 
         # THE FIRST FRAME. Kling is image-to-video underneath - the still
         # constrains composition, identity and framing far more than the
@@ -234,12 +254,18 @@ class VideosView(QWidget):
         clear_still_button.setProperty("class", "ghost")
         clear_still_button.clicked.connect(self.clear_still)
 
+        # Same split again: the label can shrink, "Choose still..." and
+        # "Clear" cannot - all four together wanted 617px of ~407px.
         still_row = QHBoxLayout()
         still_row.setSpacing(T.SPACE["sm"])
         still_row.addWidget(self.still_badge)
         still_row.addWidget(self.still_label, 1)
-        still_row.addWidget(choose_still_button)
-        still_row.addWidget(clear_still_button)
+
+        still_button_row = QHBoxLayout()
+        still_button_row.setSpacing(T.SPACE["sm"])
+        still_button_row.addWidget(choose_still_button)
+        still_button_row.addWidget(clear_still_button)
+        still_button_row.addStretch(1)
 
         # Kling 3.0's own options, for one clip. The Cats section takes its
         # duration from the scene it belongs to; here there is no scene, so the
@@ -279,25 +305,62 @@ class VideosView(QWidget):
         self.generate_button.clicked.connect(self.request_video)
         self.cost_note = MutedLabel("")
 
+        # generate_button (279px, no shrink) alone left only 105px for the
+        # other four controls' combined 380px - same split as the rows above.
+        # Tight (xs) spacing: even alone, duration+aspect+mode+sound at their
+        # own minimums still needed a few px more than the column has.
         options = QHBoxLayout()
-        options.setSpacing(T.SPACE["sm"])
+        options.setSpacing(T.SPACE["xs"])
         options.addWidget(self.duration)
         options.addWidget(self.aspect)
         options.addWidget(self.mode)
         options.addWidget(self.sound)
         options.addStretch(1)
-        options.addWidget(self.generate_button)
+
+        generate_row = QHBoxLayout()
+        generate_row.addWidget(self.generate_button)
+        generate_row.addStretch(1)
+
+        # form_scroll's own 220px floor covers the five-row form + prompt
+        # preview alone, per the comment above - it says nothing about the
+        # four rows and the cost note that come after it. At the 700px-floor
+        # window those together still do not fit the card, and a QVBoxLayout
+        # forced smaller than its own minimum size does not shrink - it lets
+        # later rows overlap earlier ones instead. Same fix as Compose's
+        # result card: everything below the two title labels scrolls as one
+        # unit, so a small window scrolls rather than overlaps.
+        below_title = QWidget()
+        below_title_layout = QVBoxLayout(below_title)
+        below_title_layout.setContentsMargins(0, 0, 0, 0)
+        below_title_layout.setSpacing(T.SPACE["sm"])
+        below_title_layout.addWidget(form_scroll, 1)
+        below_title_layout.addLayout(actions)
+        below_title_layout.addLayout(apply_row)
+        below_title_layout.addLayout(audio_row)
+        below_title_layout.addLayout(audio_button_row)
+        below_title_layout.addLayout(still_row)
+        below_title_layout.addLayout(still_button_row)
+        below_title_layout.addLayout(options)
+        below_title_layout.addLayout(generate_row)
+        below_title_layout.addWidget(self.cost_note)
+
+        below_title_scroll = QScrollArea()
+        below_title_scroll.setWidgetResizable(True)
+        # AsNeeded, not Off: a resizable QScrollArea never shrinks its content
+        # below that content's own minimum size the way a plain layout would -
+        # it clips instead. Every row above is now sized to fit the declared
+        # 1100px-floor window with room to spare, but if a future row (or a
+        # wider font) pushes it over again, a scrollbar surfaces that rather
+        # than silently cutting a field off past the visible edge.
+        below_title_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        below_title_scroll.setFrameShape(QScrollArea.Shape.NoFrame)
+        below_title_scroll.setWidget(below_title)
 
         prompt_card = Card()
         prompt_card.body.setSpacing(T.SPACE["sm"])
         prompt_card.body.addWidget(self.movement_title)
         prompt_card.body.addWidget(self.movement_does)
-        prompt_card.body.addWidget(form_scroll, 1)
-        prompt_card.body.addLayout(actions)
-        prompt_card.body.addLayout(audio_row)
-        prompt_card.body.addLayout(still_row)
-        prompt_card.body.addLayout(options)
-        prompt_card.body.addWidget(self.cost_note)
+        prompt_card.body.addWidget(below_title_scroll, 1)
 
         self.checks = QTreeWidget()
         self.checks.setColumnCount(3)
