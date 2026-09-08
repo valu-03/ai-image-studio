@@ -1,7 +1,7 @@
 {
   "source": "AI Video Bootcamp's Phase 2 lighting cheat-sheet, extended with the standard portrait-photography vocabulary (Rembrandt, split, loop, butterfly, three-point, high-key/low-key - not course material, named studio technique) and physically-grounded realism cues an image model can act on directly. Not guessed: each technique is a specific, checkable phrase, the same standard the original 8 layers already hold to.",
-  "version": 1,
-  "note": "Two paths to a lighting phrase. The FAST path picks a named `setup` - a pre-vetted, hand-written recipe that can never contradict itself. The DEEP path picks direction + quality + source independently, the way a working photographer actually thinks, and is checked against `conflicts` because an arbitrary combination CAN fight itself (hard light from an overcast sky, for instance). `realism_techniques` stack on top of either path, additive and opt-in, never required.",
+  "version": 2,
+  "note": "Two paths to a lighting phrase. The FAST path picks a named `setup` - a pre-vetted, hand-written recipe that can never contradict itself. The DEEP path picks direction + quality + source independently, the way a working photographer actually thinks, and is checked against `conflicts` because an arbitrary combination CAN fight itself (hard light from an overcast sky, for instance). `realism_techniques` stack on top of either path, additive and opt-in, never required - it also holds light-shaping MODIFIERS (silver/white reflector, direct/diffused/bounced) alongside the photorealism cues; mechanically they stack identically, so they share one dict rather than a second parallel mechanism.",
 
   "directions": {
     "front": {
@@ -175,6 +175,30 @@
       "phrase": "low-key lighting, dark and high-contrast with most of the frame in deep shadow",
       "direction": "short", "quality": "hard", "source": "practical",
       "teaches": "Moody and cinematic - most of the frame does nothing, which is exactly what makes the lit part read as real."
+    },
+    "clam-shell": {
+      "label": "Clam shell",
+      "phrase": "clam shell lighting, two soft sources above and below the face filling the shadow a single overhead light would leave",
+      "direction": "butterfly", "quality": "soft", "source": "studio-strobe",
+      "teaches": "A beauty-industry staple: the lower source fills the under-eye and under-chin shadow the butterfly key alone leaves behind, without flattening the face."
+    },
+    "beauty-box": {
+      "label": "Beauty box",
+      "phrase": "a large beauty dish close to the face, a soft-edged catchlight and creamy falloff across the skin",
+      "direction": "butterfly", "quality": "soft", "source": "studio-strobe",
+      "teaches": "The modifier does the work here, not a different direction - close and large reads as soft and flattering almost regardless of what it's attached to."
+    },
+    "checkerboard": {
+      "label": "Checkerboard",
+      "phrase": "checkerboard lighting, a patterned gobo casting alternating bands of light and shadow across the frame",
+      "direction": "split", "quality": "hard", "source": "studio-strobe",
+      "teaches": "A graphic, stylised look built from a shaped shadow rather than a face-shaping light - reach for it when the pattern itself is the point."
+    },
+    "old-hollywood": {
+      "label": "Old Hollywood hard light",
+      "phrase": "hard Old Hollywood glamour lighting, a crisp key and a hard rim separating the subject from a dark background",
+      "direction": "short", "quality": "hard", "source": "studio-strobe",
+      "teaches": "1930s studio portraiture's signature look - hard-edged and high-contrast on purpose, the opposite instinct from every soft, flattering setup above."
     }
   },
 
@@ -213,6 +237,31 @@
       "label": "Fill ratio",
       "phrase": "gentle fill light retaining visible detail in the shadows",
       "note": "An alternative to the binary of fully lit vs. a crushed black shadow - real photography almost always has SOME fill, even if it's just bounce off a nearby wall."
+    },
+    "silver-reflector": {
+      "label": "Silver reflector",
+      "phrase": "light bounced off a silver reflector, more specular and higher in contrast",
+      "note": "A modifier, not a direction - this is HOW the light got shaped, and stacks on top of a direction/setup the same way any other technique here does."
+    },
+    "white-reflector": {
+      "label": "White reflector / fill card",
+      "phrase": "light bounced off a white reflector, a soft, low-contrast fill",
+      "note": "The gentler counterpart to the silver reflector above - fills shadow without adding much specular punch."
+    },
+    "direct-light": {
+      "label": "Direct",
+      "phrase": "light travelling straight from its source to the subject, unmodified",
+      "note": "The plainest of the three path options below - no diffusion, no bounce, nothing between source and subject."
+    },
+    "diffused-light": {
+      "label": "Diffused",
+      "phrase": "light passed through a diffusion panel before reaching the subject, softened and spread",
+      "note": "The light's PATH, not its quality - pairs naturally with the `soft` quality above but names the actual method rather than just the result."
+    },
+    "bounced-light": {
+      "label": "Bounced",
+      "phrase": "light bounced off a nearby surface before reaching the subject, indirect and gently wrapped",
+      "note": "Indirect light wraps around a subject in a way a direct source never does - the practical/motivated-source techniques above are often bounced light in practice."
     }
   }
 }

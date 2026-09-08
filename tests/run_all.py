@@ -30,6 +30,7 @@ ORDER = [
     "test_lighting.py",
     "test_composition_bank.py",
     "test_composition.py",
+    "test_posing_bank.py",
     "test_autofill.py",
     "test_autofill_gui.py",
     "test_library.py",

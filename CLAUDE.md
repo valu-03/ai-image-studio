@@ -829,6 +829,41 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   were needed at all. `tests/test_composition_bank.py` (new) audits the seven technique phrases
   against `realism_lint.py` and leaves `tests/test_composition.py` (the pre-existing combo/pin
   suite) untouched.
+- **Three improvements mined from a real photography-course library, not guessed.** Surveyed
+  `E:\Library Of Courses\Photography` (~2,600 files) for material that could extend the
+  app's prompt vocabulary the way earlier lessons became `prompt_bank.json`/
+  `lighting_bank.json`/`composition_bank.json`. Most of it is video/captions with nothing
+  extractable, but two sources were genuine cheat-sheet material: Lindsay Adler's *Master
+  Studio Lighting* and Dani Diamond's *Retouching Notes*/Earth Oliver's *Advanced Texture
+  Cleanup* (read as skin-realism LANGUAGE, not retouching steps - this app only ever writes
+  prompts, it never touches pixels). Three pieces shipped:
+  1. **A new Posing bank/section** (`tools/posing_bank.json`/`build_posing.py`,
+     `ui/views/posing.py`) - the single clearest outright gap: nothing in the app addressed
+     body/hand/gaze posing before this, "action" was a bare free-text field. 21 named poses
+     across 5 categories (portrait/editorial/headshot/group/candid) plus 5 opt-in posing-
+     realism techniques. Deliberately **not** one of `realism_lint.py`'s 8 gated layers -
+     posing is descriptive spec content like wardrobe/setting/mood, so it carries no
+     `DETECT` requirement; `tests/test_posing_bank.py` instead confirms a posed action field
+     never interferes with the 8 layers that ARE gated. Apply to Compose writes into the
+     Subject tab's Action field (`SpecEditor.set_action_override()`, new - a plain
+     `QLineEdit`, already wired to `changed`, so `setText()` alone was enough, no new signal
+     plumbing needed).
+  2. **Deepened the existing Lighting bank**, not a new section - four more named setups
+     (Clam shell, Beauty box, Checkerboard, Old Hollywood hard light) and a light-shaping
+     modifier vocabulary (silver/white reflector, direct/diffused/bounced) folded into the
+     SAME `realism_techniques` dict/`techniques_` stacking mechanism rather than a second
+     parallel one, since mechanically they behave identically to the existing realism cues.
+  3. **Four new `layers.texture.terms`** in `prompt_bank.json` (version 6 -> 7) translating
+     retouching-realism language into how a photo should LOOK ("natural skin texture
+     retained under light retouching", "authentic pores visible, not airbrushed smooth", ...)
+     - all four confirmed detectable by the EXISTING `DETECT["texture"]["keys"]`, so this
+     piece needed zero `realism_lint.py` changes.
+
+  Piece 1's `PosingView`/`build_posing.compose_posing()` mirror Composition's shape (one base
+  value + stacked techniques, no deep-path triplet) but take Lighting's newest pattern for
+  the base picker itself: a single editable combo, pick-or-type, resolved through a
+  `_resolved()` static method that is a direct copy of `LightingView`'s own (which itself
+  mirrors `SpecEditor._listed()`) - not a fourth reimplementation of the same 15 lines.
 - **A 5th Brief tab, "Analyze a photo," is the missing case `critique_image` structurally
   cannot cover.** `critique_image(bank, prompt, image_path)` requires an already-known prompt
   ("this image was generated from X, what's wrong with it") - exactly what an arbitrary
@@ -861,11 +896,11 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   field alongside their checkbox lists, so a realism cue isn't limited to the seven predefined
   ones either. `LightingView._resolved()` mirrors `SpecEditor._listed()`'s exact logic for
   resolving a typed/picked combo value to its underlying key.
-- **Run `python tests/run_all.py` before calling anything done.** 1273 checks, all green
-  (`test_history.py`, `test_lighting_bank.py`, `test_elevenlabs.py` and `test_composition_bank.py`
-  are all now in `tests/run_all.py`'s `ORDER` - `test_elevenlabs.py` existed for a while but was
-  never actually wired in, so it silently never ran as part of the suite until it was noticed),
-  no dependencies beyond PyQt6, Qt runs offscreen.
+- **Run `python tests/run_all.py` before calling anything done.** 1333 checks, all green
+  (`test_history.py`, `test_lighting_bank.py`, `test_elevenlabs.py`, `test_composition_bank.py`
+  and `test_posing_bank.py` are all now in `tests/run_all.py`'s `ORDER` - `test_elevenlabs.py`
+  existed for a while but was never actually wired in, so it silently never ran as part of the
+  suite until it was noticed), no dependencies beyond PyQt6, Qt runs offscreen.
 
 ---
 
@@ -889,7 +924,10 @@ portrait setups, or direction + quality + source composed independently, plus op
 techniques - Apply to Compose writes straight into Compose's own lighting override),
 **Composition** (the same seven framing geometries Compose's own combo already offers,
 browsable, plus opt-in realism techniques - negative space, lead room, depth layering, ... -
-stacked on top; Apply to Compose writes the result in as custom framing text), **Videos**
+stacked on top; Apply to Compose writes the result in as custom framing text), **Posing**
+(named poses across portrait/editorial/headshot/group/candid, plus opt-in posing-realism
+techniques; Apply to Compose writes the result into the Subject tab's Action field - posing
+is descriptive spec content, not one of the 8 gated realism layers), **Videos**
 (the Kling camera-movement toolkit and the film glossary — builds the prompt and, since Phase 3,
 can generate the real clip too), **Ads** (the five-beat UGC advert: brief, storyboard, hook A/B,
 checklist, publishing), **Cats** (a story in scenes plus its CapCut edit sheet, and a Custom Prompt tab for a

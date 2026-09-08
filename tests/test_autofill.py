@@ -114,8 +114,8 @@ check("the disagreement is reported, not fixed", any("typed your own" in n for n
       str(notes))
 
 print()
-print("=== THE BANK, v6 ===")
-check("version bumped", bank["version"] == 6, str(bank["version"]))
+print("=== THE BANK, v7 ===")
+check("version bumped", bank["version"] == 7, str(bank["version"]))
 check("phone-candid exists", "phone-candid" in bank["shot_presets"])
 check("it is a rear camera, not a selfie",
       "selfie" not in bank["shot_presets"]["phone-candid"]["camera"].lower(),

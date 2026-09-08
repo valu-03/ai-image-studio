@@ -1,0 +1,126 @@
+{
+  "source": "Standard posing vocabulary taught across portrait/editorial photography courses (weight shift, S-curve, forced perspective, triangle grouping, catch-in-motion candids) - not one course's material specifically, the same broad-vocabulary approach prompt_bank.json's own core/camera/lens layers already take.",
+  "version": 1,
+  "note": "Posing is descriptive spec content, like wardrobe/setting/mood - it is NOT one of realism_lint.py's 8 gated photorealism layers, so nothing here needs a DETECT keyword. A pose (picked or typed) is the base; `techniques` stack on top, additive and opt-in, never required. No conflicts list: one pose is picked at a time and no technique fights a pose or another technique.",
+
+  "poses": {
+    "portrait": {
+      "weight-back-leg": {
+        "label": "Weight on the back leg",
+        "phrase": "weight shifted onto the back leg, the front knee softly bent",
+        "note": "The default flattering stance - avoids the flat, evenly-weighted look of standing straight at the camera."
+      },
+      "chin-forward-down": {
+        "label": "Chin forward and down",
+        "phrase": "chin brought slightly forward and down to elongate the neckline",
+        "note": "Fights the double-chin/foreshortened-neck look a straight-on chin produces at most focal lengths."
+      },
+      "three-quarter-turn": {
+        "label": "Three-quarter turn",
+        "phrase": "body turned three-quarters toward camera rather than square to it",
+        "note": "Reads slimmer and more dynamic than a fully square-to-camera stance."
+      },
+      "hand-near-jaw": {
+        "label": "Hand near the jaw",
+        "phrase": "a hand resting lightly near the jawline rather than flat against the cheek",
+        "note": "Flat-against-the-cheek reads as posed and stiff; near the jaw, fingers relaxed, reads natural."
+      }
+    },
+    "editorial": {
+      "s-curve": {
+        "label": "S-curve spine",
+        "phrase": "an elongated S-curve through the spine and hips",
+        "note": "The classic fashion-editorial line - shoulders and hips angled opposite each other."
+      },
+      "forced-perspective": {
+        "label": "Forced perspective",
+        "phrase": "a limb extended toward the lens for forced perspective",
+        "note": "Exaggerates scale and adds dynamism - needs a wider lens to read correctly, pairs oddly with a long telephoto."
+      },
+      "asymmetrical-stance": {
+        "label": "Asymmetrical stance",
+        "phrase": "an off-balance, asymmetrical stance rather than a centred, even one",
+        "note": "Deliberate imbalance is what separates an editorial pose from a catalogue one."
+      }
+    },
+    "headshot": {
+      "forward-lean": {
+        "label": "Slight forward lean",
+        "phrase": "a slight forward lean toward the camera",
+        "note": "Reads as engaged and confident rather than passive - the default corporate-headshot instruction."
+      },
+      "shoulders-angled": {
+        "label": "Shoulders angled off-axis",
+        "phrase": "shoulders angled away from the camera axis while the face turns back toward it",
+        "note": "Avoids the mugshot look of shoulders and face both square to the lens."
+      },
+      "genuine-microexpression": {
+        "label": "Genuine micro-expression",
+        "phrase": "a genuine, soft-eyed micro-expression rather than a held, frozen smile",
+        "note": "A held smile reads dead in the eyes past a few seconds - the real thing this note is fighting is the AI model's tendency toward a flat, identical grin."
+      }
+    },
+    "group": {
+      "staggered-heights": {
+        "label": "Staggered heights",
+        "phrase": "heights staggered front-to-back rather than lined up flat",
+        "note": "A flat line of equal heights is the single most common amateur group-photo mistake."
+      },
+      "triangle-arrangement": {
+        "label": "Triangle arrangement",
+        "phrase": "the group arranged in a triangle rather than a straight line",
+        "note": "Same logic as the composition bank's own triangle guide, applied to bodies instead of frame geometry."
+      },
+      "genuine-interaction": {
+        "label": "Genuine interaction",
+        "phrase": "genuine interaction between the group rather than everyone facing camera",
+        "note": "Not everyone has to look at the lens - some heads turned toward each other reads far less staged."
+      }
+    },
+    "candid": {
+      "mid-gesture": {
+        "label": "Caught mid-gesture",
+        "phrase": "caught mid-gesture rather than posed and still",
+        "note": "The core of what makes a candid read as candid - motion frozen partway, not a held pose."
+      },
+      "walking-mid-stride": {
+        "label": "Walking, mid-stride",
+        "phrase": "walking motion frozen mid-stride",
+        "note": "A specific, reliable candid: mid-stride avoids both feet flat on the ground, which reads as posed."
+      },
+      "natural-reaction": {
+        "label": "Natural reaction",
+        "phrase": "a natural laugh or reaction caught in the moment",
+        "note": "Genuine reaction beats a directed expression for anything meant to read as unposed."
+      }
+    }
+  },
+
+  "techniques": {
+    "asymmetrical-weight": {
+      "label": "Asymmetrical weight distribution",
+      "phrase": "weight distributed asymmetrically across the body, not perfectly even",
+      "note": "Perfectly even weight distribution is a small, reliable tell of a posed-and-held shot rather than a lived-in moment."
+    },
+    "relaxed-hands": {
+      "label": "Relaxed hands",
+      "phrase": "hands relaxed and loose, fingers gently curved rather than clenched or pressed flat",
+      "note": "Clenched or flat-pressed hands are one of the most common AI-generated-hand tells this app can actually fight with wording."
+    },
+    "soft-eyed-expression": {
+      "label": "Soft-eyed expression",
+      "phrase": "a soft, genuine expression in the eyes rather than a fixed stare",
+      "note": "Distinct from `genuine-microexpression` above (a pose-specific note) - this is a general, stackable instruction usable with any pose."
+    },
+    "negative-space-limbs": {
+      "label": "Negative space between limbs and torso",
+      "phrase": "visible negative space kept between the arms and the torso",
+      "note": "Arms pressed flat against the body reads stiff and widens the silhouette - a small gap reads relaxed and more flattering."
+    },
+    "relaxed-posture": {
+      "label": "Relaxed posture",
+      "phrase": "a relaxed, natural breathing posture, not held rigid",
+      "note": "A held-rigid pose is what makes an otherwise good pose still read as posed - this is the instruction that undoes that."
+    }
+  }
+}

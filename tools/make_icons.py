@@ -91,6 +91,13 @@ GLYPHS = {
         '<path d="M9 3v18M15 3v18M3 9h18M3 15h18"/>'
         '<circle cx="9" cy="9" r="1.3"/>'
     ),
+    # A simple stick figure - head, spine, arms angled out, legs in a
+    # walking stance rather than straight down, so it reads as a POSE
+    # rather than a generic person/user icon.
+    "posing": (
+        '<circle cx="12" cy="4.2" r="2.1"/>'
+        '<path d="M12 7.3v6.5M12 9.5l-4 2.5M12 9.5l4 2.5M12 13.8l-3.4 6.2M12 13.8l3.4 6.2"/>'
+    ),
 }
 
 TEMPLATE = (

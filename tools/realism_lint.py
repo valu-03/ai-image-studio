@@ -71,6 +71,12 @@ DETECT = {
             "three-point lighting", "high-key", "low-key",
             "catchlight", "colour temperature", "color temperature", "motivated",
             "falling off", "translucency", "specular highlights", "fill light",
+            # The Lighting bank's deepen pass (Lindsay Adler's course): four
+            # more named setups and a light-shaping modifier vocabulary
+            # (tools/lighting_bank.json). Audited for real, not assumed - see
+            # tests/test_lighting_bank.py.
+            "clam shell", "checkerboard", "old hollywood", "bounced off",
+            "unmodified", "diffusion panel",
         ],
         "fix": "add \"soft natural daylight with realistic shadows\" (the highest-value phrase)",
     },

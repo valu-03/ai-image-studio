@@ -1,6 +1,6 @@
 {
   "source": "AI Video Bootcamp - Phase 2 ARCHITECT - Lesson 20: Creating More Realistic Avatars",
-  "version": 6,
+  "version": 7,
   "default_model": "Nano Banana Pro",
   "layers": {
     "core": {
@@ -75,7 +75,11 @@
         "skin micro-details",
         "dust, scratches and wear",
         "slight imperfections",
-        "tactile materials"
+        "tactile materials",
+        "natural skin texture retained under light retouching",
+        "authentic pores visible, not airbrushed smooth",
+        "gentle retouching that preserves fine surface detail",
+        "faint, believable skin imperfections, like real photography"
       ]
     },
     "colour": {

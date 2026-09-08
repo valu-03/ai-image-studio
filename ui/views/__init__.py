@@ -7,6 +7,7 @@ cats         -> a cat story in scenes, with its CapCut edit sheet
 sound        -> ElevenLabs sound-effect prompts
 lighting     -> the photographic lighting taxonomy (setups, direction/quality/source)
 composition  -> the seven framing geometries plus opt-in realism techniques
+posing       -> named poses by shot type, plus opt-in posing realism techniques
 brief        -> the text-model helpers
 history / insights / settings
 """
@@ -20,6 +21,7 @@ from .history_view import HistoryView
 from .images import ImagesView
 from .insights import InsightsView
 from .lighting import LightingView
+from .posing import PosingView
 from .settings import SettingsView
 from .sound import SoundView
 from .variants import VariantsView
@@ -27,6 +29,6 @@ from .videos import VideosView
 
 __all__ = [
     "ImagesView", "ComposeView", "VariantsView", "VideosView", "AdsView",
-    "CatsView", "SoundView", "LightingView", "CompositionView", "BriefView",
-    "HistoryView", "InsightsView", "SettingsView",
+    "CatsView", "SoundView", "LightingView", "CompositionView", "PosingView",
+    "BriefView", "HistoryView", "InsightsView", "SettingsView",
 ]

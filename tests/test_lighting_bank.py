@@ -149,6 +149,10 @@ def run(args):
 p = run(["--list"])
 check("--list exits 0", p.returncode == 0, p.stderr[:160])
 check("--list names every setup", all(key in p.stdout for key in bl.setups(bank)))
+check("--list names the deepen-pass setups specifically",
+      all(name in p.stdout for name in
+          ["Clam shell", "Beauty box", "Checkerboard", "Old Hollywood hard light"]),
+      p.stdout[:400])
 
 p = run(["--setup", "rembrandt"])
 check("--setup exits 0", p.returncode == 0, p.stderr[:160])

@@ -86,6 +86,8 @@ class SpecEditor(QWidget):
     open_lighting_requested = pyqtSignal()
     # Same relationship, for the Composition section's guide library + techniques.
     open_composition_requested = pyqtSignal()
+    # Same relationship, for the Posing section's pose library + techniques.
+    open_posing_requested = pyqtSignal()
 
     def __init__(self, bank, parent=None):
         super().__init__(parent)
@@ -216,9 +218,17 @@ class SpecEditor(QWidget):
                  [self.purpose_note]),
             "Purpose",
         )
+        open_posing = QPushButton("Open Posing section →")
+        open_posing.setProperty("class", "ghost")
+        open_posing.setToolTip(
+            "Named poses by shot type (portrait, editorial, headshot, group, candid) plus "
+            "opt-in posing realism techniques - applying one writes straight into the "
+            "Action field above.")
+        open_posing.clicked.connect(self.open_posing_requested)
         self.tabs.addTab(
             _tab([("Subject", self.subject), ("Wardrobe", self.wardrobe),
-                  ("Action", self.action), ("Mood", self.mood)]),
+                  ("Action", self.action), ("Mood", self.mood)],
+                 [open_posing]),
             "Subject",
         )
         open_lighting = QPushButton("Open Lighting section →")
@@ -410,6 +420,15 @@ class SpecEditor(QWidget):
         picked key, same as if the user had typed it in by hand.
         """
         self.composition.setCurrentText((phrase or "").strip())
+
+    def set_action_override(self, phrase):
+        """Load a composed phrase from the Posing section into the Action
+        field. `action` is a plain QLineEdit already wired to `changed` via
+        textChanged, so setText() alone is enough - no new signal plumbing,
+        the same reasoning set_lighting_override()/set_composition_override()
+        already document for their own combos.
+        """
+        self.action.setText((phrase or "").strip())
 
     # -- data in / out ------------------------------------------------------ #
     def filled_keys(self):

@@ -110,7 +110,16 @@ HASHES = {
     # committed content; fixed alongside adding CRLF normalisation to the
     # check above, confirmed against `git show HEAD:tools/prompt_bank.json`
     # directly rather than assumed.)
-    "tools/prompt_bank.json": "448a4e358f42e087",
+    # Bumped again (version 6 -> 7) for four new layers.texture.terms entries -
+    # retouching-realism language mined from the Photography course library
+    # (Dani Diamond's Retouching Notes / Earth Oliver's Texture Cleanup),
+    # translated into how a photo should LOOK rather than an edit action,
+    # since this app only ever writes prompts, never touches pixels. All four
+    # confirmed detectable by the EXISTING DETECT["texture"]["keys"] (texture/
+    # pores/surface detail/imperfection) - no realism_lint.py change needed
+    # for this one. Every other layer's terms, the negatives/banned/warn
+    # lists and the shot presets are untouched.
+    "tools/prompt_bank.json": "d73d1fa82011c48a",
     # Bumped for the new Lighting section's DETECT["lighting"]["keys"]
     # additions (rembrandt, split lighting, catchlight, colour temperature,
     # falling off, ...) - every one of tools/lighting_bank.json's phrases
@@ -123,7 +132,13 @@ HASHES = {
     # keywords (negative space, lead room, midground, ...) - audited for real
     # by tests/test_composition_bank.py's own "no technique phrase is
     # invisible to realism_lint" check, not assumed.
-    "tools/realism_lint.py": "997335801daa1c96",
+    # Bumped again for the Lighting bank's deepen pass (Lindsay Adler's
+    # course): four more named setups plus a light-shaping modifier
+    # vocabulary (clam shell, checkerboard, old hollywood, bounced off,
+    # unmodified, diffusion panel) - audited for real, zero gaps confirmed,
+    # not assumed. Posing's own bank needed no DETECT change at all: posing
+    # is descriptive spec content, not one of the 8 gated layers.
+    "tools/realism_lint.py": "ecceea903cc7da99",
     # Bumped for a larger style_presets list (version 2 -> 3) - ten more
     # camera/lighting/grade combinations drawn from the same PDF vocabulary
     # the image side already had, cycled by seed the same way the original
