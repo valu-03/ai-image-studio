@@ -57,6 +57,16 @@ QFrame[class="thumb"] {{
 }}
 QFrame[class="thumb"][selected="true"] {{ border: 2px solid {c['primary']}; }}
 QFrame[class="divider"] {{ background: {c['outline_variant']}; border: none; }}
+/* Advisor chat bubbles - a role-tinted variant of the plain card, so a user
+   turn and the advisor's reply stay visually distinct on scroll-back. */
+QFrame[class="card"][bubbleRole="user"] {{
+    background: {c['primary_fixed']};
+    border: 1px solid {c['primary']};
+}}
+QFrame[class="card"][bubbleRole="assistant"] {{
+    background: {c['surface_variant']};
+    border: 1px solid {c['outline_variant']};
+}}
 
 QGroupBox {{
     background: {c['surface']};

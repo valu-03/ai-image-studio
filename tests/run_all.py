@@ -21,6 +21,7 @@ ROOT = HERE.parent
 ORDER = [
     "test_motion.py",
     "test_brief.py",
+    "test_advisor.py",
     "test_generate.py",
     "test_upscale.py",
     "test_refine.py",

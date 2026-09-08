@@ -33,6 +33,14 @@ GLYPHS = {
         '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/>'
         '<path d="M14 3v5h5M9 13h6M9 17h4"/>'
     ),
+    # A speech bubble (a running conversation, distinct from "brief"'s single
+    # page) with a small four-point spark inside it - the one detail that
+    # reads as "the expert one," not just "chat."
+    "advisor": (
+        '<path d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-4 4v-4H6'
+        'a2 2 0 0 1-2-2z"/>'
+        '<path d="M13.5 6.2l.7 1.7 1.7.7-1.7.7-.7 1.7-.7-1.7-1.7-.7 1.7-.7z"/>'
+    ),
     "variants": (
         '<rect x="3" y="3" width="8" height="8" rx="2"/>'
         '<rect x="13" y="3" width="8" height="8" rx="2"/>'

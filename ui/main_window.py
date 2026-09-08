@@ -37,6 +37,7 @@ import refine_image as ri  # noqa: E402
 from . import assets, tokens as T  # noqa: E402
 from .views import (  # noqa: E402
     AdsView,
+    AdvisorView,
     BriefView,
     CameraAngleView,
     CatsView,
@@ -84,6 +85,7 @@ NAV_ITEMS = [
     ("cats", "Cats"),
     ("sound", "Sound"),
     ("brief", "Brief"),
+    ("advisor", "Advisor"),
     ("history", "History"),
     ("insights", "Insights"),
     ("settings", "Settings"),
@@ -251,6 +253,7 @@ class MainWindow(QMainWindow):
         self.posing_view = PosingView(self.theme.palette)
         self.camera_angle_view = CameraAngleView(self.theme.palette)
         self.brief_view = BriefView(self.bank)
+        self.advisor_view = AdvisorView(self.bank)
         self.history_view = HistoryView(self.theme.palette)
         self.insights_view = InsightsView(self.theme.palette)
         self.settings_view = SettingsView()
@@ -267,6 +270,7 @@ class MainWindow(QMainWindow):
             "cats": self.cats_view,
             "sound": self.sound_view,
             "brief": self.brief_view,
+            "advisor": self.advisor_view,
             "history": self.history_view,
             "insights": self.insights_view,
             "settings": self.settings_view,
@@ -369,6 +373,10 @@ class MainWindow(QMainWindow):
         self.brief_view.prompt_upgraded.connect(self.compose_view.use_upgraded_prompt)
         self.brief_view.prompt_upgraded.connect(lambda _: self.go_to("images"))
 
+        self.advisor_view.context = self.current_context
+        self.advisor_view.spec_suggested.connect(self.compose_view.apply_suggested_spec)
+        self.advisor_view.spec_suggested.connect(lambda _: self.go_to("images"))
+
         self.insights_view.learned_toggled.connect(self.compose_view.set_learned)
         self.settings_view.provider_changed.connect(self.set_provider)
         self.settings_view.model_changed.connect(self.set_model)
@@ -437,6 +445,8 @@ class MainWindow(QMainWindow):
             self.settings_view.refresh_key_state()
         elif key == "brief":
             self.brief_view.refresh_context()
+        elif key == "advisor":
+            self.advisor_view.refresh()
         elif key == "videos":
             self.videos_view.refresh()
         elif key == "ads":

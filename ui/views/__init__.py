@@ -10,11 +10,13 @@ composition   -> the seven framing geometries plus opt-in realism techniques
 color_grading -> mood-to-palette presets and film-look references, plus opt-in techniques
 posing        -> named poses by shot type, plus opt-in posing realism techniques
 camera_angle  -> vertical/side/size, three independent camera-position axes
-brief         -> the text-model helpers
+brief         -> the text-model helpers, one-shot
+advisor       -> a running conversation with the in-app expert on the whole studio
 history / insights / settings
 """
 
 from .ads import AdsView
+from .advisor import AdvisorView
 from .brief_view import BriefView
 from .camera_angle import CameraAngleView
 from .cats import CatsView
@@ -34,6 +36,6 @@ from .videos import VideosView
 __all__ = [
     "ImagesView", "ComposeView", "VariantsView", "VideosView", "AdsView",
     "CatsView", "SoundView", "LightingView", "CompositionView", "ColorGradingView",
-    "PosingView", "CameraAngleView", "BriefView", "HistoryView", "InsightsView",
-    "SettingsView",
+    "PosingView", "CameraAngleView", "BriefView", "AdvisorView", "HistoryView",
+    "InsightsView", "SettingsView",
 ]

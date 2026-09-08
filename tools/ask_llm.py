@@ -12,6 +12,12 @@ Usage:
     python tools/ask_llm.py --prompt "expand this prompt" --system "You are a ..."
     python tools/ask_llm.py --prompt-file brief.txt --image temp/outputs/images/a.png
     python tools/ask_llm.py --prompt "hello" --dry-run
+    python tools/ask_llm.py --prompt "and then?" --history-file turns.json
+
+`--history-file` points at a JSON array of prior {"role": "user"|"assistant",
+"content": "..."} turns, threaded in between the system message and the new
+prompt — the one thing that turns a one-shot call into a running conversation.
+Every call that omits it gets exactly today's single-shot request, unchanged.
 
 Key:   OPENROUTER_API_KEY in .env (process environment as a fallback).
 Model: OPENROUTER_TEXT_MODEL in .env, or --model. Model ids move; that is why
@@ -39,8 +45,15 @@ DEFAULT_BASE = "https://openrouter.ai"
 KEY_URL = "https://openrouter.ai/keys"
 
 
-def build_request(base, model, key, prompt, system=None, images=(), max_tokens=2048):
-    """Return (url, body, headers) for an OpenRouter chat completion."""
+def build_request(base, model, key, prompt, system=None, images=(), max_tokens=2048,
+                  history=()):
+    """Return (url, body, headers) for an OpenRouter chat completion.
+
+    `history` is a list of already-shaped {"role": "user"|"assistant", "content": ...}
+    turns, threaded in between the system message and the new user turn - the one
+    thing that turns a one-shot call into a running conversation. Every existing
+    caller passes nothing, so `messages` is built exactly as before when it is empty.
+    """
     content = [{"type": "text", "text": prompt}]
     for mime, data in images:
         content.append({
@@ -51,6 +64,7 @@ def build_request(base, model, key, prompt, system=None, images=(), max_tokens=2
     messages = []
     if system:
         messages.append({"role": "system", "content": system})
+    messages.extend(history)
     messages.append({"role": "user", "content": content})
 
     url = "{}/api/v1/chat/completions".format(base.rstrip("/"))
@@ -76,11 +90,13 @@ def parse_response(payload):
     return None
 
 
-def ask(prompt, system=None, images=(), model=None, base=None, max_tokens=2048):
+def ask(prompt, system=None, images=(), model=None, base=None, max_tokens=2048, history=()):
     """Ask a text model. Returns (text, error) — exactly one is None.
 
-    The in-process entry point: brief.py and the GUI worker both call this, so
-    there is one implementation of "talk to a text model".
+    The in-process entry point: brief.py, advisor.py and the GUI worker all call
+    this, so there is one implementation of "talk to a text model". `history` is
+    optional and defaults to nothing — every call site that doesn't pass it gets
+    exactly today's single-shot behaviour, unchanged.
     """
     env = gi.read_env()
     key = env.get(KEY_VAR) or os.environ.get(KEY_VAR, "")
@@ -100,7 +116,8 @@ def ask(prompt, system=None, images=(), model=None, base=None, max_tokens=2048):
         except FileNotFoundError as exc:
             return None, str(exc)
 
-    url, body, headers = build_request(base, model, key, prompt, system, encoded, max_tokens)
+    url, body, headers = build_request(
+        base, model, key, prompt, system, encoded, max_tokens, history)
 
     try:
         status, payload, raw = gi.post_json(url, body, headers)
@@ -155,6 +172,8 @@ def main(argv=None):
     p.add_argument("--system-file", help="path to a file holding the system message")
     p.add_argument("--image", action="append", default=[],
                    help="attach an image for multimodal input (repeatable)")
+    p.add_argument("--history-file",
+                   help="path to a JSON array of prior {role, content} turns")
     p.add_argument("--model", help="override the model id for this call")
     p.add_argument("--base-url", help="override the API host (for testing)")
     p.add_argument("--max-tokens", type=int, default=2048)
@@ -177,23 +196,35 @@ def main(argv=None):
     if not prompt:
         sys.exit("Give either --prompt \"...\" or --prompt-file <path>.")
 
+    history = []
+    if args.history_file:
+        path = Path(args.history_file)
+        if not path.is_absolute():
+            path = ROOT / path
+        if not path.exists():
+            sys.exit("History file not found: {}".format(path))
+        history = json.loads(path.read_text(encoding="utf-8"))
+
     if args.dry_run:
         env = gi.read_env()
         model = (args.model or env.get(MODEL_VAR)
                  or os.environ.get(MODEL_VAR) or DEFAULT_MODEL)
         base = args.base_url or DEFAULT_BASE
-        url, body, headers = build_request(base, model, "DRY-RUN", prompt, system, [])
+        url, body, headers = build_request(
+            base, model, "DRY-RUN", prompt, system, [], history=history)
         redacted = {k: ("<redacted>" if k == "Authorization" else v) for k, v in headers.items()}
         print("POST {}".format(url))
         print("headers: {}".format(json.dumps(redacted)))
         print("model:   {}".format(model))
         print("system:  {}".format("yes" if system else "no"))
         print("images:  {}".format(len(args.image)))
+        print("history: {} prior turn(s)".format(len(history)))
         print("body bytes: {}".format(len(json.dumps(body))))
         return 0
 
     text, error = ask(
-        prompt, system, args.image, args.model, args.base_url, args.max_tokens
+        prompt, system, args.image, args.model, args.base_url, args.max_tokens,
+        history=history,
     )
     if error:
         print(error, file=sys.stderr)

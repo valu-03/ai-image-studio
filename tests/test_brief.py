@@ -236,6 +236,38 @@ content = mock_api.STATE["last"]["body"]["messages"][-1]["content"]
 check("multimodal image attached", any(c.get("type") == "image_url" for c in content),
       str([c.get("type") for c in content]))
 
+# --history-file - the one thing that turns a one-shot ask() into a running
+# conversation (advisor.py's own multi-turn chat). Proven at the real wire
+# level here, not just against a fake ask= the way test_advisor.py checks it.
+history_path = ROOT / "temp" / "outputs" / "aivs-tests-history-turns.json"
+history_path.parent.mkdir(parents=True, exist_ok=True)
+history_path.write_text(json.dumps([
+    {"role": "user", "content": "what's the lighting section for?"},
+    {"role": "assistant", "content": "8 light directions and 8 named setups."},
+]), encoding="utf-8")
+try:
+    p = run(["--prompt", "and composition?", "--system", "You are a cinematographer",
+             "--history-file", str(history_path), "--base-url", BASE],
+            {"OPENROUTER_API_KEY": "llm-key"})
+    check("history-file call exits 0", p.returncode == 0, p.stderr.strip()[:120])
+    sent_messages = mock_api.STATE["last"]["body"]["messages"]
+    check("history lands between system and the new user turn",
+          [m["role"] for m in sent_messages] == ["system", "user", "assistant", "user"],
+          str([m["role"] for m in sent_messages]))
+    check("prior user turn preserved verbatim",
+          sent_messages[1]["content"] == "what's the lighting section for?")
+    check("new user turn is the current prompt, not the history's",
+          sent_messages[3]["content"][0]["text"] == "and composition?")
+finally:
+    history_path.unlink(missing_ok=True)
+
+p = run(["--prompt", "hello", "--system", "You are a cinematographer", "--base-url", BASE],
+        {"OPENROUTER_API_KEY": "llm-key"})
+sent_messages = mock_api.STATE["last"]["body"]["messages"]
+check("omitting --history-file reproduces today's exact shape",
+      [m["role"] for m in sent_messages] == ["system", "user"],
+      str([m["role"] for m in sent_messages]))
+
 p = run(["--prompt", "x", "--base-url", BASE + "/empty"], {"OPENROUTER_API_KEY": "llm-key"})
 check("empty reply -> non-zero", p.returncode != 0, str(p.returncode))
 check("explains", "no text" in p.stderr.lower(), p.stderr.strip()[:80])

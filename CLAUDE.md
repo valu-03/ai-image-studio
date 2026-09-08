@@ -927,12 +927,38 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   field alongside their checkbox lists, so a realism cue isn't limited to the seven predefined
   ones either. `LightingView._resolved()` mirrors `SpecEditor._listed()`'s exact logic for
   resolving a typed/picked combo value to its underlying key.
-- **Run `python tests/run_all.py` before calling anything done.** 1430 checks, all green
-  (`test_history.py`, `test_lighting_bank.py`, `test_elevenlabs.py`, `test_composition_bank.py`,
-  `test_posing_bank.py`, `test_color_bank.py` and `test_camera_angle_bank.py` are all now in
-  `tests/run_all.py`'s `ORDER` - `test_elevenlabs.py`
-  existed for a while but was never actually wired in, so it silently never ran as part of the
-  suite until it was noticed), no dependencies beyond PyQt6, Qt runs offscreen.
+- **The Advisor is the one AI feature in this project that is a running conversation, not a
+  one-shot brief - and the validation gate still holds without exception.**
+  `ask_llm.ask()`/`build_request()` gained an optional `history` param (a list of prior
+  `{role, content}` turns, threaded in between the system message and the new one; every call
+  that omits it - every existing caller - gets today's exact single-shot request, unchanged).
+  `tools/advisor.py`'s `advisor_brief()` is built live from `prompt_bank.json`'s 8 layers, the
+  composition guides and all five technique banks (`_technique_banks_summary()`, the same
+  reasoning `brief._bank_vocabulary()` already applies to `prompt_bank.json`), so a bank edit
+  is reflected in the very next reply, never re-typed by hand. A reply may propose a ready spec
+  by ending with a fenced ` ```spec {...} ``` ` block - `extract_spec_block()` looks
+  specifically for that fence rather than scanning the whole reply for any `{...}` the way
+  `ask_llm.extract_json()` does, because a conversational answer routinely has other braces or
+  prose around a spec block. The fenced block is whitelisted, recomposed and relinted through
+  the exact same tail `brief.autofill_spec()`/`spec_from_idea()` already use (`seed`,
+  `reference`, `lock_identity` and `overrides` are never accepted, no matter how the model
+  phrases the request) - written fresh in `advisor.py` rather than refactored out of `brief.py`,
+  the same small, view-local duplication every `_scrolled()` helper in `ui/views/` already
+  tolerates. The advisor itself never states a realism score in prose - it doesn't compute one;
+  `_context_note()` folds the CURRENT composed prompt's real, `realism_lint`-computed score into
+  every turn automatically (via the same `() -> (prompt, image)` context callable `BriefView`
+  already used, zero new plumbing), so advice is grounded in what the user actually has rather
+  than generic. An attached photo (`ui/views/advisor.py`'s "Choose photo…", reusing
+  `ImagePreview` and the same vision path `brief.critique_image()` already uses) is scoped to
+  its own turn only - `history` itself stays text-only, so a long conversation never silently
+  re-uploads every earlier photo on every later turn.
+- **Run `python tests/run_all.py` before calling anything done.** 1502 checks, all green
+  across 27 suites (`test_history.py`, `test_lighting_bank.py`, `test_elevenlabs.py`,
+  `test_composition_bank.py`, `test_posing_bank.py`, `test_color_bank.py`,
+  `test_camera_angle_bank.py` and `test_advisor.py` are all now in `tests/run_all.py`'s
+  `ORDER` - `test_elevenlabs.py` existed for a while but was never actually wired in, so it
+  silently never ran as part of the suite until it was noticed), no dependencies beyond PyQt6,
+  Qt runs offscreen.
 
 ---
 
@@ -943,6 +969,7 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
 - `workflows/create-realistic-avatar.md`
 - `workflows/consistent-character.md` — Phase 5, a face locked across shots via a reference
 - `workflows/write-a-brief.md`
+- `workflows/ask-the-advisor.md` — a running conversation with the in-app expert
 - `workflows/image-to-video.md` — Phase 3, real Kling 3.0 clips through Kie, not prompts only
 - `workflows/ugc-ad.md` — Phase 6, the five-beat advert
 - `workflows/cat-story-video.md` — a story in scenes, with its CapCut edit sheet
@@ -973,7 +1000,8 @@ checklist, publishing), **Cats** (a story in scenes plus its CapCut edit sheet, 
 hand-written shot instead), **Sound**
 (the 100 ElevenLabs prompts, three layers per scene, and - with a real key - actual generated
 sound effects, text-to-speech and voice cloning; Ads and Cats can voice their own copy/scenes
-the same way), **Brief** (the text-model helpers),
+the same way), **Brief** (the text-model helpers, one-shot), **Advisor** (a running
+conversation with the in-app expert on the whole studio - see below),
 then History, Insights and Settings.
 
 This doc previously said clip generation and UGC ads/consistent characters were "not built

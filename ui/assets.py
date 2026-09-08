@@ -56,6 +56,7 @@ ICONS = {
     "images": (ICON_DIR / "images.svg", ICON_DIR / "images-active.svg"),
     "videos": (ICON_DIR / "videos.svg", ICON_DIR / "videos-active.svg"),
     "brief": (ICON_DIR / "brief.svg", ICON_DIR / "brief-active.svg"),
+    "advisor": (ICON_DIR / "advisor.svg", ICON_DIR / "advisor-active.svg"),
     "ads": (ICON_DIR / "ads.svg", ICON_DIR / "ads-active.svg"),
     "cats": (ICON_DIR / "cats.svg", ICON_DIR / "cats-active.svg"),
     "sound": (ICON_DIR / "sound.svg", ICON_DIR / "sound-active.svg"),

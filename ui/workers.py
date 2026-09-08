@@ -16,6 +16,7 @@ from PyQt6.QtCore import QObject, QRunnable, QThreadPool, pyqtSignal
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
+import advisor as advisor_tool  # noqa: E402
 import brief as brief_tool  # noqa: E402
 import elevenlabs_voices as voices_tool  # noqa: E402
 import generate_image as gi  # noqa: E402  (path set above)
@@ -53,6 +54,7 @@ class LlmTask(QRunnable):
         "autofill_story": brief_tool.autofill_story,
         "analyze_custom_prompt": brief_tool.analyze_custom_prompt,
         "refine_custom_prompt": brief_tool.refine_custom_prompt,
+        "advisor_chat": advisor_tool.chat,
     }
 
     def __init__(self, action, bank, *args):
