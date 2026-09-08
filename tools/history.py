@@ -16,6 +16,7 @@ normal use. Standard library only.
 
 import argparse
 import json
+import math
 import os
 import sys
 from datetime import datetime
@@ -36,6 +37,27 @@ LAYERS = ["core", "camera", "lens", "lighting", "texture", "colour", "compositio
 # evidence needed before the bias bites.
 CONFIDENCE_PRIOR = 3.0
 NEUTRAL_RATING = 3.0
+
+# UCB1's exploration coefficient. weights() used to be pure exploitation - a
+# term with one lucky 5-star rating was permanently outweighed by a mediocre
+# term with 20 ratings, and a term nobody had ever picked sat at flat neutral
+# forever with no way to rise above it. This constant scales the bonus that
+# corrects that: bigger = more willing to re-try an under-sampled term at the
+# cost of a confidently-good one.
+#
+# 0.08, not something larger - the exploit half above is BOUNDED (a perfect
+# 5-star mean asymptotes to 1.667, so the whole meaningful spread is under
+# 0.7), but the bonus grows with sqrt(log(layer_total)), which is unbounded
+# and grows FOREVER as more generations happen, however slowly. A first
+# attempt at 0.4 passed every check except one - tests/test_history.py caught
+# it directly: past roughly 14 total ratings in one layer, an UNTRIED term
+# would permanently outrank even a perfectly-rated, heavily-confirmed one,
+# because the bonus alone already exceeded the entire exploit range. 0.08
+# keeps the bonus a real, meaningful nudge (still enough to out-rank a
+# genuinely mediocre established term) without being able to out-rank a truly
+# excellent one until N is very large - checked, not assumed, by the same
+# test. Tunable later without touching the formula's shape.
+EXPLORATION_C = 0.08
 
 
 def load():
@@ -77,6 +99,21 @@ def current_bank_version():
             return json.load(fh).get("version", 0)
     except (OSError, json.JSONDecodeError):
         return 0
+
+
+def load_prompt_bank():
+    """The full prompt bank, or {} if it cannot be read.
+
+    weights() needs this for the FULL vocabulary per layer, not just terms
+    that already happen to have a rating - see its own docstring. A separate
+    small read from current_bank_version()'s, which is called at a different
+    time (per append(), at write time) and only needs the one field.
+    """
+    try:
+        with BANK_PATH.open(encoding="utf-8") as fh:
+            return json.load(fh)
+    except (OSError, json.JSONDecodeError):
+        return {}
 
 
 def new_id():
@@ -188,20 +225,54 @@ def term_stats(entries=None):
     }
 
 
-def weights(entries=None):
-    """{term: multiplier} biasing selection toward terms that rated well.
+def weights(entries=None, bank=None):
+    """{term: multiplier} biasing selection toward terms worth trying.
 
-    A term with no evidence sits at 1.0. Evidence pulls it away from neutral in
-    proportion to how much of it there is, so one lucky 5-star does not
-    dominate the bank.
+    This is UCB1, not a plain average: each term's multiplier is an exploit
+    half (today's original shrinkage estimate - a term with no evidence sits
+    at the neutral prior, evidence pulls it away in proportion to how much of
+    it there is, so one lucky 5-star does not dominate the bank) PLUS an
+    explore half that is largest for a term nobody has picked yet and shrinks
+    as it accumulates ratings. Without the explore half, a term that got
+    exactly one great rating stays permanently outweighed by a mediocre term
+    with twenty, and a term nobody has ever picked sits at flat neutral with
+    no way to rise above it - build_prompt.pick()'s weighted sampling would
+    then just keep confirming whatever already happened to be tried early.
+
+    The candidate set per layer is the FULL bank vocabulary
+    (`bank["layers"][name]["terms"]`), not only terms that already have a
+    rating - an unrated term needs its own explicit entry to ever be
+    preferred, not build_prompt.pick()'s neutral 1.0 fallback for a term
+    missing from this dict entirely.
+
+    `layer_total` (the N in UCB's log(N) term) is scored PER LAYER, not
+    globally: build_prompt.pick() draws each layer's terms as its own
+    independent competition, so a term's exploration bonus should only be
+    judged against how much the *rest of its own layer* has been tried.
+
+    With zero ratings anywhere, every term in a layer gets an identical
+    bonus - `pick()`'s ranking-by-`rng.random() ** (1/weight)` with a constant
+    weight is then mathematically the same as ranking by rng.random() alone,
+    i.e. this degrades to today's plain uniform sampling rather than doing
+    something new and unverified the first time anyone ever uses the app.
     """
+    bank = bank if bank is not None else load_prompt_bank()
+    stats = term_stats(entries)
+    bank_layers = bank.get("layers", {}) if isinstance(bank, dict) else {}
+
     result = {}
-    for terms in term_stats(entries).values():
-        for term, stat in terms.items():
-            n, mean = stat["n"], stat["mean"]
+    for layer in LAYERS:
+        layer_stats = stats.get(layer, {})
+        layer_total = sum(stat["n"] for stat in layer_stats.values())
+        candidates = set(layer_stats) | set(bank_layers.get(layer, {}).get("terms", []))
+        for term in candidates:
+            stat = layer_stats.get(term)
+            n, mean = (stat["n"], stat["mean"]) if stat else (0, NEUTRAL_RATING)
             shrink = n / (n + CONFIDENCE_PRIOR)
             raw = mean / NEUTRAL_RATING
-            result[term] = max(0.1, 1.0 + (raw - 1.0) * shrink)
+            exploit = 1.0 + (raw - 1.0) * shrink
+            bonus = EXPLORATION_C * math.sqrt(math.log(layer_total + 2) / (n + 1))
+            result[term] = max(0.1, exploit + bonus)
     return result
 
 

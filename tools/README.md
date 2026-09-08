@@ -181,6 +181,17 @@ whenever you change the term lists.**
 transcription of someone's PDF and becomes calibrated to your own results. Drive it with
 `--learned` on the CLI, or the "Prefer terms that rated well" toggle in Insights.
 
+`weights()` is UCB1, not a plain average: each term's multiplier is an exploit half (a
+shrinkage estimate of its rating — no evidence sits at neutral, evidence pulls it away in
+proportion to how much of it there is) plus an explore half that is largest for a term with
+few or no ratings and shrinks as it accumulates them, scored per realism layer since
+`build_prompt.pick()` draws each layer's terms as its own independent competition. Without the
+explore half a term that got exactly one great rating stayed permanently outweighed by a
+mediocre term with twenty, and a term nobody had ever picked sat at flat neutral forever with
+no way to rise above it. With zero ratings anywhere every term in a layer gets an identical
+bonus, which degrades to plain uniform sampling — the same behaviour the app has always had
+before anything is rated, not something new and unverified on a fresh install.
+
 Tools are standard library only. `PyQt6` is needed for the GUI, not for these.
 
 ### Exit codes (`generate_image.py`)

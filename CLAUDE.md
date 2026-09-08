@@ -755,11 +755,43 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   with an explicit `hiddenimports = ["uuid"]`. If a future `tools/*.py` file imports a stdlib
   module nothing else in the project already uses, add it here too rather than assuming
   PyInstaller's analysis will find it - it structurally cannot, by this spec's own design.
-- **Run `python tests/run_all.py` before calling anything done.** 1108 checks, no dependencies
-  beyond PyQt6, Qt runs offscreen. (One long-standing, unrelated failure as of this pass:
-  `test_story.py`'s `tools/motion_bank.json is unchanged` hash check fails against the file as
-  committed in `5f2a784` - pre-dates this session's work, not touched by it, and not
-  investigated here.)
+- **`history.weights()` is a real bandit now (UCB1), not a shrunk average.** The exploit half
+  is the original shrinkage estimate, unchanged; a new explore half
+  (`EXPLORATION_C * sqrt(log(layer_total + 2) / (n + 1))`, scored per realism layer since
+  `build_prompt.pick()` draws each layer as its own independent competition) is added on top,
+  largest for a term with few or no ratings and shrinking as it accumulates them. Before this,
+  a term that got exactly one great rating stayed permanently outweighed by a mediocre term
+  with twenty ratings, and a term nobody had ever picked sat at flat neutral forever with no
+  mechanism that could ever prefer it - `weights()` used to only emit entries for terms that
+  already had at least one rating, so an untried term fell through to `pick()`'s neutral-1.0
+  fallback with no way to rise above it. The candidate set is now the FULL bank vocabulary per
+  layer (`bank["layers"][name]["terms"]`, read via the new `load_prompt_bank()`), not only
+  previously-rated terms - that is the change that makes exploration real, not cosmetic.
+  Signature is backward compatible (`weights(entries=None, bank=None)`); all three real call
+  sites (`ui/views/compose.py`, `ui/main_window.py`, `build_prompt.py`'s `--learned` CLI)
+  needed zero changes. **`EXPLORATION_C` is 0.08, not a rounder-looking 0.4** - a first attempt
+  at 0.4 passed every check except one: the exploit half is bounded (a perfect 5-star mean
+  asymptotes to 1.667, so the whole meaningful spread is under 0.7), but the bonus grows with
+  `sqrt(log(layer_total))`, which is unbounded and grows forever however slowly - past roughly
+  14 total ratings in one layer, 0.4 let an UNTRIED term permanently outrank even a perfectly-
+  rated, heavily-confirmed one, because the bonus alone already exceeded the entire exploit
+  range. Caught by `tests/test_history.py` (new), not by reasoning about the formula on paper -
+  the same lesson as everywhere else in this file about checking a claim rather than assuming
+  it. That suite also locks down the one claim that is not obvious from reading the formula:
+  with zero ratings anywhere, every term in a layer gets an identical bonus, which is
+  mathematically the same as `build_prompt.pick()`'s Efraimidis-Spirakis weighted sampling
+  degenerating to plain uniform - checked with 20,000 trials against a tolerance, not assumed.
+- **Not NEAT.** Asked what else could improve the app, "maybe NEAT?" (neuroevolution of network
+  topology) doesn't fit anything here - there is no live control/simulation loop to evolve a
+  policy against. The UCB upgrade above is the actual real version of that instinct: a bandit
+  algorithm, applied to the one place this project already had an explore/exploit problem.
+- **Run `python tests/run_all.py` before calling anything done.** 1174 checks (`test_history.py`
+  and `test_elevenlabs.py` are both now in `tests/run_all.py`'s `ORDER` - the latter existed
+  but was never actually wired in, so it silently never ran as part of the suite until this
+  pass), no dependencies beyond PyQt6, Qt runs offscreen. (One long-standing, unrelated
+  failure as of this pass: `test_story.py`'s `tools/motion_bank.json is unchanged` hash check
+  fails against the file as committed in `5f2a784` - pre-dates this session's work, not
+  touched by it, and not investigated here.)
 
 ---
 
