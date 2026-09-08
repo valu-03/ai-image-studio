@@ -98,6 +98,24 @@ GLYPHS = {
         '<circle cx="12" cy="4.2" r="2.1"/>'
         '<path d="M12 7.3v6.5M12 9.5l-4 2.5M12 9.5l4 2.5M12 13.8l-3.4 6.2M12 13.8l3.4 6.2"/>'
     ),
+    # A painter's palette outline with three small paint-dot wells - reads as
+    # "color" distinctly from "composition"'s grid and "lighting"'s bulb.
+    "color": (
+        '<path d="M12 3a9 9 0 1 0 4.5 16.8c1-.6.7-2-.4-2.3-1-.3-1.6-1.2-1.3-2.2'
+        '.3-1 1.3-1.5 2.3-1.3A3 3 0 0 0 20 12a9 9 0 0 0-8-9z"/>'
+        '<circle cx="8" cy="10.5" r="1.1"/>'
+        '<circle cx="12" cy="8" r="1.1"/>'
+        '<circle cx="16" cy="10.5" r="1.1"/>'
+    ),
+    # A small camera body low in the frame with a curved arrow above it
+    # sweeping from low to high - reads as "camera position/angle" distinct
+    # from "videos"' own plain camera-with-play-wedge glyph.
+    "camera_angle": (
+        '<rect x="4" y="13" width="12" height="8" rx="1.5"/>'
+        '<path d="M16 16l4-2v6l-4-2"/>'
+        '<path d="M6 10.5A8 8 0 0 1 18 5"/>'
+        '<path d="M15.5 3.8 18 5l-1 2.7"/>'
+    ),
 }
 
 TEMPLATE = (

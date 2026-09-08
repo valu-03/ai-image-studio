@@ -6,7 +6,7 @@ app actually owns — Subject, Scene, Identity, Advanced.
 UI only. It collects fields and hands back the dict tools/build_prompt.py
 expects; it composes nothing itself. The public surface — `spec()`,
 `load_spec()`, `apply_partial()`, `reference()`, `set_reference()`,
-`lighting_value()`, `shot_value()`, `shot_custom()`, `composition_guide()`,
+`lighting_value()`, `colour_value()`, `shot_value()`, `shot_custom()`, `composition_guide()`,
 `composition_custom()`, the
 `changed` signal and the `.seed` attribute — is what the rest of the app talks
 to, so it stays stable regardless of how the tabs are arranged.
@@ -88,6 +88,10 @@ class SpecEditor(QWidget):
     open_composition_requested = pyqtSignal()
     # Same relationship, for the Posing section's pose library + techniques.
     open_posing_requested = pyqtSignal()
+    # Same relationship, for the Color Grading section's moods/film looks.
+    open_color_requested = pyqtSignal()
+    # Same relationship, for the Camera Angle section's vertical/side/size axes.
+    open_camera_angle_requested = pyqtSignal()
 
     def __init__(self, bank, parent=None):
         super().__init__(parent)
@@ -157,6 +161,20 @@ class SpecEditor(QWidget):
             "\"realistic shadows\" is always appended so the lighting layer still scores."
         )
 
+        # Editable, same reasoning as lighting: a mood/film-look phrase from
+        # the Color Grading section (or your own typed grade) overrides the
+        # colour layer's usual restrained auto-fill.
+        self.colour = QComboBox(editable=True)
+        self.colour.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        self.colour.addItem(AUTO_LABEL, "")
+        for term in bank["layers"]["colour"]["terms"]:
+            self.colour.addItem(term, term)
+        self.colour.setToolTip(
+            "Pick a tone or type your own — e.g. \"dark moody color grading, teal and "
+            "orange palette\". The deeper Color Grading section has named moods and film "
+            "looks to pick from."
+        )
+
         # Seven named geometries, plus anything you care to type — a framing
         # instruction in plain words ("framed to include the sky behind her") is
         # as legitimate as a named grid, and often clearer to the model.
@@ -194,7 +212,8 @@ class SpecEditor(QWidget):
 
         for field in [self.subject, self.extra, self.wardrobe, self.setting,
                       self.action, self.mood, self.slug, self.shot,
-                      self.aspect, self.lighting, self.composition, self.purpose]:
+                      self.aspect, self.lighting, self.colour, self.composition,
+                      self.purpose]:
             field.setMinimumWidth(140)
 
     # -- tabs --------------------------------------------------------------- #
@@ -244,10 +263,24 @@ class SpecEditor(QWidget):
             "space, lead room, depth layering, ...) to stack on top - the combo "
             "above stays the fast, simple path.")
         open_composition.clicked.connect(self.open_composition_requested)
+        open_color = QPushButton("Open Color Grading section →")
+        open_color.setProperty("class", "ghost")
+        open_color.setToolTip(
+            "12 named moods and 10 film-look references, browsable, plus opt-in "
+            "techniques (accent echo, warm/cool contrast) to stack on top - the "
+            "combo above stays the fast, simple path.")
+        open_color.clicked.connect(self.open_color_requested)
+        open_camera_angle = QPushButton("Open Camera Angle section →")
+        open_camera_angle.setProperty("class", "ghost")
+        open_camera_angle.setToolTip(
+            "Vertical position, side, and shot size - three independent axes to combine, "
+            "browsable - writes into the Shot field above as custom text.")
+        open_camera_angle.clicked.connect(self.open_camera_angle_requested)
         self.tabs.addTab(
             _tab([("Setting", self.setting), ("Shot", self.shot),
-                  ("Lighting", self.lighting), ("Composition", self.composition)],
-                 [open_lighting, open_composition]),
+                  ("Lighting", self.lighting), ("Colour", self.colour),
+                  ("Composition", self.composition)],
+                 [open_lighting, open_color, open_composition, open_camera_angle]),
             "Scene",
         )
         self.tabs.addTab(
@@ -284,6 +317,7 @@ class SpecEditor(QWidget):
         self.shot.currentTextChanged.connect(self.changed)
         self.composition.currentTextChanged.connect(self.changed)
         self.lighting.currentTextChanged.connect(self.changed)
+        self.colour.currentTextChanged.connect(self.changed)
         self.aspect.currentTextChanged.connect(self.changed)
         self.seed.valueChanged.connect(self.changed)
         self.subject.textChanged.connect(self._validate)
@@ -396,6 +430,11 @@ class SpecEditor(QWidget):
         text = self.lighting.currentText().strip()
         return "" if text == AUTO_LABEL else text
 
+    def colour_value(self):
+        """The chosen or typed colour grade, or "" for automatic."""
+        text = self.colour.currentText().strip()
+        return "" if text == AUTO_LABEL else text
+
     def set_lighting_override(self, phrase):
         """Load a composed phrase from the Lighting section into this combo.
 
@@ -429,6 +468,24 @@ class SpecEditor(QWidget):
         already document for their own combos.
         """
         self.action.setText((phrase or "").strip())
+
+    def set_colour_override(self, phrase):
+        """Load a composed phrase from the Color Grading section into this
+        combo. Same mechanism as set_lighting_override() - the combo is
+        editable with InsertPolicy.NoInsert, so setCurrentText() writes
+        straight into its embedded line edit.
+        """
+        self.colour.setCurrentText((phrase or "").strip())
+
+    def set_shot_override(self, phrase):
+        """Load a composed phrase from the Camera Angle section into the
+        Shot field, as typed custom text - reuses build_prompt.
+        apply_custom_shot()'s existing "typed text replaces the camera
+        slot" precedence, already implemented, no build_prompt.py changes
+        needed. Same mechanism as set_lighting_override()/
+        set_colour_override().
+        """
+        self.shot.setCurrentText((phrase or "").strip())
 
     # -- data in / out ------------------------------------------------------ #
     def filled_keys(self):
@@ -492,8 +549,14 @@ class SpecEditor(QWidget):
         # custom source the linter has no keyword for — "realistic shadows"
         # keeps the lighting layer scoring.
         lighting = self.lighting_value()
+        colour = self.colour_value()
+        overrides = {}
         if lighting:
-            spec["overrides"] = {"lighting": [lighting, "realistic shadows"]}
+            overrides["lighting"] = [lighting, "realistic shadows"]
+        if colour:
+            overrides["colour"] = [colour]
+        if overrides:
+            spec["overrides"] = overrides
 
         return spec
 
@@ -501,7 +564,7 @@ class SpecEditor(QWidget):
         """Populate every field, then emit `changed` once — not a dozen times."""
         widgets = [
             self.subject, self.extra, self.wardrobe, self.setting, self.action,
-            self.mood, self.slug, self.shot, self.aspect, self.lighting,
+            self.mood, self.slug, self.shot, self.aspect, self.lighting, self.colour,
             self.composition, self.purpose, self.seed,
         ]
         for widget in widgets:
@@ -535,6 +598,14 @@ class SpecEditor(QWidget):
             self.lighting.setCurrentIndex(index)
         else:
             self.lighting.setCurrentText(source)
+
+        colour_override = spec.get("overrides", {}).get("colour", [])
+        grade = colour_override[0] if colour_override else ""
+        index = self.colour.findData(grade)
+        if index >= 0:
+            self.colour.setCurrentIndex(index)
+        else:
+            self.colour.setCurrentText(grade)
 
         for widget in widgets:
             widget.blockSignals(False)

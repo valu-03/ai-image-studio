@@ -83,6 +83,13 @@ check("still scores 8/8 with two techniques stacked on a guide",
       len(present) == 8 and not banned, "missing: {}".format(missing))
 
 print()
+print("=== the atmosphere technique (haze separating depth layers) ===")
+phrase, warnings = bc.compose_composition(
+    image_bank, comp_bank, guide="rule-of-thirds", techniques_=["atmosphere"])
+check("atmosphere phrase appears", "haze" in phrase.lower(), phrase)
+check("no warnings", not warnings, str(warnings))
+
+print()
 print("=== technique_custom adds one more free-text phrase beyond the checklist ===")
 phrase, warnings = bc.compose_composition(
     image_bank, comp_bank, guide="triangle", techniques_=["negative-space"],

@@ -864,6 +864,37 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   the base picker itself: a single editable combo, pick-or-type, resolved through a
   `_resolved()` static method that is a direct copy of `LightingView`'s own (which itself
   mirrors `SpecEditor._listed()`) - not a fourth reimplementation of the same 15 lines.
+- **Four more pieces mined from the AI Video Bootcamp's own camera/framing/color-grading
+  lesson documents.** Cross-checked six lesson PDFs against what was already built - most of
+  the depth/atmosphere/lead-room/lighting-source material overlapped what Composition/Lighting
+  already captured earlier this session (good confirmation, not a gap). Four real pieces
+  shipped:
+  1. **Color Grading section** (`tools/color_bank.json`/`build_color.py`,
+     `ui/views/color_grading.py`) - 12 named moods and 10 film-look references from the
+     course's own Mood → Color → Prompt cheat sheet. `spec["overrides"]` already worked
+     generically for ANY layer name (confirmed by reading `select_layers()` before building
+     anything, not assumed) - `colour` needed zero `build_prompt.py` changes, just a new
+     editable "Colour grade" combo on `ui/spec_editor.py`'s Scene tab mirroring the Lighting
+     combo exactly. First bank whose source leans stylised (neon cyberpunk, hot pink Barbie)
+     rather than restrained - `tests/test_color_bank.py` checks every phrase against
+     `banned`/`warn`, not just detectability, because that distinction actually matters here.
+  2. **An `atmosphere` technique** added to the existing Composition bank (haze/fog separating
+     depth layers, distinct from the already-shipped `depth-layering` technique, which names
+     the three LAYERS rather than the air between them) - extension, not a new section.
+  3. **Four real named cameras** (ARRI Alexa, Sony Venice 2, RED V-Raptor, Hasselblad) added to
+     `layers.camera.terms`, and a `material-response` technique added to Lighting's
+     `realism_techniques` (distinct from `specularity`, which is skin-specific - this one is
+     every OTHER surface reacting to light in its own physically correct way).
+  4. **Camera Angle section** (`tools/camera_angle_bank.json`/`build_camera_angle.py`,
+     `ui/views/camera_angle.py`) - three independent axes (vertical/side/size) from the Camera
+     Language transcript, no `conflicts` and no `techniques` dict (the three axes fully
+     describe camera position on their own - forcing either would have been padding).
+     Apply to Compose writes the result as typed custom SHOT text, reusing
+     `apply_custom_shot()`'s existing precedence - **documented honestly, not hidden**: a
+     pure angle phrase with no camera vocabulary can legitimately score the camera check 0/8,
+     the same tradeoff typing any custom shot already has, worded the same way
+     `ui/spec_editor.py`'s own shot tooltip already does. `tests/test_camera_angle_bank.py`
+     locks this in as an intentional, asserted behaviour rather than an oversight.
 - **A 5th Brief tab, "Analyze a photo," is the missing case `critique_image` structurally
   cannot cover.** `critique_image(bank, prompt, image_path)` requires an already-known prompt
   ("this image was generated from X, what's wrong with it") - exactly what an arbitrary
@@ -896,9 +927,10 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   field alongside their checkbox lists, so a realism cue isn't limited to the seven predefined
   ones either. `LightingView._resolved()` mirrors `SpecEditor._listed()`'s exact logic for
   resolving a typed/picked combo value to its underlying key.
-- **Run `python tests/run_all.py` before calling anything done.** 1333 checks, all green
-  (`test_history.py`, `test_lighting_bank.py`, `test_elevenlabs.py`, `test_composition_bank.py`
-  and `test_posing_bank.py` are all now in `tests/run_all.py`'s `ORDER` - `test_elevenlabs.py`
+- **Run `python tests/run_all.py` before calling anything done.** 1430 checks, all green
+  (`test_history.py`, `test_lighting_bank.py`, `test_elevenlabs.py`, `test_composition_bank.py`,
+  `test_posing_bank.py`, `test_color_bank.py` and `test_camera_angle_bank.py` are all now in
+  `tests/run_all.py`'s `ORDER` - `test_elevenlabs.py`
   existed for a while but was never actually wired in, so it silently never ran as part of the
   suite until it was noticed), no dependencies beyond PyQt6, Qt runs offscreen.
 
@@ -917,17 +949,24 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
 - `workflows/sound-design.md` — three layers of ElevenLabs prompts per scene
 
 The spec form is tabbed Purpose / Subject / Scene / Identity / More; Scene holds Setting,
-Shot, Lighting and Composition.
+Shot, Lighting, Colour and Composition.
 
 The GUI is organised by category: **Images** (Compose + Variants), **Lighting** (named
 portrait setups, or direction + quality + source composed independently, plus opt-in realism
 techniques - Apply to Compose writes straight into Compose's own lighting override),
 **Composition** (the same seven framing geometries Compose's own combo already offers,
-browsable, plus opt-in realism techniques - negative space, lead room, depth layering, ... -
-stacked on top; Apply to Compose writes the result in as custom framing text), **Posing**
+browsable, plus opt-in realism techniques - negative space, lead room, depth layering,
+atmosphere, ... - stacked on top; Apply to Compose writes the result in as custom framing
+text), **Color Grading** (12 named moods and 10 film-look references from the course's own
+cheat sheet, plus opt-in techniques; Apply to Compose writes into a new colour override -
+`spec["overrides"]` already worked generically for any layer name), **Posing**
 (named poses across portrait/editorial/headshot/group/candid, plus opt-in posing-realism
 techniques; Apply to Compose writes the result into the Subject tab's Action field - posing
-is descriptive spec content, not one of the 8 gated realism layers), **Videos**
+is descriptive spec content, not one of the 8 gated realism layers), **Camera Angle**
+(vertical position + side + shot size, three independent axes, any subset composed together;
+Apply to Compose writes the result as typed custom shot text - a pure angle phrase with no
+camera vocabulary can honestly score the camera check 0/8, same as any other typed shot),
+**Videos**
 (the Kling camera-movement toolkit and the film glossary — builds the prompt and, since Phase 3,
 can generate the real clip too), **Ads** (the five-beat UGC advert: brief, storyboard, hook A/B,
 checklist, publishing), **Cats** (a story in scenes plus its CapCut edit sheet, and a Custom Prompt tab for a

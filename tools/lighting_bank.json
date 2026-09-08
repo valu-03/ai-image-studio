@@ -1,6 +1,6 @@
 {
   "source": "AI Video Bootcamp's Phase 2 lighting cheat-sheet, extended with the standard portrait-photography vocabulary (Rembrandt, split, loop, butterfly, three-point, high-key/low-key - not course material, named studio technique) and physically-grounded realism cues an image model can act on directly. Not guessed: each technique is a specific, checkable phrase, the same standard the original 8 layers already hold to.",
-  "version": 2,
+  "version": 3,
   "note": "Two paths to a lighting phrase. The FAST path picks a named `setup` - a pre-vetted, hand-written recipe that can never contradict itself. The DEEP path picks direction + quality + source independently, the way a working photographer actually thinks, and is checked against `conflicts` because an arbitrary combination CAN fight itself (hard light from an overcast sky, for instance). `realism_techniques` stack on top of either path, additive and opt-in, never required - it also holds light-shaping MODIFIERS (silver/white reflector, direct/diffused/bounced) alongside the photorealism cues; mechanically they stack identically, so they share one dict rather than a second parallel mechanism.",
 
   "directions": {
@@ -262,6 +262,11 @@
       "label": "Bounced",
       "phrase": "light bounced off a nearby surface before reaching the subject, indirect and gently wrapped",
       "note": "Indirect light wraps around a subject in a way a direct source never does - the practical/motivated-source techniques above are often bounced light in practice."
+    },
+    "material-response": {
+      "label": "Material response",
+      "phrase": "distinct material response to light - crisp highlights on metal, soft catchlight on glass, matte absorption on fabric",
+      "note": "A different cue from `specularity` above, which is about skin specifically - this one is about every OTHER surface in the frame reacting to the same light in its own physically correct way, which is what stops a shot from reading as a uniform render."
     }
   }
 }

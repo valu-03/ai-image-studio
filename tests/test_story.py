@@ -119,7 +119,14 @@ HASHES = {
     # pores/surface detail/imperfection) - no realism_lint.py change needed
     # for this one. Every other layer's terms, the negatives/banned/warn
     # lists and the shot presets are untouched.
-    "tools/prompt_bank.json": "d73d1fa82011c48a",
+    # Bumped again (version 7 -> 8) for four real named cameras (ARRI Alexa,
+    # Sony Venice 2, RED V-Raptor, Hasselblad medium format) added to
+    # layers.camera.terms - from the Camera Language transcript's own
+    # recommendations. Camera stays pick: 1, so this only broadens the pool;
+    # every other layer's terms and the negatives/banned/warn lists are
+    # untouched. Each new term confirmed to score 8/8 via an override, not
+    # assumed - see tests/test_autofill.py.
+    "tools/prompt_bank.json": "003669c8c1b1aa4f",
     # Bumped for the new Lighting section's DETECT["lighting"]["keys"]
     # additions (rembrandt, split lighting, catchlight, colour temperature,
     # falling off, ...) - every one of tools/lighting_bank.json's phrases
@@ -138,7 +145,17 @@ HASHES = {
     # unmodified, diffusion panel) - audited for real, zero gaps confirmed,
     # not assumed. Posing's own bank needed no DETECT change at all: posing
     # is descriptive spec content, not one of the 8 gated layers.
-    "tools/realism_lint.py": "ecceea903cc7da99",
+    # Bumped again for four pieces mined from the AI Video Bootcamp lighting/
+    # framing/color documents, all audited for real (zero detectability gaps,
+    # zero banned/warn hits, confirmed by running lint() against every
+    # phrase, not assumed): the Color Grading section's DETECT["colour"]
+    # keys, the Composition bank's "haze" atmosphere technique, named-camera
+    # keys (arri alexa, sony venice, red v-raptor, hasselblad) and the
+    # lighting bank's "material response" technique, and the Camera Angle
+    # section's side/size keys not already covered by motion_bank.json's own
+    # framing terms - see tests/test_color_bank.py, test_composition_bank.py,
+    # test_lighting_bank.py, test_camera_angle_bank.py, test_autofill.py.
+    "tools/realism_lint.py": "349eecdc03ff62db",
     # Bumped for a larger style_presets list (version 2 -> 3) - ten more
     # camera/lighting/grade combinations drawn from the same PDF vocabulary
     # the image side already had, cycled by seed the same way the original

@@ -1,6 +1,6 @@
 {
   "source": "AI Video Bootcamp - Phase 2 ARCHITECT - Lesson 20: Creating More Realistic Avatars",
-  "version": 7,
+  "version": 8,
   "default_model": "Nano Banana Pro",
   "layers": {
     "core": {
@@ -28,7 +28,11 @@
         "cinematic film still",
         "documentary-style photography",
         "street photography",
-        "studio portrait photography"
+        "studio portrait photography",
+        "shot on an ARRI Alexa",
+        "shot on a Sony Venice 2",
+        "shot on a RED V-Raptor",
+        "shot on a Hasselblad medium format camera"
       ]
     },
     "lens": {

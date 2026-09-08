@@ -40,6 +40,8 @@ DETECT = {
             "dslr", "mirrorless", "film still", "documentary-style", "street photography",
             "studio portrait", "smartphone selfie", "phone camera", "front camera",
             "full-frame", "iphone", "shot on a real",
+            # Named real cameras (Camera Language transcript's own recommendations).
+            "arri alexa", "sony venice", "red v-raptor", "hasselblad",
         ],
         "fix": "name the camera, e.g. \"DSLR photography\" or \"cinematic film still\"",
     },
@@ -95,6 +97,13 @@ DETECT = {
             "color grading", "colour grading", "muted tones", "earthy", "color balance",
             "colour balance", "realistic contrast", "soft highlights", "deep shadows",
             "natural skin tones", "neutral and photographic",
+            # The Color Grading section's mood/film-look/technique phrases
+            # (tools/color_bank.json). Audited for real, not assumed - see
+            # tests/test_color_bank.py, including a banned/warn check since
+            # this bank's source leans stylised rather than restrained.
+            "extreme contrast", "color blocking", "primary colors", "high contrast",
+            "amber and sand tones", "candy-colored", "accent colour", "accent color",
+            "complementary colour contrast", "complementary color contrast",
         ],
         "fix": "add \"natural color grading, realistic contrast\"",
     },
@@ -119,6 +128,14 @@ DETECT = {
             # assumed - see tests/test_composition_bank.py.
             "negative space", "lead room", "midground", "frame within the frame",
             "asymmetrical balance", "scale contrast", "repeating pattern",
+            # The Composition bank's atmosphere technique (mined from the
+            # Depth & Cinematic Framing guide's own haze/fog/mist section).
+            "haze",
+            # The Camera Angle bank (tools/camera_angle_bank.json) - side and
+            # shot-size phrases not already covered by motion_bank.json's own
+            # image-hint framing terms above.
+            "worm's-eye", "top-down", "frontal shot", "three-quarter angle",
+            "profile shot", "back shot", "point-of-view", "full shot",
         ],
         "fix": "add \"eye-level shot, unstaged composition\"",
     },

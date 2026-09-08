@@ -1,0 +1,134 @@
+{
+  "source": "AI Video Bootcamp's Color Grading Reference (Mood -> Color -> Prompt cheat sheet) and its Film Look References section - the prompt words and palette descriptions are the course's own, not invented.",
+  "version": 1,
+  "note": "A mood or a film look is a single named recipe (mutually exclusive with each other - two complete looks can't both be the grade), or type your own. `techniques` stack on top of either, additive and opt-in. Unlike lighting's quality x source, there's nothing here to contradict itself, so no conflicts list. Some of this material is deliberately vivid rather than restrained (neon cyberpunk, hot pink Barbie) - every phrase is checked against banned/warn, not just detectability, since this is the first bank whose source leans stylised.",
+
+  "moods": {
+    "epic-heroic": {
+      "label": "Epic / Heroic",
+      "phrase": "warm golden highlights, deep blue shadows, rich cinematic color grading, epic tone",
+      "note": "Rich golds, deep blues, warm highlights with cool shadows."
+    },
+    "dark-moody": {
+      "label": "Dark / Moody",
+      "phrase": "dark moody color grading, desaturated tones, deep shadows, teal and orange palette",
+      "note": "Desaturated, heavy shadows, teal and orange undertones."
+    },
+    "romantic-dreamy": {
+      "label": "Romantic / Dreamy",
+      "phrase": "soft dreamy color grading, warm pink and gold tones, gentle haze, romantic atmosphere",
+      "note": "Soft pinks, warm golden tones, slight haze."
+    },
+    "horror-unsettling": {
+      "label": "Horror / Unsettling",
+      "phrase": "cold green-tinted color grading, sickly yellow undertones, high contrast, crushed blacks, unsettling",
+      "note": "Cold greens, sickly yellows, high contrast, crushed blacks."
+    },
+    "scifi-cyberpunk": {
+      "label": "Sci-Fi / Cyberpunk",
+      "phrase": "neon-lit cyberpunk color grading, electric blue and magenta, dark backgrounds, high contrast",
+      "note": "Neon blues, magentas, teals against dark backgrounds."
+    },
+    "vintage-nostalgic": {
+      "label": "Vintage / Nostalgic",
+      "phrase": "vintage film color grading, faded warm tones, lifted blacks, nostalgic 35mm film grain",
+      "note": "Faded colors, warm yellows, slightly lifted blacks, grain."
+    },
+    "clean-corporate": {
+      "label": "Clean / Corporate",
+      "phrase": "clean bright color grading, slightly cool tone, high key lighting, professional",
+      "note": "Bright, slightly cool, high key, minimal shadows."
+    },
+    "nature-documentary": {
+      "label": "Nature / Documentary",
+      "phrase": "natural documentary color grading, rich greens, warm earth tones, organic feel",
+      "note": "Rich greens, warm earth tones, natural saturation."
+    },
+    "melancholy-lonely": {
+      "label": "Melancholy / Lonely",
+      "phrase": "desaturated blue-grey color grading, cold melancholic tone, muted colors, overcast",
+      "note": "Desaturated blues and greys, cold tones, overcast feel."
+    },
+    "high-energy-action": {
+      "label": "High Energy / Action",
+      "phrase": "high contrast punchy color grading, vibrant saturation, action film tone",
+      "note": "High contrast, punchy saturation, warm tones with cool accents."
+    },
+    "luxury-elegant": {
+      "label": "Luxury / Elegant",
+      "phrase": "luxurious color grading, deep rich blacks, golden accents, elegant warm highlights",
+      "note": "Deep blacks, gold accents, warm highlights, rich contrast."
+    },
+    "surreal-dreamlike": {
+      "label": "Surreal / Dreamlike",
+      "phrase": "surreal dreamlike color grading, shifted color palette, pastel and deep tones mixed",
+      "note": "Unnatural color shifts, pastels mixed with deep tones, soft focus."
+    }
+  },
+
+  "film_looks": {
+    "blade-runner-2049": {
+      "label": "Blade Runner 2049",
+      "phrase": "heavy orange and teal color grading, smoky atmosphere, neon accents in darkness, Blade Runner 2049-inspired look",
+      "note": "Heavy orange and teal, smoky atmosphere, neon accents in darkness."
+    },
+    "mad-max-fury-road": {
+      "label": "Mad Max: Fury Road",
+      "phrase": "crushed teal shadows with blazing orange and amber highlights, extreme contrast, Mad Max Fury Road-inspired look",
+      "note": "Crushed teal shadows with blazing orange/amber highlights, extreme contrast."
+    },
+    "the-matrix": {
+      "label": "The Matrix",
+      "phrase": "green-tinted color grading throughout, dark shadows, desaturated except for green, The Matrix-inspired look",
+      "note": "Green tint throughout, dark shadows, desaturated except for green."
+    },
+    "wes-anderson": {
+      "label": "Wes Anderson",
+      "phrase": "pastel color blocking, symmetrical framing, warm vintage tones, Wes Anderson-inspired look",
+      "note": "Pastel color blocking, symmetrical, warm vintage tones."
+    },
+    "ozark-gone-girl": {
+      "label": "Ozark / Gone Girl",
+      "phrase": "cold steel blue color grading, desaturated, flat, oppressive mood, Ozark-inspired look",
+      "note": "Cold steel blue, desaturated, flat, oppressive."
+    },
+    "la-la-land": {
+      "label": "La La Land",
+      "phrase": "rich saturated primary colors, golden hour warmth, vibrant but elegant, La La Land-inspired look",
+      "note": "Rich saturated primaries, golden hour warmth, vibrant but elegant."
+    },
+    "john-wick": {
+      "label": "John Wick",
+      "phrase": "deep neon blue and red contrast against pitch black, high contrast, John Wick-inspired look",
+      "note": "Deep neon blue and red contrast against pitch black, high contrast."
+    },
+    "dune": {
+      "label": "Dune",
+      "phrase": "warm amber and sand tones, hazy atmosphere, desaturated blues, Dune-inspired look",
+      "note": "Warm amber and sand tones, hazy atmosphere, desaturated blues."
+    },
+    "barbie": {
+      "label": "Barbie",
+      "phrase": "hot pink saturation, bright highlights, candy-colored palette, high key lighting, Barbie-inspired look",
+      "note": "Hot pink saturation, bright highlights, candy-colored, high key."
+    },
+    "the-revenant": {
+      "label": "The Revenant",
+      "phrase": "cold natural light, blue-grey shadows, raw and earthy tones, The Revenant-inspired look",
+      "note": "Cold natural light, blue-grey shadows, raw and earthy."
+    }
+  },
+
+  "techniques": {
+    "accent-echo": {
+      "label": "Accent colour echo",
+      "phrase": "one accent colour repeated through the frame, in a reflection or object",
+      "note": "Repeating a single accent colour makes the frame feel intentional, like every element belongs, rather than random."
+    },
+    "warm-cool-contrast": {
+      "label": "Warm/cool contrast",
+      "phrase": "warm light on the subject against cooler tones in the background, the classic complementary colour contrast",
+      "note": "Orange and blue sit opposite each other on the colour wheel - warm skin against a cool background is one of the strongest, most reliable colour separations there is."
+    }
+  }
+}

@@ -114,8 +114,14 @@ check("the disagreement is reported, not fixed", any("typed your own" in n for n
       str(notes))
 
 print()
-print("=== THE BANK, v7 ===")
-check("version bumped", bank["version"] == 7, str(bank["version"]))
+print("=== THE BANK, v8 ===")
+check("version bumped", bank["version"] == 8, str(bank["version"]))
+for cam in ["shot on an ARRI Alexa", "shot on a Sony Venice 2", "shot on a RED V-Raptor",
+            "shot on a Hasselblad medium format camera"]:
+    check("'{}' is in the camera layer".format(cam), cam in bank["layers"]["camera"]["terms"])
+    _, _, got_cam, banned_cam = score(dict(BASE, overrides={"camera": [cam]}))
+    check("and it scores 8/8".format(cam), got_cam == 8 and not banned_cam,
+          "{}/8".format(got_cam))
 check("phone-candid exists", "phone-candid" in bank["shot_presets"])
 check("it is a rear camera, not a selfie",
       "selfie" not in bank["shot_presets"]["phone-candid"]["camera"].lower(),

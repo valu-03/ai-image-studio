@@ -62,6 +62,8 @@ ICONS = {
     "lighting": (ICON_DIR / "lighting.svg", ICON_DIR / "lighting-active.svg"),
     "composition": (ICON_DIR / "composition.svg", ICON_DIR / "composition-active.svg"),
     "posing": (ICON_DIR / "posing.svg", ICON_DIR / "posing-active.svg"),
+    "color": (ICON_DIR / "color.svg", ICON_DIR / "color-active.svg"),
+    "camera_angle": (ICON_DIR / "camera_angle.svg", ICON_DIR / "camera_angle-active.svg"),
     # Actions and sub-views
     "compose": (ICON_DIR / "compose.svg", ICON_DIR / "compose-active.svg"),
     "variants": (ICON_DIR / "variants.svg", ICON_DIR / "variants-active.svg"),

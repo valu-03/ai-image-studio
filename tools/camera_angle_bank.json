@@ -1,0 +1,114 @@
+{
+  "source": "AI Video Bootcamp's Camera Language lesson - the angle/shot-size vocabulary the transcript teaches as the first of its three foundational camera tools (angle, shot size, lens), independent of prompt_bank.json's own named shot_presets.",
+  "version": 1,
+  "note": "Three independent axes - vertical position, side/relationship to the subject, and shot size. Unlike lighting's quality x source there's no natural contradiction between them (low-angle + profile + close-up is a perfectly valid real combination), so there's no conflicts list, and no techniques dict either - the three axes fully describe camera position on their own. `custom` typed text always wins over any picked axis. The composed phrase is meant to be typed straight into Compose's own Shot field as custom text, replacing the camera slot - EXACTLY like typing any other custom shot today, which means it can legitimately score the camera realism layer at 0/8 if it names no capture device. That's the gate working, not a bug - see ui/spec_editor.py's own shot tooltip, which says the same thing.",
+
+  "verticals": {
+    "eye-level": {
+      "label": "Eye level",
+      "phrase": "eye-level shot, the camera at the subject's eye height, looking straight across",
+      "note": "The honest baseline - can feel intimate or confrontational depending on the moment, never neutral by default."
+    },
+    "low-angle": {
+      "label": "Low angle",
+      "phrase": "low-angle shot, the camera below the subject looking up",
+      "note": "The subject towers over the viewer - powerful, heroic, sometimes threatening. On a scared child looking up at an adult, the same angle reads as fear instead."
+    },
+    "worms-eye": {
+      "label": "Worm's-eye",
+      "phrase": "worm's-eye view, the camera at the floor aiming straight up",
+      "note": "Pushed all the way down from low-angle - incredible on a person, a car, a bike, a building."
+    },
+    "high-angle": {
+      "label": "High angle",
+      "phrase": "high-angle shot, the camera above the subject looking down",
+      "note": "The subject shrinks - vulnerable, exposed, cornered. Can also just show order and control rather than weakness, depending on the moment."
+    },
+    "top-down": {
+      "label": "Top-down / overhead",
+      "phrase": "top-down overhead shot, the camera directly above looking straight down",
+      "note": "The scene turns into geometry - rooms become diagrams, people become pieces on a board."
+    },
+    "dutch-angle": {
+      "label": "Dutch angle",
+      "phrase": "Dutch angle, the camera tilted so the horizon runs diagonal",
+      "note": "The one angle that breaks the horizon itself - instantly feels wrong, tense, unstable, like something's off."
+    }
+  },
+
+  "sides": {
+    "frontal": {
+      "label": "Frontal",
+      "phrase": "frontal shot, the subject straight on to camera",
+      "note": "Direct, symmetrical, iconic - if they look into the lens, they're talking right to the viewer."
+    },
+    "three-quarter": {
+      "label": "Three-quarter",
+      "phrase": "three-quarter angle, the camera slightly to the side of the subject",
+      "note": "The most natural cinematic look - shape and depth without the flatness of frontal or the closed-off feel of a full profile."
+    },
+    "profile": {
+      "label": "Profile",
+      "phrase": "profile shot, the subject fully side-on to camera",
+      "note": "Distant, locked-in, closed off - the opposite instinct from a frontal shot."
+    },
+    "back-shot": {
+      "label": "Back shot",
+      "phrase": "back shot, the camera behind the subject",
+      "note": "Mystery - the viewer follows them into the scene, seeing what they see but not their face."
+    },
+    "over-the-shoulder": {
+      "label": "Over-the-shoulder",
+      "phrase": "over-the-shoulder shot, the camera behind one person looking at the other",
+      "note": "How you shoot a conversation or a confrontation - whoever's shoulder is bigger quietly holds the power."
+    },
+    "pov": {
+      "label": "POV",
+      "phrase": "point-of-view shot, the camera as the subject's own eyes",
+      "note": "Sell it with what they'd see - their hands, a steering wheel, the frame of their glasses, a helmet visor, a scope, a keyhole."
+    }
+  },
+
+  "sizes": {
+    "extreme-wide": {
+      "label": "Extreme wide",
+      "phrase": "extreme wide shot, the subject a tiny part of a vast frame",
+      "note": "About the world, its scale, and how small the person is inside it - perfect for opening a scene, or crushing a character with scale."
+    },
+    "wide": {
+      "label": "Wide",
+      "phrase": "wide shot, the subject head to toe with plenty of space around them",
+      "note": "Reads the person and the place at the same time - put a threat in the same wide frame and the viewer sees the danger before the character does."
+    },
+    "full": {
+      "label": "Full",
+      "phrase": "full shot, the subject filling the frame head to toe with less surrounding space",
+      "note": "About the body - posture, silhouette, the outfit, the stance."
+    },
+    "medium-wide": {
+      "label": "Medium-wide",
+      "phrase": "medium-wide shot, framed around the knees",
+      "note": "A balance of face, hands, body, and a bit of the surroundings - the action-and-movement shot."
+    },
+    "medium": {
+      "label": "Medium",
+      "phrase": "medium shot, framed from the waist",
+      "note": "The most versatile size there is, the natural distance of a conversation - but a whole scene on medium alone gets monotonous."
+    },
+    "medium-close-up": {
+      "label": "Medium close-up",
+      "phrase": "medium close-up, framed from the chest or shoulders",
+      "note": "The face takes over but a little body and context stays - the shift from behaviour to reaction, the shot of connection and trust."
+    },
+    "close-up": {
+      "label": "Close-up",
+      "phrase": "close-up shot, the face filling the frame",
+      "note": "The world disappears and you read the eyes, the breath, the smallest change - doesn't automatically mean big emotion, the same close-up can be cold, threatening, beautiful, or empty."
+    },
+    "extreme-close-up": {
+      "label": "Extreme close-up",
+      "phrase": "extreme close-up, just one part of the face or one tiny detail filling the frame",
+      "note": "Maximum emphasis on one critical thing - a single eye, a drop of sweat, a finger on a trigger."
+    }
+  }
+}

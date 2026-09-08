@@ -1,6 +1,6 @@
 {
   "source": "Extends prompt_bank.json's own composition_guides (rule of thirds, phi grid, diagonals, triangle, golden ratio, golden spiral, harmonic armature) with physically-grounded techniques a working photographer stacks on top of a geometry - not a second, competing taxonomy.",
-  "version": 1,
+  "version": 2,
   "note": "This bank holds only `techniques`. The seven named framing geometries already live in prompt_bank.json's composition_guides and are reused as-is via build_prompt.guides() - duplicating them here would give the two names to keep in sync forever. A guide (or typed custom text) is the base; techniques stack on top of either, additive and opt-in, never required. Unlike lighting's quality x source, the seven guides are already mutually exclusive by construction (one combo, one pin) and no technique here contradicts a guide or another technique - so there is no conflicts list.",
 
   "techniques": {
@@ -38,6 +38,11 @@
       "label": "Pattern and repetition",
       "phrase": "a repeating pattern in the environment broken by the subject",
       "note": "The subject reads as the interruption in a rhythm. The most scene-dependent of the seven - needs an environment that actually has a repeating element to break."
+    },
+    "atmosphere": {
+      "label": "Atmosphere",
+      "phrase": "a soft haze in the air separating the frame's foreground, subject, and background",
+      "note": "Distinct from depth-layering above: that technique names the three LAYERS, this one names the air BETWEEN them. Real air isn't empty - the more of it sits between the camera and something, the lighter and softer that thing reads, which is exactly what makes distant buildings fade into a city skyline's haze."
     }
   }
 }
