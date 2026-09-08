@@ -80,6 +80,17 @@ GLYPHS = {
         '<path d="M9 18h6M10 21h4"/>'
         '<path d="M12 3a6 6 0 0 0-3 11.2c.6.4 1 1.1 1 1.8h4c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z"/>'
     ),
+    # A rule-of-thirds grid, the frame's own edge plus two guide lines each way,
+    # with a small ring on one intersection - the subject placed on a third
+    # rather than centred. Small stroked circle, no local fill override, the
+    # same convention "images"' own lens-dot glyph already uses. Distinct from
+    # "variants"' four separate rounded tiles (no gaps here, one continuous
+    # frame) and from "settings"' circular sun/gear mark.
+    "composition": (
+        '<rect x="3" y="3" width="18" height="18" rx="1.5"/>'
+        '<path d="M9 3v18M15 3v18M3 9h18M3 15h18"/>'
+        '<circle cx="9" cy="9" r="1.3"/>'
+    ),
 }
 
 TEMPLATE = (

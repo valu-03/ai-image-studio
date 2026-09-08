@@ -20,6 +20,8 @@ Scripts the agent calls to get things done. Workflows hold the sequence; tools h
 | `realism_lint.py` | Prompt → score out of 8, names the missing layer and the phrase to add, flags banned terms. Exit code 1 on failure so a workflow can gate on it. | no |
 | `lighting_bank.json` | The Lighting section's taxonomy: 8 portrait directions (Rembrandt, split, loop, ...), hard/soft quality, 10 natural/artificial sources, 8 named setups combining them, and 7 physically-grounded realism techniques (catchlights, colour temperature, ...). Not a script. | no |
 | `build_lighting.py` | A named `setup` (fast path) or direction + quality + source (deep path) → a lighting phrase, `realism_techniques` stacking on either. The deep path is checked against the bank's `conflicts` list - a combination that fights itself is warned, not silently composed. Result feeds `spec["overrides"]["lighting"]`, the same slot Compose's own lighting combo already writes to. | no |
+| `composition_bank.json` | The Composition section's opt-in realism techniques (negative space, lead room, depth layering, frame within a frame, visual balance, scale contrast, pattern and repetition) stacked on top of a guide. Not a script - the seven named geometries themselves stay in `prompt_bank.json`'s `composition_guides`, read via `build_prompt.guides()`, not duplicated here. | no |
+| `build_composition.py` | A named `guide` (from `prompt_bank.json`) or typed custom text - custom always wins, same precedence `build_prompt.apply_composition_guide()` already enforces - plus `techniques` stacking on either. No `conflicts` list: the seven guides are already mutually exclusive by construction and no technique fights one. Result is meant to be typed straight into Compose's own composition combo as custom text. | no |
 | `generate_image.py` | Image generation for **Kie** (default, Nano Banana Pro) and **Higgsfield Soul**. Both are async: submit a job, poll it, download the result. `--reference` (character consistency) is Kie-only and refused elsewhere. `--dry-run` and an explicit exit code per failure mode. | yes |
 | `history.py` | The outcome log. Records every generated prompt with the vocabulary it used, takes a 1–5 rating, reports which terms correlate with good results (`analyze`), and diffs any two prompts. | no |
 | `generate_video.py` | Clip generation on **Kling 3.0** through Kie - the same job API as the images, and none of its own transport: `post_json`, `poll`, `download` and both Kie parsers come from `generate_image.py`. `--image` makes it image-to-video, which is what keeps one cat across the cuts. `--price` estimates a batch, `--dry-run` prints the request. | yes |
@@ -85,6 +87,15 @@ Every guide phrase names the geometry *and* what it does to the frame, because t
 alone means little to an image model. Each one also has a detection keyword in
 `realism_lint.py`; without that the composition layer would score zero and a deliberate choice
 would fail the 8/8 gate. `python tools/build_prompt.py --list-guides` prints them.
+
+The Composition nav section (`ui/views/composition.py`, `build_composition.py`) is a thin layer
+over the same seven guides plus a second, additive bank - `composition_bank.json`'s seven
+`techniques` (negative space, lead room, depth layering, frame within a frame, visual balance,
+scale contrast, pattern and repetition). A guide (or typed custom text - custom always wins,
+same precedence as above) is the base; techniques stack on top, opt-in, never required, and
+none of them contradicts a guide or each other, so unlike Lighting's `conflicts` list this bank
+has none. `compose_composition()`'s result is meant to be typed straight into Compose's own
+composition combo as custom text - `SpecEditor.set_composition_override()` does exactly that.
 
 ### `pick` decides what a custom value does
 

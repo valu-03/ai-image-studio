@@ -814,6 +814,21 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   `\r\n` -> `\n` before hashing, confirmed against `git show HEAD:<path>` directly rather than
   assumed - not three separate one-off "just update the number" edits that would have left the
   same platform-dependent fragility for the next person who touches any of these three files.
+- **Composition got the same treatment as Lighting, but reuses rather than duplicates.**
+  `tools/composition_bank.json` holds only `techniques` (negative space, lead room, depth
+  layering, frame within a frame, visual balance, scale contrast, pattern and repetition) - the
+  seven named geometries themselves stay put in `prompt_bank.json`'s `composition_guides` and
+  are read via `build_prompt.guides()`, not copied into a second bank that would need to be kept
+  in sync forever. `build_composition.compose_composition()` mirrors `compose_lighting()`'s
+  `(phrase, warnings)` shape for interface parity, but `warnings` is always `[]`: unlike
+  lighting's quality x source, the seven guides are already mutually exclusive by construction
+  (one combo, one pin) and none of the seven techniques fights a guide or each other, so there
+  is no `conflicts` list. Custom typed text always beats a picked guide - the same precedence
+  `apply_composition_guide()` already enforces - so `SpecEditor.set_composition_override()`
+  (new) can just write the composed phrase in as custom text; no changes to `build_prompt.py`
+  were needed at all. `tests/test_composition_bank.py` (new) audits the seven technique phrases
+  against `realism_lint.py` and leaves `tests/test_composition.py` (the pre-existing combo/pin
+  suite) untouched.
 - **A 5th Brief tab, "Analyze a photo," is the missing case `critique_image` structurally
   cannot cover.** `critique_image(bank, prompt, image_path)` requires an already-known prompt
   ("this image was generated from X, what's wrong with it") - exactly what an arbitrary
@@ -833,11 +848,11 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   topology) doesn't fit anything here - there is no live control/simulation loop to evolve a
   policy against. The UCB upgrade above is the actual real version of that instinct: a bandit
   algorithm, applied to the one place this project already had an explore/exploit problem.
-- **Run `python tests/run_all.py` before calling anything done.** 1229 checks, all green
-  (`test_history.py`, `test_lighting_bank.py` and `test_elevenlabs.py` are all now in
-  `tests/run_all.py`'s `ORDER` - the last of those existed for a while but was never actually
-  wired in, so it silently never ran as part of the suite until it was noticed), no
-  dependencies beyond PyQt6, Qt runs offscreen.
+- **Run `python tests/run_all.py` before calling anything done.** 1260 checks, all green
+  (`test_history.py`, `test_lighting_bank.py`, `test_elevenlabs.py` and `test_composition_bank.py`
+  are all now in `tests/run_all.py`'s `ORDER` - `test_elevenlabs.py` existed for a while but was
+  never actually wired in, so it silently never ran as part of the suite until it was noticed),
+  no dependencies beyond PyQt6, Qt runs offscreen.
 
 ---
 
@@ -858,7 +873,10 @@ Shot, Lighting and Composition.
 
 The GUI is organised by category: **Images** (Compose + Variants), **Lighting** (named
 portrait setups, or direction + quality + source composed independently, plus opt-in realism
-techniques - Apply to Compose writes straight into Compose's own lighting override), **Videos**
+techniques - Apply to Compose writes straight into Compose's own lighting override),
+**Composition** (the same seven framing geometries Compose's own combo already offers,
+browsable, plus opt-in realism techniques - negative space, lead room, depth layering, ... -
+stacked on top; Apply to Compose writes the result in as custom framing text), **Videos**
 (the Kling camera-movement toolkit and the film glossary — builds the prompt and, since Phase 3,
 can generate the real clip too), **Ads** (the five-beat UGC advert: brief, storyboard, hook A/B,
 checklist, publishing), **Cats** (a story in scenes plus its CapCut edit sheet, and a Custom Prompt tab for a

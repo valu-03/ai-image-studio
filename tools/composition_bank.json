@@ -1,0 +1,43 @@
+{
+  "source": "Extends prompt_bank.json's own composition_guides (rule of thirds, phi grid, diagonals, triangle, golden ratio, golden spiral, harmonic armature) with physically-grounded techniques a working photographer stacks on top of a geometry - not a second, competing taxonomy.",
+  "version": 1,
+  "note": "This bank holds only `techniques`. The seven named framing geometries already live in prompt_bank.json's composition_guides and are reused as-is via build_prompt.guides() - duplicating them here would give the two names to keep in sync forever. A guide (or typed custom text) is the base; techniques stack on top of either, additive and opt-in, never required. Unlike lighting's quality x source, the seven guides are already mutually exclusive by construction (one combo, one pin) and no technique here contradicts a guide or another technique - so there is no conflicts list.",
+
+  "techniques": {
+    "negative-space": {
+      "label": "Negative space",
+      "phrase": "generous negative space isolating the subject",
+      "note": "Empty area as a deliberate choice, not just an unfilled frame - one of the two highest-leverage additions here, cheap and almost always applicable."
+    },
+    "lead-room": {
+      "label": "Lead room",
+      "phrase": "generous lead room, the subject's gaze or motion leading toward open space in the frame",
+      "note": "The classic headroom/nose-room rule. The other highest-leverage addition - fights the single most common AI-composition tell, everything crammed dead-centre with nowhere to look into."
+    },
+    "depth-layering": {
+      "label": "Depth layering",
+      "phrase": "distinct foreground, midground, and background layers giving the shot real depth",
+      "note": "The base composition layer already says foreground/background - this names the midground explicitly, which it never does. AI images often go flat with nothing in between."
+    },
+    "framing-device": {
+      "label": "Frame within a frame",
+      "phrase": "a natural frame within the frame - a doorway, window, or archway - surrounding the subject",
+      "note": "An environmental framing device. None of the seven guides are environmental - they're all abstract grids or curves - so this is a genuinely different kind of composition, not a variation on one already there."
+    },
+    "visual-balance": {
+      "label": "Visual balance",
+      "phrase": "asymmetrical balance, weight distributed across the frame rather than centred",
+      "note": "An explicit answer to 'does the frame feel balanced,' not implied by any guide on its own."
+    },
+    "scale-contrast": {
+      "label": "Scale contrast",
+      "phrase": "scale contrast between subject and surroundings emphasising size",
+      "note": "Size read through juxtaposition against the environment, not framing geometry - matters most in a wider shot with something to compare the subject against."
+    },
+    "pattern-repetition": {
+      "label": "Pattern and repetition",
+      "phrase": "a repeating pattern in the environment broken by the subject",
+      "note": "The subject reads as the interruption in a rhythm. The most scene-dependent of the seven - needs an environment that actually has a repeating element to break."
+    }
+  }
+}

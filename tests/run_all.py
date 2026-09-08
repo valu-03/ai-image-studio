@@ -28,6 +28,7 @@ ORDER = [
     "test_history.py",
     "test_lighting_bank.py",
     "test_lighting.py",
+    "test_composition_bank.py",
     "test_composition.py",
     "test_autofill.py",
     "test_autofill_gui.py",

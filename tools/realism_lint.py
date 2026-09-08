@@ -108,6 +108,11 @@ DETECT = {
             # the 8/8 gate.
             "phi grid", "diagonal composition", "leading lines", "triangular composition",
             "golden ratio", "golden spiral", "fibonacci", "harmonic armature",
+            # The Composition section's opt-in realism techniques
+            # (tools/composition_bank.json). Same rule: audited for real, not
+            # assumed - see tests/test_composition_bank.py.
+            "negative space", "lead room", "midground", "frame within the frame",
+            "asymmetrical balance", "scale contrast", "repeating pattern",
         ],
         "fix": "add \"eye-level shot, unstaged composition\"",
     },

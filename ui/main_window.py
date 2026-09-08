@@ -39,6 +39,7 @@ from .views import (  # noqa: E402
     AdsView,
     BriefView,
     CatsView,
+    CompositionView,
     HistoryView,
     ImagesView,
     InsightsView,
@@ -71,6 +72,7 @@ SETTINGS_APP = os.environ.get("AIVS_SETTINGS_APP", "Studio")
 NAV_ITEMS = [
     ("images", "Images"),
     ("lighting", "Lighting"),
+    ("composition", "Composition"),
     ("videos", "Videos"),
     ("ads", "Ads"),
     ("cats", "Cats"),
@@ -238,6 +240,7 @@ class MainWindow(QMainWindow):
         self.cats_view = CatsView(self.bank, self.theme.palette)
         self.sound_view = SoundView(self.theme.palette)
         self.lighting_view = LightingView(self.theme.palette)
+        self.composition_view = CompositionView(self.theme.palette)
         self.brief_view = BriefView(self.bank)
         self.history_view = HistoryView(self.theme.palette)
         self.insights_view = InsightsView(self.theme.palette)
@@ -246,6 +249,7 @@ class MainWindow(QMainWindow):
         self.views = {
             "images": self.images_view,
             "lighting": self.lighting_view,
+            "composition": self.composition_view,
             "videos": self.videos_view,
             "ads": self.ads_view,
             "cats": self.cats_view,
@@ -302,6 +306,8 @@ class MainWindow(QMainWindow):
 
         self.compose_view.editor.open_lighting_requested.connect(
             lambda: self.go_to("lighting"))
+        self.compose_view.editor.open_composition_requested.connect(
+            lambda: self.go_to("composition"))
         self.compose_view.generate_requested.connect(self.generate_single)
         self.compose_view.upscale_requested.connect(self.upscale_image)
         self.compose_view.refine_requested.connect(self.refine_image)
@@ -315,6 +321,7 @@ class MainWindow(QMainWindow):
         # already uses for a movement's image hints: build the override, load it
         # into the editor, jump to Images so the result is immediately visible.
         self.lighting_view.lighting_applied.connect(self.apply_lighting_phrase)
+        self.composition_view.composition_applied.connect(self.apply_composition_phrase)
         # The sound sheet is generated from whatever story is open in Cats, so
         # the two stay in step without either knowing about the other.
         self.sound_view.context = lambda: self.cats_view.scenes
@@ -419,6 +426,8 @@ class MainWindow(QMainWindow):
             self.sound_view.refresh()
         elif key == "lighting":
             self.lighting_view.refresh()
+        elif key == "composition":
+            self.composition_view.refresh()
 
     def on_search(self, text):
         self.compose_view.set_filter(text)
@@ -448,6 +457,7 @@ class MainWindow(QMainWindow):
         self.cats_view.set_palette_tokens(self.theme.palette)
         self.sound_view.set_palette_tokens(self.theme.palette)
         self.lighting_view.set_palette_tokens(self.theme.palette)
+        self.composition_view.set_palette_tokens(self.theme.palette)
         self.insights_view.set_palette_tokens(self.theme.palette)
         self.statusBar().showMessage("{} theme".format(name.capitalize()))
 
@@ -456,6 +466,13 @@ class MainWindow(QMainWindow):
         apply_motion_hints(): build the override, load it into the editor,
         jump to Images so the result is immediately visible."""
         self.compose_view.editor.set_lighting_override(phrase)
+        self.go_to("images")
+        self.images_view.show_compose()
+
+    def apply_composition_phrase(self, phrase):
+        """Composition's "Apply to Compose" - identical shape to
+        apply_lighting_phrase()."""
+        self.compose_view.editor.set_composition_override(phrase)
         self.go_to("images")
         self.images_view.show_compose()
 

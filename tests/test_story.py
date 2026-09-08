@@ -119,7 +119,11 @@ HASHES = {
     # existing key's meaning changed, lint()/find_terms()/the banned+warn
     # logic are untouched - verified by tests/test_lighting_bank.py's own
     # "no bank phrase is invisible to realism_lint" audit, not assumed.
-    "tools/realism_lint.py": "f6a47de91b9aada8",
+    # Bumped again for the Composition section's seven technique-detection
+    # keywords (negative space, lead room, midground, ...) - audited for real
+    # by tests/test_composition_bank.py's own "no technique phrase is
+    # invisible to realism_lint" check, not assumed.
+    "tools/realism_lint.py": "997335801daa1c96",
     # Bumped for a larger style_presets list (version 2 -> 3) - ten more
     # camera/lighting/grade combinations drawn from the same PDF vocabulary
     # the image side already had, cycled by seed the same way the original

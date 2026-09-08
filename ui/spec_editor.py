@@ -84,6 +84,8 @@ class SpecEditor(QWidget):
     # combo stays the fast/simple path. Same relationship Videos' standalone
     # Audio Cue field already has to the full Sound section.
     open_lighting_requested = pyqtSignal()
+    # Same relationship, for the Composition section's guide library + techniques.
+    open_composition_requested = pyqtSignal()
 
     def __init__(self, bank, parent=None):
         super().__init__(parent)
@@ -225,10 +227,17 @@ class SpecEditor(QWidget):
             "Named setups (Rembrandt, split, loop, ...) and a direction + quality + "
             "source picker - the combo above stays the fast, simple path.")
         open_lighting.clicked.connect(self.open_lighting_requested)
+        open_composition = QPushButton("Open Composition section →")
+        open_composition.setProperty("class", "ghost")
+        open_composition.setToolTip(
+            "The seven guides, browsable, plus opt-in realism techniques (negative "
+            "space, lead room, depth layering, ...) to stack on top - the combo "
+            "above stays the fast, simple path.")
+        open_composition.clicked.connect(self.open_composition_requested)
         self.tabs.addTab(
             _tab([("Setting", self.setting), ("Shot", self.shot),
                   ("Lighting", self.lighting), ("Composition", self.composition)],
-                 [open_lighting]),
+                 [open_lighting, open_composition]),
             "Scene",
         )
         self.tabs.addTab(
@@ -388,6 +397,19 @@ class SpecEditor(QWidget):
         preview updates the same way it does for any other edit here.
         """
         self.lighting.setCurrentText((phrase or "").strip())
+
+    def set_composition_override(self, phrase):
+        """Load a composed phrase from the Composition section into this combo.
+
+        Always lands as typed custom text, never a picked guide item - once
+        techniques are stacked on top of a guide the result no longer matches
+        any single guide's phrase. That is exactly the "typed text beats a
+        picked guide" precedence composition_guide()/composition_custom()
+        already implement, so this needs no new plumbing in build_prompt.py -
+        the existing pin mechanism just receives typed text instead of a
+        picked key, same as if the user had typed it in by hand.
+        """
+        self.composition.setCurrentText((phrase or "").strip())
 
     # -- data in / out ------------------------------------------------------ #
     def filled_keys(self):
