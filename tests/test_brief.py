@@ -142,9 +142,53 @@ r = brief.critique_image(bank, GOOD, "nope.png", ask=fake(crit))
 check("missing image -> error", not r["ok"] and "not found" in r["error"].lower())
 
 print()
+print("=== analyze_uploaded_image hygiene ===")
+# Same missing-prompt precondition critique_image can't handle - no known
+# prompt, so the whitelist/recompose/relint discipline has to be enforced
+# entirely on the model's read of the photo itself.
+
+good_photo = json.dumps({
+    "subject": "a woman in her late twenties with short curly hair",
+    "setting": "a sunlit kitchen", "action": "pouring coffee", "mood": "calm",
+    "analysis": "The lighting looks flat and even, which reads as artificial.",
+})
+r = brief.analyze_uploaded_image(bank, str(img), ask=fake(good_photo))
+check("spec parsed", r["ok"] and r["spec"]["subject"].startswith("a woman"))
+check("analysis carried through, verbatim", r["analysis"].startswith("The lighting"))
+check("lint reported", r["score"] == 8 and r["passed"], str(r.get("score")))
+
+dirty_photo = json.dumps({
+    "subject": "a man", "seed": 999, "reference": "/etc/passwd",
+    "lock_identity": True, "overrides": {"lighting": ["x"]}, "nonsense": 1,
+    "analysis": "Looks fine.",
+})
+r = brief.analyze_uploaded_image(bank, str(img), ask=fake(dirty_photo))
+check("unknown keys dropped", set(r["spec"]) <= brief.SPEC_KEYS, str(sorted(r["spec"])))
+for danger in ("seed", "reference", "lock_identity", "overrides"):
+    check("{} not accepted from model".format(danger), danger not in r["spec"])
+check("dropped keys reported", len(r["dropped"]) >= 4, str(r["dropped"]))
+check("analysis is not whitelist-constrained the way spec fields are",
+      r["analysis"] == "Looks fine.")
+
+r = brief.analyze_uploaded_image(
+    bank, str(img), ask=fake(json.dumps({"subject": "a man", "shot": "bogus"})))
+check("invalid shot dropped", "shot" not in r["spec"])
+check("drop is reported", any("shot=" in d for d in r["dropped"]), str(r["dropped"]))
+
+r = brief.analyze_uploaded_image(bank, "nope.png", ask=fake(good_photo))
+check("missing image -> error, no API call needed", not r["ok"]
+      and "not found" in r["error"].lower())
+
+r = brief.analyze_uploaded_image(bank, str(img), ask=fake("I can't do that."))
+check("non-JSON -> ok False", not r["ok"])
+
+r = brief.analyze_uploaded_image(bank, str(img), ask=fake(json.dumps({"mood": "sad"})))
+check("no readable subject -> ok False", not r["ok"])
+
+print()
 print("=== briefs render offline, and carry the six parts ===")
 for name, builder in [("idea", brief.idea_brief), ("upgrade", brief.upgrade_brief),
-                      ("critique", brief.critique_brief)]:
+                      ("critique", brief.critique_brief), ("analyze", brief.analyze_photo_brief)]:
     text = builder(bank)
     for part in ("PURPOSE", "ROLE", "STRUCTURE / FORMAT", "CONSTRAINTS"):
         check("{} brief has {}".format(name, part), part in text)

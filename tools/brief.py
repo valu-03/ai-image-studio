@@ -260,6 +260,56 @@ def critique_brief(bank):
     )
 
 
+def analyze_photo_brief(bank):
+    """The brief for reverse-engineering a spec from an uploaded photo.
+
+    Different precondition from critique_brief: critique_image() already knows
+    the prompt an image came from and asks what's wrong with it. This has no
+    prompt at all - an arbitrary photo, possibly not from this app, possibly a
+    real photograph with nothing wrong with it. So the model's two jobs are
+    read what's actually in the frame (mapped onto this app's own spec
+    fields, whitelisted the same way idea_brief's are) and separately judge
+    it - those are different questions and get different keys in the reply.
+    """
+    return build_brief(
+        purpose=(
+            "Look at a photo and (1) describe what's in it as a character spec for "
+            "this app's own photorealistic-avatar pipeline, and (2) judge it as a "
+            "photograph - what's working, what's off, what would improve it."
+        ),
+        role=(
+            "You are a portrait photographer and photo editor doing two jobs at "
+            "once: reading a scene the way a photographer would describe planning "
+            "it, and critiquing the image the way an editor spots what's wrong "
+            "with a photo, real or fake."
+        ),
+        structure=(
+            "Reply with a single JSON object and nothing else:\n"
+            '{"subject": "<string, physically - age range, hair, skin, distinguishing '
+            'marks>",\n'
+            ' "wardrobe": "<string, optional>",\n'
+            ' "setting": "<string, optional - where and when>",\n'
+            ' "action": "<string, optional - what they are physically doing>",\n'
+            ' "mood": "<string, optional - expression, two or three words>",\n'
+            ' "shot": "<optional, one of: ' + ", ".join(bank["shot_presets"]) + '>",\n'
+            ' "analysis": "<2-4 sentences: what is good about this photo, what is '
+            'off or fake-looking if anything, what would improve it>"}"'
+        ),
+        tone="Plain, concrete, photographic. No marketing language, no hedging.",
+        constraints=[
+            "Use ONLY the keys listed above for the spec fields. Any other key is "
+            "discarded.",
+            "Describe only what is actually visible. Do not invent a backstory.",
+            "Do not write camera, lens, lighting, grain or colour terms into the "
+            "spec fields - the app adds those from its own vocabulary. Lighting "
+            "observations belong in `analysis`, in plain words, not the spec.",
+            "`analysis` is your honest judgement, not a sales pitch - if the photo "
+            "already looks fully real, say so plainly rather than inventing a flaw.",
+            "Never use these words in the spec fields: " + ", ".join(bank["banned"]) + ".",
+        ],
+    )
+
+
 # --------------------------------------------------------------------------- #
 # The three actions, each with its validation gate
 # --------------------------------------------------------------------------- #
@@ -1063,6 +1113,61 @@ def critique_image(bank, prompt, image_path, ask=None):
     }
 
 
+def analyze_uploaded_image(bank, image_path, ask=None):
+    """Any local photo -> (a whitelisted spec suggestion, a plain-English verdict).
+
+    The missing case critique_image() can't cover: that function requires an
+    already-known prompt ("this was generated from X"), which an arbitrary
+    uploaded photo - not necessarily made by this app at all - does not have.
+    Same shape as spec_from_idea() otherwise: SPEC_KEYS is the only thing a
+    reply can set, the model's read is re-composed through build_prompt.compose()
+    and re-scored through realism_lint - "the text model suggests, realism_lint
+    decides" applies here exactly as everywhere else, not as an exception to it.
+    `analysis` is commentary, not spec data, so it is returned as-is rather
+    than whitelisted the way the spec fields are.
+    """
+    ask = ask or ask_llm.ask
+    path = Path(image_path)
+    if not path.is_absolute():
+        path = ROOT / path
+    if not path.exists():
+        return {"ok": False, "error": "Image not found: {}".format(path)}
+
+    text, error = ask(
+        "Analyse this photo.", system=analyze_photo_brief(bank), images=[str(path)])
+    if error:
+        return {"ok": False, "error": error}
+
+    payload = ask_llm.extract_json(text)
+    if not isinstance(payload, dict):
+        return {"ok": False, "error": "The model did not return JSON.", "raw": text}
+
+    spec = {k: v for k, v in payload.items() if k in SPEC_KEYS}
+    dropped = sorted(set(payload) - SPEC_KEYS - {"analysis"})
+    analysis = str(payload.get("analysis") or "").strip()
+
+    if not spec.get("subject"):
+        return {"ok": False, "error": "The model could not read a subject from this "
+                "photo.", "raw": text}
+
+    # Anything the model invented for shot has to be real, or dropped - the
+    # same treatment spec_from_idea() gives it.
+    if spec.get("shot") and bp.validate_shot(bank, spec["shot"]):
+        dropped.append("shot={}".format(spec.pop("shot")))
+
+    prompt, _ = bp.compose(bank, dict(spec, seed=0))
+    present, _, banned, _, _ = rl.lint(prompt.lower(), bank)
+    return {
+        "ok": True,
+        "spec": spec,
+        "analysis": analysis,
+        "dropped": dropped,
+        "score": len(present),
+        "passed": len(present) == 8 and not banned,
+        "banned": banned,
+    }
+
+
 # --------------------------------------------------------------------------- #
 # CLI
 # --------------------------------------------------------------------------- #
@@ -1085,12 +1190,17 @@ def main(argv=None):
     p_cr.add_argument("prompt_file")
     p_cr.add_argument("image")
 
+    p_an = sub.add_parser("analyze", help="any photo -> a spec suggestion + a verdict")
+    p_an.add_argument("image")
+    p_an.add_argument("--save", help="write the spec suggestion to this path")
+
     p_auto = sub.add_parser("autofill", help="fill the empty fields of a spec")
     p_auto.add_argument("spec", nargs="?", help="path to a partial spec JSON")
     p_auto.add_argument("--save", help="write the merged spec to this path")
 
     p_show = sub.add_parser("show", help="print a brief without calling the model")
-    p_show.add_argument("which", choices=["idea", "autofill", "upgrade", "critique"])
+    p_show.add_argument("which",
+                        choices=["idea", "autofill", "upgrade", "critique", "analyze"])
 
     args = parser.parse_args(argv if argv is not None else sys.argv[1:])
     bank = bp.load_bank()
@@ -1104,8 +1214,8 @@ def main(argv=None):
         return path.read_text(encoding="utf-8").strip()
 
     if args.command == "show":
-        print({"idea": idea_brief, "autofill": autofill_brief,
-               "upgrade": upgrade_brief, "critique": critique_brief}[args.which](bank))
+        print({"idea": idea_brief, "autofill": autofill_brief, "upgrade": upgrade_brief,
+               "critique": critique_brief, "analyze": analyze_photo_brief}[args.which](bank))
         return 0
 
     if args.command == "autofill":
@@ -1156,6 +1266,26 @@ def main(argv=None):
             out.write_text(json.dumps(result["spec"], indent=2, ensure_ascii=False) + "\n",
                            encoding="utf-8")
             print("[written] {}".format(out), file=sys.stderr)
+        return 0
+
+    if args.command == "analyze":
+        result = analyze_uploaded_image(bank, args.image)
+        if not result["ok"]:
+            print(result["error"], file=sys.stderr)
+            return 3
+        print(json.dumps(result["spec"], indent=2, ensure_ascii=False))
+        print("\n[analysis] {}".format(result["analysis"]), file=sys.stderr)
+        if result["dropped"]:
+            print("[dropped]  {}".format(", ".join(result["dropped"])), file=sys.stderr)
+        print("[lint]     {}/8 {}".format(
+            result["score"], "PASS" if result["passed"] else "needs work"), file=sys.stderr)
+        if args.save:
+            out = Path(args.save)
+            if not out.is_absolute():
+                out = ROOT / out
+            out.write_text(json.dumps(result["spec"], indent=2, ensure_ascii=False) + "\n",
+                           encoding="utf-8")
+            print("[written]  {}".format(out), file=sys.stderr)
         return 0
 
     if args.command == "upgrade":

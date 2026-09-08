@@ -11,6 +11,7 @@ from pathlib import Path
 
 from PyQt6.QtCore import QThreadPool, pyqtSignal
 from PyQt6.QtWidgets import (
+    QFileDialog,
     QHBoxLayout,
     QLineEdit,
     QPlainTextEdit,
@@ -46,6 +47,8 @@ class BriefView(QWidget):
         self.context = None          # set by the controller: () -> (prompt, image)
         self._suggested = None
         self._upgraded = None
+        self._analyzed_spec = None
+        self._analyze_path = ""
         self.setup_ui()
 
     def setup_ui(self):
@@ -53,6 +56,7 @@ class BriefView(QWidget):
         self.tabs.addTab(self._build_idea_tab(), "Idea → Spec")
         self.tabs.addTab(self._build_upgrade_tab(), "Upgrade prompt")
         self.tabs.addTab(self._build_critique_tab(), "Critique image")
+        self.tabs.addTab(self._build_analyze_tab(), "Analyze a photo")
         self.tabs.addTab(self._build_briefs_tab(), "The briefs")
 
         layout = QVBoxLayout(self)
@@ -169,12 +173,63 @@ class BriefView(QWidget):
         card.body.addWidget(self.critique_output, 1)
         return self._wrap(card)
 
-    # -- tab 4: the briefs themselves --------------------------------------- #
+    # -- tab 4: analyze any photo --------------------------------------------#
+    def _build_analyze_tab(self):
+        self.analyze_preview = ImagePreview("Choose a photo to analyze")
+        self.analyze_preview.setMaximumHeight(260)
+
+        choose_button = QPushButton("Choose photo…")
+        choose_button.setIcon(assets.icon("folder"))
+        choose_button.setIconSize(assets.ICON_SIZE)
+        choose_button.clicked.connect(self.choose_analyze_image)
+
+        self.analyze_button = QPushButton("Analyze")
+        self.analyze_button.setProperty("class", "primary")
+        self.analyze_button.setIcon(assets.icon("generate"))
+        self.analyze_button.setIconSize(assets.ICON_SIZE)
+        self.analyze_button.setEnabled(False)
+        self.analyze_button.clicked.connect(self.run_analyze)
+
+        row = QHBoxLayout()
+        row.setSpacing(T.SPACE["sm"])
+        row.addWidget(choose_button)
+        row.addWidget(self.analyze_button)
+        row.addStretch(1)
+
+        # Apply here means "load the reverse-engineered spec into Compose" -
+        # the analysis text itself is read, not applied to anything.
+        self.analyze_ai = AiSuggestionBadge("Analyzing…")
+        self.analyze_ai.apply_requested.connect(self.apply_analysis)
+        self.analyze_output = QPlainTextEdit()
+        self.analyze_output.setReadOnly(True)
+        self.analyze_output.setPlaceholderText(
+            "The verdict - what's good, what's off, what would improve it - and the "
+            "spec reverse-engineered from what's actually in the photo."
+        )
+
+        card = Card()
+        card.body.setSpacing(T.SPACE["md"])
+        card.body.addWidget(TitleLabel("Any photo in, an analysis and a prompt out"))
+        card.body.addWidget(MutedLabel(
+            "Not one this app made - any local photo. The model's read is never the "
+            "final prompt: it's recomposed from this app's own vocabulary and scored "
+            "by the same realism check as everything else, so it may come back below "
+            "8/8 if the photo doesn't map cleanly onto all 8 layers - that's the gate "
+            "working, not a bug."
+        ))
+        card.body.addWidget(self.analyze_preview)
+        card.body.addLayout(row)
+        card.body.addWidget(self.analyze_ai)
+        card.body.addWidget(self.analyze_output, 1)
+        return self._wrap(card)
+
+    # -- tab 5: the briefs themselves --------------------------------------- #
     def _build_briefs_tab(self):
         self.brief_picker = QTabWidget()
         for name, builder in [("Idea", brief_tool.idea_brief),
                               ("Upgrade", brief_tool.upgrade_brief),
-                              ("Critique", brief_tool.critique_brief)]:
+                              ("Critique", brief_tool.critique_brief),
+                              ("Analyze", brief_tool.analyze_photo_brief)]:
             view = QPlainTextEdit(builder(self.bank))
             view.setReadOnly(True)
             view.setProperty("class", "mono")
@@ -229,6 +284,22 @@ class BriefView(QWidget):
         self.critique_preview.load(image)
         self._start("critique", self.critique_ai, self.critique_button, prompt, image)
 
+    def choose_analyze_image(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Choose a photo to analyze", "",
+            "Images (*.png *.jpg *.jpeg *.webp *.bmp)")
+        if not path:
+            return
+        self._analyze_path = path
+        self.analyze_preview.load(path)
+        self.analyze_button.setEnabled(True)
+
+    def run_analyze(self):
+        if not self._analyze_path:
+            self.status.emit("Choose a photo first")
+            return
+        self._start("analyze_image", self.analyze_ai, self.analyze_button, self._analyze_path)
+
     def refresh_context(self):
         _, image = self.context() if self.context else ("", "")
         if image:
@@ -266,7 +337,7 @@ class BriefView(QWidget):
                 self.upgrade_ai.fail(result["reason"][:48])
             self.status.emit(result["reason"])
 
-        else:
+        elif action == "critique":
             lines = [result.get("verdict", "")]
             if result.get("failing_layers"):
                 lines.append("\nWeakest layers: " + ", ".join(result["failing_layers"]))
@@ -278,12 +349,28 @@ class BriefView(QWidget):
                 "warning" if weak else "success", "{} weak layer(s)".format(weak))
             self.status.emit("Critique complete")
 
+        else:  # analyze_image
+            self._analyzed_spec = result["spec"]
+            lines = [result.get("analysis", ""), "",
+                    json.dumps(result["spec"], indent=2, ensure_ascii=False)]
+            if result.get("dropped"):
+                lines.append("\nDropped (not part of a spec): " + ", ".join(result["dropped"]))
+            self.analyze_output.setPlainText("\n".join(lines))
+            passed = result["passed"]
+            self.analyze_ai.ready(
+                result["spec"],
+                "{}/8 {}".format(result["score"], "ready" if passed else "needs work"),
+                status="success" if passed else "warning",
+            )
+            self.status.emit("Analysis complete — review it, then apply")
+
     def on_failed(self, action, reason):
         ai_badge = {"idea": self.idea_ai, "upgrade": self.upgrade_ai,
-                    "critique": self.critique_ai}[action]
+                    "critique": self.critique_ai, "analyze_image": self.analyze_ai}[action]
         ai_badge.fail("failed")
         output = {"idea": self.idea_output, "upgrade": self.upgrade_output,
-                  "critique": self.critique_output}[action]
+                  "critique": self.critique_output,
+                  "analyze_image": self.analyze_output}[action]
         output.setPlainText(reason)
         self.status.emit(reason)
 
@@ -298,3 +385,8 @@ class BriefView(QWidget):
             return
         self.prompt_upgraded.emit(self._upgraded)
         self.status.emit("Upgraded prompt is now the working prompt")
+
+    def apply_analysis(self):
+        if self._analyzed_spec:
+            self.spec_suggested.emit(dict(self._analyzed_spec))
+            self.status.emit("Applied to Compose")

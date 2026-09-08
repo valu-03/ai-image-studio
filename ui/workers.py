@@ -47,6 +47,7 @@ class LlmTask(QRunnable):
         "autofill": brief_tool.autofill_spec,
         "upgrade": brief_tool.upgrade_prompt,
         "critique": brief_tool.critique_image,
+        "analyze_image": brief_tool.analyze_uploaded_image,
         "ad_copy": brief_tool.copy_from_idea,
         "story": brief_tool.story_from_idea,
         "autofill_story": brief_tool.autofill_story,

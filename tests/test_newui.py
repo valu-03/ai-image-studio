@@ -216,8 +216,9 @@ app.processEvents()
 check("refuses without an image", not bv.critique_output.toPlainText().strip())
 
 print("--- Brief: the briefs are inspectable offline ---")
-check("four brief tabs", bv.tabs.count() == 4, str(bv.tabs.count()))
-check("brief text shown", bv.brief_picker.count() == 3)
+# Idea, Upgrade, Critique, Analyze a photo, The briefs.
+check("five brief tabs", bv.tabs.count() == 5, str(bv.tabs.count()))
+check("brief text shown", bv.brief_picker.count() == 4)
 
 print("--- no-key path stays usable ---")
 os.environ["OPENROUTER_API_KEY"] = ""

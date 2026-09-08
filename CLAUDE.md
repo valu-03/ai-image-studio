@@ -814,11 +814,26 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   `\r\n` -> `\n` before hashing, confirmed against `git show HEAD:<path>` directly rather than
   assumed - not three separate one-off "just update the number" edits that would have left the
   same platform-dependent fragility for the next person who touches any of these three files.
+- **A 5th Brief tab, "Analyze a photo," is the missing case `critique_image` structurally
+  cannot cover.** `critique_image(bank, prompt, image_path)` requires an already-known prompt
+  ("this image was generated from X, what's wrong with it") - exactly what an arbitrary
+  uploaded photo, not necessarily made by this app at all, doesn't have. `brief.
+  analyze_uploaded_image(bank, image_path, ask=None)` (new) is `spec_from_idea()`'s shape with
+  an image standing in for the idea text: one vision call, a whitelisted spec suggestion
+  (`SPEC_KEYS` - the exact whitelist `autofill_spec`/`spec_from_idea` already enforce, so a
+  reply can no more smuggle in `seed`/`reference`/`lock_identity` here than anywhere else) plus
+  a free-text `analysis` (commentary, not spec data, so it is returned as-is rather than
+  whitelisted). **The model's read of the photo is never the final prompt** - it is recomposed
+  through `build_prompt.compose()` and rescored through `realism_lint.lint()` exactly like
+  every other AI-suggested spec in this project, and can legitimately come back below 8/8 if
+  the photo doesn't map cleanly onto all 8 layers - that is the gate working, not a bug to
+  paper over. Apply reuses the existing `spec_suggested` signal/`apply_suggested_spec` path
+  verbatim - no new `MainWindow` wiring was needed for this feature at all.
 - **Not NEAT.** Asked what else could improve the app, "maybe NEAT?" (neuroevolution of network
   topology) doesn't fit anything here - there is no live control/simulation loop to evolve a
   policy against. The UCB upgrade above is the actual real version of that instinct: a bandit
   algorithm, applied to the one place this project already had an explore/exploit problem.
-- **Run `python tests/run_all.py` before calling anything done.** 1210 checks, all green
+- **Run `python tests/run_all.py` before calling anything done.** 1229 checks, all green
   (`test_history.py`, `test_lighting_bank.py` and `test_elevenlabs.py` are all now in
   `tests/run_all.py`'s `ORDER` - the last of those existed for a while but was never actually
   wired in, so it silently never ran as part of the suite until it was noticed), no
