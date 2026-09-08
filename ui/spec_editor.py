@@ -80,6 +80,10 @@ class SpecEditor(QWidget):
     """Emits `changed` on any edit; `spec()` returns the tool-ready dict."""
 
     changed = pyqtSignal()
+    # The deeper lighting tool lives in its own nav section, not here - this
+    # combo stays the fast/simple path. Same relationship Videos' standalone
+    # Audio Cue field already has to the full Sound section.
+    open_lighting_requested = pyqtSignal()
 
     def __init__(self, bank, parent=None):
         super().__init__(parent)
@@ -215,9 +219,16 @@ class SpecEditor(QWidget):
                   ("Action", self.action), ("Mood", self.mood)]),
             "Subject",
         )
+        open_lighting = QPushButton("Open Lighting section →")
+        open_lighting.setProperty("class", "ghost")
+        open_lighting.setToolTip(
+            "Named setups (Rembrandt, split, loop, ...) and a direction + quality + "
+            "source picker - the combo above stays the fast, simple path.")
+        open_lighting.clicked.connect(self.open_lighting_requested)
         self.tabs.addTab(
             _tab([("Setting", self.setting), ("Shot", self.shot),
-                  ("Lighting", self.lighting), ("Composition", self.composition)]),
+                  ("Lighting", self.lighting), ("Composition", self.composition)],
+                 [open_lighting]),
             "Scene",
         )
         self.tabs.addTab(
@@ -365,6 +376,18 @@ class SpecEditor(QWidget):
         """The chosen or typed lighting source, or "" for automatic."""
         text = self.lighting.currentText().strip()
         return "" if text == AUTO_LABEL else text
+
+    def set_lighting_override(self, phrase):
+        """Load a composed phrase from the Lighting section into this combo.
+
+        The combo is editable with InsertPolicy.NoInsert - setCurrentText()
+        writes straight into its embedded line edit without needing (or
+        polluting) a matching item in the dropdown, the same mechanism
+        load_spec() already relies on for restoring a saved custom value.
+        currentTextChanged is already wired to `changed`, so the prompt
+        preview updates the same way it does for any other edit here.
+        """
+        self.lighting.setCurrentText((phrase or "").strip())
 
     # -- data in / out ------------------------------------------------------ #
     def filled_keys(self):

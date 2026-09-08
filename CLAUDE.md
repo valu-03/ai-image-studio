@@ -781,17 +781,48 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   with zero ratings anywhere, every term in a layer gets an identical bonus, which is
   mathematically the same as `build_prompt.pick()`'s Efraimidis-Spirakis weighted sampling
   degenerating to plain uniform - checked with 20,000 trials against a tolerance, not assumed.
+- **Lighting is now a real photographic taxonomy, its own nav section, not a single flat
+  combo.** `tools/lighting_bank.json` follows `composition_guides`' own established shape
+  (opt-in, `label`/`phrase`/`note`, jargon paired with what it does to the frame): 8 portrait
+  directions (Rembrandt, split, loop, butterfly, ...), hard/soft quality, 10 natural/artificial
+  sources, 8 named setups, and 7 physically-grounded `realism_techniques` (catchlights, colour-
+  temperature consistency, motivated sources, falloff, subsurface translucency, specularity,
+  fill ratio). Two paths to a phrase: a `setup` is a pre-vetted, hand-written recipe that can
+  never contradict itself; direction + quality + source composed independently is the deep path
+  and IS checked against a `conflicts` list (hard light from an overcast sky, for instance) -
+  warned, never silently composed. `realism_techniques` stack additively on either path. The
+  result lands in `spec["overrides"]["lighting"]` - the exact slot `ui/spec_editor.py`'s
+  existing lighting combo already writes to (`SpecEditor.set_lighting_override()`, new), so
+  nothing about how Compose consumes an override changed. Compose's own combo stays as the
+  fast/simple path - a new "Open Lighting section →" link sits next to it, the same
+  relationship Videos' standalone Audio Cue field already has to the full Sound section.
+- **Every one of `lighting_bank.json`'s phrases needed a detection keyword, checked, not
+  assumed.** The same rule composition guides already established: a phrase `build_lighting.py`
+  can generate but `realism_lint.py` cannot detect would silently fail the 8/8 gate the moment
+  someone picked it. `tests/test_lighting_bank.py`'s own audit (systematic, the same shape used
+  once already for the original 8 layers) found 31 of 31 new phrases undetectable on the first
+  pass - fixed by extending `DETECT["lighting"]["keys"]`, re-run until zero gaps remained.
+- **A hash-lock test can itself be wrong, and this one was, on a Windows checkout specifically.**
+  `tests/test_story.py`'s `HASHES` dict guards `prompt_bank.json`/`realism_lint.py`/
+  `motion_bank.json` against being silently loosened. Adding the Lighting section's DETECT keys
+  correctly bumped one entry - but investigating the *other* two (`motion_bank.json` failing
+  with no diff anywhere, `prompt_bank.json` failing the moment the fix touched it) found the
+  real bug: `core.autocrlf=true` converts every text file to CRLF on checkout, which changes a
+  SHA-256 of the raw bytes on every single line without changing one character of content. One
+  of the three recorded hashes had even been copied from a CRLF-mangled disk read in the first
+  place, not the real committed content. Fixed once, at the source: the check now normalises
+  `\r\n` -> `\n` before hashing, confirmed against `git show HEAD:<path>` directly rather than
+  assumed - not three separate one-off "just update the number" edits that would have left the
+  same platform-dependent fragility for the next person who touches any of these three files.
 - **Not NEAT.** Asked what else could improve the app, "maybe NEAT?" (neuroevolution of network
   topology) doesn't fit anything here - there is no live control/simulation loop to evolve a
   policy against. The UCB upgrade above is the actual real version of that instinct: a bandit
   algorithm, applied to the one place this project already had an explore/exploit problem.
-- **Run `python tests/run_all.py` before calling anything done.** 1174 checks (`test_history.py`
-  and `test_elevenlabs.py` are both now in `tests/run_all.py`'s `ORDER` - the latter existed
-  but was never actually wired in, so it silently never ran as part of the suite until this
-  pass), no dependencies beyond PyQt6, Qt runs offscreen. (One long-standing, unrelated
-  failure as of this pass: `test_story.py`'s `tools/motion_bank.json is unchanged` hash check
-  fails against the file as committed in `5f2a784` - pre-dates this session's work, not
-  touched by it, and not investigated here.)
+- **Run `python tests/run_all.py` before calling anything done.** 1210 checks, all green
+  (`test_history.py`, `test_lighting_bank.py` and `test_elevenlabs.py` are all now in
+  `tests/run_all.py`'s `ORDER` - the last of those existed for a while but was never actually
+  wired in, so it silently never ran as part of the suite until it was noticed), no
+  dependencies beyond PyQt6, Qt runs offscreen.
 
 ---
 
@@ -810,9 +841,11 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
 The spec form is tabbed Purpose / Subject / Scene / Identity / More; Scene holds Setting,
 Shot, Lighting and Composition.
 
-The GUI is organised by category: **Images** (Compose + Variants), **Videos** (the Kling
-camera-movement toolkit and the film glossary — builds the prompt and, since Phase 3, can
-generate the real clip too), **Ads** (the five-beat UGC advert: brief, storyboard, hook A/B,
+The GUI is organised by category: **Images** (Compose + Variants), **Lighting** (named
+portrait setups, or direction + quality + source composed independently, plus opt-in realism
+techniques - Apply to Compose writes straight into Compose's own lighting override), **Videos**
+(the Kling camera-movement toolkit and the film glossary — builds the prompt and, since Phase 3,
+can generate the real clip too), **Ads** (the five-beat UGC advert: brief, storyboard, hook A/B,
 checklist, publishing), **Cats** (a story in scenes plus its CapCut edit sheet, and a Custom Prompt tab for a
 hand-written shot instead), **Sound**
 (the 100 ElevenLabs prompts, three layers per scene, and - with a real key - actual generated

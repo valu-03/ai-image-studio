@@ -26,6 +26,7 @@ ORDER = [
     "test_refine.py",
     "test_midjourney.py",
     "test_history.py",
+    "test_lighting_bank.py",
     "test_lighting.py",
     "test_composition.py",
     "test_autofill.py",

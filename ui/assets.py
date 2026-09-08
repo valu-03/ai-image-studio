@@ -59,6 +59,7 @@ ICONS = {
     "ads": (ICON_DIR / "ads.svg", ICON_DIR / "ads-active.svg"),
     "cats": (ICON_DIR / "cats.svg", ICON_DIR / "cats-active.svg"),
     "sound": (ICON_DIR / "sound.svg", ICON_DIR / "sound-active.svg"),
+    "lighting": (ICON_DIR / "lighting.svg", ICON_DIR / "lighting-active.svg"),
     # Actions and sub-views
     "compose": (ICON_DIR / "compose.svg", ICON_DIR / "compose-active.svg"),
     "variants": (ICON_DIR / "variants.svg", ICON_DIR / "variants-active.svg"),

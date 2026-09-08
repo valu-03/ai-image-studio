@@ -1,0 +1,218 @@
+{
+  "source": "AI Video Bootcamp's Phase 2 lighting cheat-sheet, extended with the standard portrait-photography vocabulary (Rembrandt, split, loop, butterfly, three-point, high-key/low-key - not course material, named studio technique) and physically-grounded realism cues an image model can act on directly. Not guessed: each technique is a specific, checkable phrase, the same standard the original 8 layers already hold to.",
+  "version": 1,
+  "note": "Two paths to a lighting phrase. The FAST path picks a named `setup` - a pre-vetted, hand-written recipe that can never contradict itself. The DEEP path picks direction + quality + source independently, the way a working photographer actually thinks, and is checked against `conflicts` because an arbitrary combination CAN fight itself (hard light from an overcast sky, for instance). `realism_techniques` stack on top of either path, additive and opt-in, never required.",
+
+  "directions": {
+    "front": {
+      "label": "Front",
+      "phrase": "flat frontal lighting, the source directly facing the subject",
+      "note": "Minimal shadow, minimal shape. Rarely used alone - mostly a fill light's job, not a key light's."
+    },
+    "loop": {
+      "label": "Loop",
+      "phrase": "loop lighting, the key slightly off-axis casting a small loop-shaped nose shadow",
+      "note": "The most commonly used flattering portrait light - a small, controlled shadow, not a dramatic one."
+    },
+    "rembrandt": {
+      "label": "Rembrandt",
+      "phrase": "Rembrandt lighting, the key at roughly 45 degrees leaving a small triangle of light on the shadowed cheek",
+      "note": "The signature triangle under the eye is the tell - if it's missing, it isn't really Rembrandt light."
+    },
+    "split": {
+      "label": "Split",
+      "phrase": "split lighting, the source at 90 degrees so exactly half the face is lit and half is in shadow",
+      "note": "Dramatic and graphic. Needs a hard-ish source to read clearly - a very soft source blurs the split away."
+    },
+    "broad": {
+      "label": "Broad",
+      "phrase": "broad lighting, the side of the face turned toward camera is the lit side",
+      "note": "Widens the face. Combine with a shorter subject or a fuller face."
+    },
+    "short": {
+      "label": "Short",
+      "phrase": "short lighting, the side of the face turned away from camera is the lit side",
+      "note": "Slims and adds drama - the more common choice for a moodier portrait."
+    },
+    "rim": {
+      "label": "Rim / kicker",
+      "phrase": "rim light from behind separating the subject from the background with a thin edge of light",
+      "note": "Pair with `subsurface-translucency` below - real skin glows faintly at the ear and nose edges under this light."
+    },
+    "butterfly": {
+      "label": "Butterfly / Paramount",
+      "phrase": "butterfly lighting, the source directly above and in front casting a small symmetrical shadow under the nose",
+      "note": "The classic glamour/beauty light. Wants strong cheekbones - it isn't forgiving of a rounder face."
+    }
+  },
+
+  "qualities": {
+    "hard": {
+      "label": "Hard",
+      "phrase": "hard directional light with crisp, well-defined shadow edges",
+      "note": "A small or distant source - direct sun, a bare bulb, an undiffused strobe."
+    },
+    "soft": {
+      "label": "Soft",
+      "phrase": "soft diffused light with gradual shadow falloff",
+      "note": "A large or close source - an overcast sky, a softbox, a window through a diffuser."
+    }
+  },
+
+  "sources": {
+    "natural": {
+      "direct-sun": {
+        "label": "Direct sun",
+        "phrase": "direct unmodified sunlight",
+        "note": "Hard by nature - pairing it with `soft` fights itself unless something is diffusing it."
+      },
+      "overcast": {
+        "label": "Overcast sky",
+        "phrase": "even overcast daylight",
+        "note": "Soft by nature - the sky itself is the softbox."
+      },
+      "golden-hour": {
+        "label": "Golden hour",
+        "phrase": "low warm golden-hour sunlight, long raking shadows",
+        "note": "Directional and warm. The low sun angle is what actually sells it, not just the word 'golden'."
+      },
+      "blue-hour": {
+        "label": "Blue hour",
+        "phrase": "cool blue-hour twilight, the sun already below the horizon",
+        "note": "Even, soft, and cool - easy to contradict with a warm colour grade elsewhere in the prompt."
+      },
+      "open-shade": {
+        "label": "Open shade",
+        "phrase": "open shade, lit by skylight rather than direct sun",
+        "note": "Soft and cool by nature - a portrait photographer's reliable fallback in harsh midday sun."
+      }
+    },
+    "artificial": {
+      "tungsten": {
+        "label": "Tungsten",
+        "phrase": "warm tungsten light",
+        "note": "Warm-orange by nature. Mixing with daylight through a window in the same shot needs `colour-temperature` below to stay consistent."
+      },
+      "led-panel": {
+        "label": "LED panel",
+        "phrase": "a daylight-balanced LED panel",
+        "note": "Neutral, controllable, the modern studio default."
+      },
+      "fluorescent": {
+        "label": "Fluorescent",
+        "phrase": "cool fluorescent office lighting",
+        "note": "Slightly green-cool cast - reads as an office/institutional setting almost by itself."
+      },
+      "practical": {
+        "label": "Practical (in-frame)",
+        "phrase": "light from a visible practical source in the frame",
+        "note": "Pair with `motivated-source` below - naming the actual lamp/window/candle is what makes this convincing."
+      },
+      "studio-strobe": {
+        "label": "Studio strobe",
+        "phrase": "a studio strobe through a modifier",
+        "note": "Controlled and repeatable - the quality (hard/soft) depends entirely on the modifier, so pick one explicitly."
+      }
+    }
+  },
+
+  "conflicts": [
+    {"quality": "hard", "source": "overcast",
+     "reason": "Overcast sky is a huge, close, diffuse source - it produces soft light almost by definition."},
+    {"quality": "hard", "source": "open-shade",
+     "reason": "Open shade is lit by the sky, not the sun - soft by the same logic as overcast."},
+    {"quality": "hard", "source": "blue-hour",
+     "reason": "Blue hour has no direct sun in the sky at all - there is no hard source left to produce crisp shadows."},
+    {"quality": "soft", "source": "direct-sun",
+     "reason": "Unmodified direct sun is a small, intense, distant source - it produces hard shadows almost by definition."}
+  ],
+
+  "setups": {
+    "rembrandt": {
+      "label": "Rembrandt",
+      "phrase": "classic Rembrandt lighting, the key at 45 degrees leaving a small triangle of light on the shadowed cheek, soft-edged shadow falloff",
+      "direction": "rembrandt", "quality": "soft", "source": "studio-strobe",
+      "teaches": "The most-taught single portrait light in photography for a reason - one source, one clear read, and the triangle either is or isn't there."
+    },
+    "split": {
+      "label": "Split",
+      "phrase": "dramatic split lighting, the source at 90 degrees, hard shadow edge dividing the face exactly in half",
+      "direction": "split", "quality": "hard", "source": "studio-strobe",
+      "teaches": "Graphic and bold - needs a hard source or the split blurs into something else. Good for a moodier, editorial read."
+    },
+    "loop": {
+      "label": "Loop",
+      "phrase": "flattering loop lighting, the key slightly off-axis, a small controlled nose shadow, soft falloff",
+      "direction": "loop", "quality": "soft", "source": "led-panel",
+      "teaches": "The safe, almost-always-flattering default - this is what most professional portraits are actually lit with."
+    },
+    "butterfly": {
+      "label": "Butterfly / Paramount",
+      "phrase": "butterfly lighting directly above and in front of the face, a small symmetrical nose shadow, soft glamour falloff",
+      "direction": "butterfly", "quality": "soft", "source": "studio-strobe",
+      "teaches": "The beauty-and-glamour standard - wants strong cheekbones, reads as polished and commercial."
+    },
+    "rim": {
+      "label": "Rim / kicker",
+      "phrase": "a thin rim of light from behind separating the subject from the background, subtle skin translucency at the backlit edges",
+      "direction": "rim", "quality": "hard", "source": "practical",
+      "teaches": "Separation, not exposure - the rim's job is to keep the subject from merging into the background, nothing more."
+    },
+    "three-point": {
+      "label": "Three-point",
+      "phrase": "classic three-point lighting: a key light shaping the face, a softer fill retaining shadow detail, and a rim separating the subject from the background",
+      "direction": "loop", "quality": "soft", "source": "studio-strobe",
+      "teaches": "The foundational studio setup everything else is a variation of - key defines the shape, fill controls the contrast, rim adds depth."
+    },
+    "high-key": {
+      "label": "High-key",
+      "phrase": "high-key lighting, bright and even with minimal shadow and low overall contrast",
+      "direction": "front", "quality": "soft", "source": "studio-strobe",
+      "teaches": "Commercial and beauty work's default look - the absence of drama is the point, not a flaw."
+    },
+    "low-key": {
+      "label": "Low-key",
+      "phrase": "low-key lighting, dark and high-contrast with most of the frame in deep shadow",
+      "direction": "short", "quality": "hard", "source": "practical",
+      "teaches": "Moody and cinematic - most of the frame does nothing, which is exactly what makes the lit part read as real."
+    }
+  },
+
+  "realism_techniques": {
+    "catchlights": {
+      "label": "Catchlights",
+      "phrase": "a soft catchlight visible in each eye",
+      "note": "The single highest-leverage realism cue in this list. A reflected highlight in the eyes is one of the strongest 'this is a real photo' signals there is, and its shape/position quietly confirms where the light is actually coming from."
+    },
+    "colour-temperature": {
+      "label": "Consistent colour temperature",
+      "phrase": "consistent colour temperature throughout, no mismatched colour cast",
+      "note": "Clashing colour casts - warm skin against a cool background lit by a different source with no logic to it - is one of the most common tells in an AI image."
+    },
+    "motivated-source": {
+      "label": "Motivated source",
+      "phrase": "the light visibly motivated by a real source within the frame",
+      "note": "Naming the actual thing producing the light - a window, a lamp, a candle - is what real cinematography already does, and grounds the lighting logically instead of leaving it as an abstract glow from nowhere."
+    },
+    "falloff": {
+      "label": "Natural falloff",
+      "phrase": "light falling off naturally with distance from its source",
+      "note": "AI images often light a face evenly like a cardboard cutout because nothing in the prompt ever asks for physically real falloff - this phrase asks for it directly."
+    },
+    "subsurface-translucency": {
+      "label": "Subsurface translucency",
+      "phrase": "subtle skin translucency at the ear and nose edges where backlit",
+      "note": "Real skin glows faintly where it's thin and backlit. Pairs specifically with the `rim` direction/setup above - it does nothing on a flatly front-lit face."
+    },
+    "specularity": {
+      "label": "Natural skin specularity",
+      "phrase": "natural specular highlights on the skin from its own oils, not an airbrushed flatness",
+      "note": "Small, real highlights on the forehead and cheekbones - complements the texture layer's 'pores' rather than duplicating it; this one is about how light BOUNCES off skin, not the skin's surface detail itself."
+    },
+    "fill-ratio": {
+      "label": "Fill ratio",
+      "phrase": "gentle fill light retaining visible detail in the shadows",
+      "note": "An alternative to the binary of fully lit vs. a crushed black shadow - real photography almost always has SOME fill, even if it's just bounce off a nearby wall."
+    }
+  }
+}

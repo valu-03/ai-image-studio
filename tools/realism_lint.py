@@ -58,6 +58,19 @@ DETECT = {
             "practical lighting", "softbox", "rim light", "realistic shadows",
             "morning light", "sunlight", "led strip", "ceiling light", "bounce light",
             "chiaroscuro",
+            # tools/lighting_bank.json's direction/quality/source/setup/technique
+            # vocabulary - each entry there needs a way to be detected here, the
+            # same rule every composition guide already has to follow, or a
+            # deliberate choice from the new Lighting section would silently
+            # fail the 8/8 gate.
+            "frontal lighting", "loop lighting", "rembrandt", "split lighting",
+            "broad lighting", "short lighting", "butterfly lighting",
+            "hard directional light", "soft diffused light",
+            "blue-hour", "open shade", "tungsten", "led panel", "fluorescent",
+            "practical source", "studio strobe", "rim of light",
+            "three-point lighting", "high-key", "low-key",
+            "catchlight", "colour temperature", "color temperature", "motivated",
+            "falling off", "translucency", "specular highlights", "fill light",
         ],
         "fix": "add \"soft natural daylight with realistic shadows\" (the highest-value phrase)",
     },

@@ -42,6 +42,7 @@ from .views import (  # noqa: E402
     HistoryView,
     ImagesView,
     InsightsView,
+    LightingView,
     SettingsView,
     SoundView,
     VideosView,
@@ -69,6 +70,7 @@ SETTINGS_APP = os.environ.get("AIVS_SETTINGS_APP", "Studio")
 # from what you made, then configuration.
 NAV_ITEMS = [
     ("images", "Images"),
+    ("lighting", "Lighting"),
     ("videos", "Videos"),
     ("ads", "Ads"),
     ("cats", "Cats"),
@@ -235,6 +237,7 @@ class MainWindow(QMainWindow):
         self.ads_view = AdsView(self.bank, self.theme.palette)
         self.cats_view = CatsView(self.bank, self.theme.palette)
         self.sound_view = SoundView(self.theme.palette)
+        self.lighting_view = LightingView(self.theme.palette)
         self.brief_view = BriefView(self.bank)
         self.history_view = HistoryView(self.theme.palette)
         self.insights_view = InsightsView(self.theme.palette)
@@ -242,6 +245,7 @@ class MainWindow(QMainWindow):
 
         self.views = {
             "images": self.images_view,
+            "lighting": self.lighting_view,
             "videos": self.videos_view,
             "ads": self.ads_view,
             "cats": self.cats_view,
@@ -296,6 +300,8 @@ class MainWindow(QMainWindow):
             if hasattr(view, "status"):
                 view.status.connect(self.statusBar().showMessage)
 
+        self.compose_view.editor.open_lighting_requested.connect(
+            lambda: self.go_to("lighting"))
         self.compose_view.generate_requested.connect(self.generate_single)
         self.compose_view.upscale_requested.connect(self.upscale_image)
         self.compose_view.refine_requested.connect(self.refine_image)
@@ -305,6 +311,10 @@ class MainWindow(QMainWindow):
         # are already working on, the same one-directional link Videos uses.
         self.ads_view.context = lambda: self.compose_view.editor.spec()
         self.ads_view.generate_requested.connect(self.generate_ad)
+        # One-directional apply-then-navigate, the same shape apply_motion_hints()
+        # already uses for a movement's image hints: build the override, load it
+        # into the editor, jump to Images so the result is immediately visible.
+        self.lighting_view.lighting_applied.connect(self.apply_lighting_phrase)
         # The sound sheet is generated from whatever story is open in Cats, so
         # the two stay in step without either knowing about the other.
         self.sound_view.context = lambda: self.cats_view.scenes
@@ -407,6 +417,8 @@ class MainWindow(QMainWindow):
             self.cats_view.refresh()
         elif key == "sound":
             self.sound_view.refresh()
+        elif key == "lighting":
+            self.lighting_view.refresh()
 
     def on_search(self, text):
         self.compose_view.set_filter(text)
@@ -435,8 +447,17 @@ class MainWindow(QMainWindow):
         self.ads_view.set_palette_tokens(self.theme.palette)
         self.cats_view.set_palette_tokens(self.theme.palette)
         self.sound_view.set_palette_tokens(self.theme.palette)
+        self.lighting_view.set_palette_tokens(self.theme.palette)
         self.insights_view.set_palette_tokens(self.theme.palette)
         self.statusBar().showMessage("{} theme".format(name.capitalize()))
+
+    def apply_lighting_phrase(self, phrase):
+        """Lighting's "Apply to Compose" - one directional, same shape as
+        apply_motion_hints(): build the override, load it into the editor,
+        jump to Images so the result is immediately visible."""
+        self.compose_view.editor.set_lighting_override(phrase)
+        self.go_to("images")
+        self.images_view.show_compose()
 
     def set_provider(self, name):
         self.provider = name

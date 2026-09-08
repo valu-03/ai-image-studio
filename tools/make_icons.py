@@ -73,6 +73,13 @@ GLYPHS = {
     # A level meter rather than a speaker: the ads glyph is already a speaker
     # with waves, and two horns in one rail is one too many.
     "sound": '<path d="M4 10v4M8 6.5v11M12 3v18M16 7.5v9M20 10.5v3"/>',
+    # A lightbulb, not a sun - "settings" already owns the sun/gear shape
+    # (a circle with 8 radiating spokes), and a second sun-like glyph two
+    # rows away would read as a duplicate rather than a distinct category.
+    "lighting": (
+        '<path d="M9 18h6M10 21h4"/>'
+        '<path d="M12 3a6 6 0 0 0-3 11.2c.6.4 1 1.1 1 1.8h4c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z"/>'
+    ),
 }
 
 TEMPLATE = (

@@ -105,13 +105,21 @@ HASHES = {
     # generatable terms didn't, so realism_lint could detect it but
     # build_prompt.compose() could never produce it. Every other layer's
     # terms, the negatives/banned/warn lists and the shot presets are
-    # untouched.
-    "tools/prompt_bank.json": "a4bbd2212e9803bf",
-    # Bumped for checks_for() - a pure additive reshape of lint()'s own
-    # output into GateTree's {key, label, passed, fix, ok_text} rows for
-    # Cats' Custom Prompt tab. DETECT, lint(), find_terms() and the banned/
-    # warn logic are byte-for-byte unchanged; nothing about the gate widened.
-    "tools/realism_lint.py": "95efaad0f06a9478",
+    # untouched. (The value recorded here was itself briefly wrong - it had
+    # been copied from a CRLF-mangled disk read rather than the real
+    # committed content; fixed alongside adding CRLF normalisation to the
+    # check above, confirmed against `git show HEAD:tools/prompt_bank.json`
+    # directly rather than assumed.)
+    "tools/prompt_bank.json": "448a4e358f42e087",
+    # Bumped for the new Lighting section's DETECT["lighting"]["keys"]
+    # additions (rembrandt, split lighting, catchlight, colour temperature,
+    # falling off, ...) - every one of tools/lighting_bank.json's phrases
+    # needed a way to be detected, the same rule every composition guide
+    # already has to follow. Purely additive: no key was removed, no
+    # existing key's meaning changed, lint()/find_terms()/the banned+warn
+    # logic are untouched - verified by tests/test_lighting_bank.py's own
+    # "no bank phrase is invisible to realism_lint" audit, not assumed.
+    "tools/realism_lint.py": "f6a47de91b9aada8",
     # Bumped for a larger style_presets list (version 2 -> 3) - ten more
     # camera/lighting/grade combinations drawn from the same PDF vocabulary
     # the image side already had, cycled by seed the same way the original
@@ -120,7 +128,18 @@ HASHES = {
     "tools/motion_bank.json": "24e5d16237c3c574",
 }
 for name, expected in HASHES.items():
-    got = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()[:16]
+    raw = (ROOT / name).read_bytes()
+    # Normalise CRLF -> LF before hashing. The value in HASHES was computed
+    # against the committed blob (LF); a Windows checkout with
+    # core.autocrlf=true converts every text file to CRLF on disk, which
+    # changed this hash on every single line without changing a single
+    # character of content - confirmed directly: the raw disk bytes hashed
+    # to bccad86a45cbc8bb while `git show HEAD:tools/motion_bank.json`
+    # hashed to the correct 24e5d16237c3c574, and stripping \r\n -> \n from
+    # the disk bytes reproduces that same hash exactly. Without this, the
+    # check is really testing "did git's line-ending config change", not
+    # "did the file's content change" - the opposite of what it exists for.
+    got = hashlib.sha256(raw.replace(b"\r\n", b"\n")).hexdigest()[:16]
     check("{} is unchanged".format(name), got == expected, "{} != {}".format(got, expected))
 check("the banned list still forbids the stylised words",
       all(word in image_bank["banned"] for word in ("cartoon style", "cgi", "3d render")))
