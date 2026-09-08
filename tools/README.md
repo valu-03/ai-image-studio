@@ -41,6 +41,9 @@ Scripts the agent calls to get things done. Workflows hold the sequence; tools h
 | `upscale_image.py` | The course's "upscale before you animate" rule: `generate_image.generate()` with the image being upscaled as its own sole reference and a fixed 4K instruction prompt instead of a written one. | yes |
 | `refine_image.py` | Generate, critique the result through `brief.critique_image()`, strengthen whichever realism layer came back weak using only the bank's own vocabulary, and retry - capped at 2 retries. Closes the loop that used to be entirely manual. | yes (Kie/Higgsfield for the image, OpenRouter for the critique) |
 | `midjourney_export.py` | Reformats an already-built, already-scored prompt into Midjourney's own `--ar`/`--style`/`--stylize`/`--no`/`--v` syntax, for pasting into Midjourney by hand. Text only - Midjourney has no official API. | no |
+| `generate_sound.py` | Real ElevenLabs sound-effect generation - one synchronous POST, audio bytes back, no submit/poll cycle. Gated on `sound_lint` by default (`--force` to skip). Owns the shared ElevenLabs transport `generate_speech.py`/`elevenlabs_voices.py` both import. | yes |
+| `generate_speech.py` | Real ElevenLabs text-to-speech. No content gate (spoken text isn't a layered prompt) - the safeguard is `estimate_cost()`'s character/credit count, shown before a real call. | yes |
+| `elevenlabs_voices.py` | List/clone/delete ElevenLabs voices. `clone_voice()` refuses to run without `consented=True` - enforced in the tool itself, not only a GUI checkbox. | yes |
 
 ### Shared entry points
 

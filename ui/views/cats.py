@@ -46,6 +46,9 @@ sys.path.insert(0, str(ROOT / "tools"))
 import build_motion as bm  # noqa: E402
 import build_sound as bsd  # noqa: E402
 import build_story as bs  # noqa: E402
+import generate_image as gi  # noqa: E402  (key-presence check only)
+import generate_sound as gsnd  # noqa: E402  (KEY_VAR, WHERE - shared ElevenLabs constants)
+import generate_speech as gspeech  # noqa: E402
 import generate_video as gv  # noqa: E402
 import history as hist  # noqa: E402
 import sound_lint as sl  # noqa: E402
@@ -53,7 +56,7 @@ import story_lint as stl  # noqa: E402
 
 from .. import assets, tokens as T  # noqa: E402
 from ..widgets import AiSuggestionBadge, Badge, Card, GateTree, MutedLabel, TitleLabel  # noqa: E402
-from ..workers import LlmTask  # noqa: E402
+from ..workers import LlmTask, SpeechTask  # noqa: E402
 from .cats_custom import CustomPromptTab  # noqa: E402
 
 # Every field any format asks for. The parser accepts them all and each format
@@ -717,6 +720,30 @@ class CatsView(QWidget):
         self._motion_widgets[index] = {"preview": preview, "audio_badge": audio_badge}
         self._update_audio_badge(index, fields.get("audio_cues", ""))
 
+        # Real spoken narration - story format only. `trade`'s whole point is
+        # one locked-off take with no words at all (story_lint drops the
+        # `words` check for it entirely), so this row does not exist for it,
+        # the same way the CapCut panel and the script box already vary by
+        # format rather than being built once and left showing stale advice.
+        # Never auto-filled: an empty line means no voiceover, exactly like
+        # the audio-cue field above it.
+        if self.format_key() == "story":
+            voice_row = QHBoxLayout()
+            voice_row.addWidget(MutedLabel("Voiceover"))
+            voice_edit = QLineEdit(fields.get("voiceover", ""))
+            voice_edit.setPlaceholderText("optional - what this scene says out loud")
+            voice_edit.textChanged.connect(
+                lambda text, i=index: self._on_motion_field_edited(i, "voiceover", text))
+            voice_generate = QPushButton("Generate")
+            voice_generate.setProperty("class", "ghost")
+            voice_generate.clicked.connect(lambda _=False, i=index: self.generate_scene_voiceover(i))
+            voice_row.addWidget(voice_edit, 1)
+            voice_row.addWidget(voice_generate)
+            card.body.addLayout(voice_row)
+            voice_status = MutedLabel("")
+            card.body.addWidget(voice_status)
+            self._motion_widgets[index]["voice_status"] = voice_status
+
     def _on_motion_field_edited(self, index, key, text):
         fields = self.custom_motion.setdefault(index, {})
         fields[key] = text
@@ -748,6 +775,49 @@ class CatsView(QWidget):
         got, total = sl.score(results)
         badge.set_status("success" if got == total else "warning",
                          "{}/{}".format(got, total))
+
+    def generate_scene_voiceover(self, index):
+        fields = self.custom_motion.get(index, {})
+        text = (fields.get("voiceover") or "").strip()
+        widgets = self._motion_widgets.get(index, {})
+        status = widgets.get("voice_status")
+        if not text:
+            if status:
+                status.setText("Write a voiceover line first.")
+            return
+        if not gi.env_value(gsnd.KEY_VAR):
+            if status:
+                status.setText(
+                    "No {} set in .env - get one at {}".format(gsnd.KEY_VAR, gsnd.WHERE))
+            return
+        voice_id = gspeech.default_voice()
+        if not voice_id:
+            if status:
+                status.setText(
+                    "No default voice set - pick one to copy an id from in Sound -> Voices, "
+                    "then set ELEVENLABS_VOICE_ID in .env.")
+            return
+        if status:
+            status.setText("Generating...")
+        slug = "cats-{}-{}".format(self.scenes[index]["n"], "voice") \
+            if 0 <= index < len(self.scenes) else "cats-{}-voice".format(index)
+        task = SpeechTask(text, voice_id=voice_id, out_name="{}.mp3".format(slug))
+        task.signals.finished.connect(
+            lambda path, i=index: self._on_scene_voiceover_done(i, path))
+        task.signals.failed.connect(
+            lambda reason, i=index: self._on_scene_voiceover_failed(i, reason))
+        self.pool.start(task)
+
+    def _on_scene_voiceover_done(self, index, path):
+        status = self._motion_widgets.get(index, {}).get("voice_status")
+        if status:
+            status.setText("Saved: {}".format(path))
+        self.status.emit("Voiceover generated")
+
+    def _on_scene_voiceover_failed(self, index, reason):
+        status = self._motion_widgets.get(index, {}).get("voice_status")
+        if status:
+            status.setText(reason)
 
     def _audio_cue_overrides(self):
         """{scene index: cue text} for every scene with a non-blank cue -

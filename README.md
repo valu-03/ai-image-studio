@@ -24,7 +24,9 @@ video is a command (or a click), not a memory exercise.
   into Subject / Background / Style & Atmosphere, and adapt it by conversation or reference
   image until it's ready.
 - **Sound-design each scene** with three ElevenLabs effect layers (ambience, key effect,
-  accent), scored against rules measured off 100 real examples.
+  accent), scored against rules measured off 100 real examples — and, with a real ElevenLabs
+  key, generate the actual sound effects, text-to-speech and cloned voices, not just the
+  prompts. Ads' per-beat copy and Cats' scenes can be voiced the same way.
 - **A text-model co-pilot** (OpenRouter, optional) drafts and rewrites — but never has the last
   word: every reply is re-scored by the same linter a human-written prompt has to pass.
 - **History and Insights** — every generation is logged with its prompt, its score, and (once

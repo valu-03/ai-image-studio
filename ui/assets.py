@@ -17,6 +17,8 @@ CHARACTERS_DIR = ROOT / "temp" / "resources" / "characters"
 PROMPTS_DIR = ROOT / "temp" / "outputs" / "prompts"
 IMAGES_DIR = ROOT / "temp" / "outputs" / "images"
 VIDEOS_DIR = ROOT / "temp" / "outputs" / "videos"
+SOUND_DIR = ROOT / "temp" / "outputs" / "sound"
+VOICE_DIR = ROOT / "temp" / "outputs" / "voice"
 OUTPUTS_DIR = ROOT / "temp" / "outputs"
 ENV_PATH = ROOT / ".env"
 
@@ -24,8 +26,9 @@ ENV_PATH = ROOT / ".env"
 # and by ensure_output_dirs() below. Before VIDEOS_DIR was added, this table
 # had no entry for generate_video.py's own temp/outputs/videos/ at all, so
 # nothing created it until the first clip was ever rendered and Settings had
-# no "Open Videos folder" button to offer.
-ALL_OUTPUT_DIRS = (CHARACTERS_DIR, PROMPTS_DIR, IMAGES_DIR, VIDEOS_DIR)
+# no "Open Videos folder" button to offer. SOUND_DIR/VOICE_DIR follow the same
+# rule from day one of the ElevenLabs integration, not added after the fact.
+ALL_OUTPUT_DIRS = (CHARACTERS_DIR, PROMPTS_DIR, IMAGES_DIR, VIDEOS_DIR, SOUND_DIR, VOICE_DIR)
 
 
 def ensure_output_dirs():
@@ -35,7 +38,8 @@ def ensure_output_dirs():
     at import time - tests repoint `assets.CHARACTERS_DIR` at a temp directory
     for isolation, and this must follow that redirection, not the original.
     """
-    for name in ("CHARACTERS_DIR", "PROMPTS_DIR", "IMAGES_DIR", "VIDEOS_DIR"):
+    for name in ("CHARACTERS_DIR", "PROMPTS_DIR", "IMAGES_DIR", "VIDEOS_DIR",
+                 "SOUND_DIR", "VOICE_DIR"):
         globals()[name].mkdir(parents=True, exist_ok=True)
 
 ICON_SIZE = QSize(20, 20)

@@ -39,5 +39,22 @@
       "confidence": "estimated",
       "note": "27 credits/second is the published figure for std without audio (5s = 135, 10s = 270). The mode and sound multipliers are INFERRED from 'sound roughly doubles the price per second' and from pro being the higher-resolution tier - they are the least trustworthy numbers in this file and the first that a measured charge should replace."
     }
+  },
+  "elevenlabs": {
+    "label": "ElevenLabs",
+    "currency": "credits",
+    "as_of": "2026-09-08",
+    "sources": ["https://elevenlabs.io/pricing"],
+    "confidence": "estimated",
+    "note": "A different provider and a different currency shape than `models` above - ElevenLabs bills text-to-speech by character count, not by a per-unit credit tied to a model id, and publishes no flat price for a sound-effect generation at all. text_to_speech.credits_per_unit is ElevenLabs' own documented ~1 credit per character on the standard tier. sound_effect.credits_per_unit is a rough order-of-magnitude placeholder, NOT a verified figure - nothing in this project has read a real ElevenLabs response's usage/cost yet. Re-check both against elevenlabs.io/pricing before trusting them for anything but a ballpark.",
+    "text_to_speech": {
+      "unit": "character",
+      "credits_per_unit": 1
+    },
+    "sound_effect": {
+      "unit": "generation",
+      "credits_per_unit": 100,
+      "note": "Placeholder order of magnitude only - see the block note above."
+    }
   }
 }

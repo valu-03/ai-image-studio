@@ -17,7 +17,10 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
 import brief as brief_tool  # noqa: E402
+import elevenlabs_voices as voices_tool  # noqa: E402
 import generate_image as gi  # noqa: E402  (path set above)
+import generate_sound as gsnd  # noqa: E402
+import generate_speech as gspeech  # noqa: E402
 import generate_video as gv  # noqa: E402
 import refine_image as refine_tool  # noqa: E402
 
@@ -116,6 +119,169 @@ class RefineTask(QRunnable):
             self.signals.failed.emit("{}: {}".format(type(exc).__name__, exc))
         finally:
             self.signals.done.emit(0)
+
+
+class SoundSignals(QObject):
+    """Signals for one real ElevenLabs sound-effect generation."""
+
+    finished = pyqtSignal(str)      # saved path
+    failed = pyqtSignal(str)
+    stage = pyqtSignal(str)
+    done = pyqtSignal(int)          # always 0 - WorkerPool-shaped like CreditsTask
+
+
+class SoundTask(QRunnable):
+    """One effect prompt -> one audio file, off the UI thread.
+
+    Same reasoning as RefineTask/CreditsTask: an occasional single call a user
+    triggers by hand, not a batch of many parallel jobs, so it gets its own
+    small pool rather than GenerationPool. All of the sound_lint gate and the
+    ElevenLabs transport live in tools/generate_sound.py - this only moves the
+    call off the main loop.
+    """
+
+    def __init__(self, text, **kwargs):
+        super().__init__()
+        self.text = text
+        self.kwargs = kwargs
+        self.signals = SoundSignals()
+
+    def run(self):
+        try:
+            path, error = gsnd.generate_effect(
+                self.text, on_stage=lambda m: self.signals.stage.emit(m), **self.kwargs)
+            if error:
+                self.signals.failed.emit(str(error))
+                return
+            self.signals.finished.emit(str(path))
+        except Exception as exc:  # a worker must never take the app down
+            self.signals.failed.emit("{}: {}".format(type(exc).__name__, exc))
+        finally:
+            self.signals.done.emit(0)
+
+
+class SpeechSignals(QObject):
+    """Signals for one real ElevenLabs text-to-speech generation."""
+
+    finished = pyqtSignal(str)      # saved path
+    failed = pyqtSignal(str)
+    stage = pyqtSignal(str)
+    done = pyqtSignal(int)
+
+
+class SpeechTask(QRunnable):
+    """One line of text -> one spoken audio file, off the UI thread.
+
+    Used by Sound's Voices tab, Ads' per-beat "Generate voiceover" and Cats'
+    per-scene voiceover line - all three call this same task rather than each
+    re-wrapping tools/generate_speech.py themselves.
+    """
+
+    def __init__(self, text, **kwargs):
+        super().__init__()
+        self.text = text
+        self.kwargs = kwargs
+        self.signals = SpeechSignals()
+
+    def run(self):
+        try:
+            path, error = gspeech.generate_speech(
+                self.text, on_stage=lambda m: self.signals.stage.emit(m), **self.kwargs)
+            if error:
+                self.signals.failed.emit(str(error))
+                return
+            self.signals.finished.emit(str(path))
+        except Exception as exc:  # a worker must never take the app down
+            self.signals.failed.emit("{}: {}".format(type(exc).__name__, exc))
+        finally:
+            self.signals.done.emit(0)
+
+
+class VoiceListSignals(QObject):
+    finished = pyqtSignal(object)   # [{voice_id, name, category}, ...]
+    failed = pyqtSignal(str)
+    done = pyqtSignal(int)
+
+
+class VoiceListTask(QRunnable):
+    """Refreshes the account's real voice list. Same shape as CreditsTask."""
+
+    def __init__(self):
+        super().__init__()
+        self.signals = VoiceListSignals()
+
+    def run(self):
+        try:
+            voices, error = voices_tool.list_voices()
+        except Exception as exc:  # a worker must never take the app down
+            voices, error = None, "{}: {}".format(type(exc).__name__, exc)
+        if error:
+            self.signals.failed.emit(str(error))
+        else:
+            self.signals.finished.emit(voices)
+        self.signals.done.emit(0)
+
+
+class VoiceCloneSignals(QObject):
+    finished = pyqtSignal(str)      # new voice_id
+    failed = pyqtSignal(str)
+    done = pyqtSignal(int)
+
+
+class VoiceCloneTask(QRunnable):
+    """Clones a voice from uploaded samples, off the UI thread.
+
+    `consented` is threaded straight through from the GUI's own checkbox to
+    elevenlabs_voices.clone_voice(), which refuses to run without it - the
+    task does not add or relax that gate, only carries the value.
+    """
+
+    def __init__(self, name, sample_paths, description=None, consented=False):
+        super().__init__()
+        self.name = name
+        self.sample_paths = list(sample_paths)
+        self.description = description
+        self.consented = consented
+        self.signals = VoiceCloneSignals()
+
+    def run(self):
+        try:
+            voice_id, error = voices_tool.clone_voice(
+                self.name, self.sample_paths, description=self.description,
+                consented=self.consented)
+        except Exception as exc:  # a worker must never take the app down
+            voice_id, error = None, "{}: {}".format(type(exc).__name__, exc)
+        if error:
+            self.signals.failed.emit(str(error))
+        else:
+            self.signals.finished.emit(voice_id)
+        self.signals.done.emit(0)
+
+
+class VoiceDeleteSignals(QObject):
+    finished = pyqtSignal(str)      # the voice_id that was deleted
+    failed = pyqtSignal(str)
+    done = pyqtSignal(int)
+
+
+class VoiceDeleteTask(QRunnable):
+    """Deletes one cloned voice, off the UI thread. Used by Settings' voice list."""
+
+    def __init__(self, voice_id):
+        super().__init__()
+        self.voice_id = voice_id
+        self.signals = VoiceDeleteSignals()
+
+    def run(self):
+        try:
+            ok, error = voices_tool.delete_voice(self.voice_id)
+        except Exception as exc:  # a worker must never take the app down
+            ok, error = False, "{}: {}".format(type(exc).__name__, exc)
+        if error or not ok:
+            self.signals.failed.emit(str(error) if error else "Delete failed")
+        else:
+            self.signals.finished.emit(self.voice_id)
+        self.signals.done.emit(0)
 
 
 class GenerationSignals(QObject):

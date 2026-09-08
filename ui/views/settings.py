@@ -6,13 +6,15 @@ Key *presence* is shown. A key value is never rendered, copied or logged.
 import sys
 from pathlib import Path
 
-from PyQt6.QtCore import Qt, QUrl, pyqtSignal
+from PyQt6.QtCore import QThreadPool, Qt, QUrl, pyqtSignal
 from PyQt6.QtGui import QDesktopServices
 from PyQt6.QtWidgets import (
     QComboBox,
     QFormLayout,
     QHBoxLayout,
     QLineEdit,
+    QListWidget,
+    QListWidgetItem,
     QPushButton,
     QScrollArea,
     QVBoxLayout,
@@ -23,10 +25,13 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
 import ask_llm  # noqa: E402
+import elevenlabs_voices as voices_tool  # noqa: E402
 import generate_image as gi  # noqa: E402
+import generate_sound as gsnd  # noqa: E402
 
 from .. import assets, tokens as T  # noqa: E402
 from ..widgets import Badge, Card, MutedLabel, TitleLabel  # noqa: E402
+from ..workers import VoiceDeleteTask, VoiceListTask  # noqa: E402
 
 
 class SettingsView(QWidget):
@@ -38,6 +43,8 @@ class SettingsView(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self._voice_pool = QThreadPool(self)
+        self._voice_pool.setMaxThreadCount(1)
         self.setup_ui()
 
     def setup_ui(self):
@@ -143,6 +150,44 @@ class SettingsView(QWidget):
             "unaffected."
         ))
 
+        # ElevenLabs: real sound-effect and text-to-speech generation, and
+        # voice cloning. Same "presence only" key badge as every other
+        # provider above - optional, and the Sound tab still builds and
+        # scores prompts without it.
+        self.sound_key_badge = Badge("checking", "neutral")
+        recheck_sound = QPushButton("Re-check .env")
+        recheck_sound.clicked.connect(self.refresh_key_state)
+        sound_key_row = QHBoxLayout()
+        sound_key_row.setSpacing(T.SPACE["sm"])
+        sound_key_row.addWidget(self.sound_key_badge)
+        sound_key_row.addWidget(recheck_sound)
+        sound_key_row.addStretch(1)
+
+        self.voice_list = QListWidget()
+        self.voice_list.setMaximumHeight(120)
+        refresh_voices_button = QPushButton("Refresh")
+        refresh_voices_button.setProperty("class", "ghost")
+        refresh_voices_button.clicked.connect(self.refresh_voice_list)
+        delete_voice_button = QPushButton("Delete selected")
+        delete_voice_button.setProperty("class", "ghost")
+        delete_voice_button.clicked.connect(self.delete_selected_voice)
+        voice_actions = QHBoxLayout()
+        voice_actions.setSpacing(T.SPACE["sm"])
+        voice_actions.addWidget(refresh_voices_button)
+        voice_actions.addWidget(delete_voice_button)
+        voice_actions.addStretch(1)
+
+        sound_card = Card()
+        sound_card.body.addWidget(TitleLabel("Sound and voice (optional)"))
+        sound_card.body.addLayout(sound_key_row)
+        sound_card.body.addWidget(MutedLabel(
+            "ElevenLabs powers the Sound tab's real Generate buttons, Ads' per-beat "
+            "voiceover and Cats' per-scene voiceover. Without a key, Sound still builds "
+            "and scores prompts to paste in by hand."))
+        sound_card.body.addWidget(MutedLabel("Cloned voices on this account:"))
+        sound_card.body.addWidget(self.voice_list)
+        sound_card.body.addLayout(voice_actions)
+
         paths_card = Card()
         paths_card.body.addWidget(TitleLabel("Paths"))
         for label, path, disposable in [
@@ -150,6 +195,8 @@ class SettingsView(QWidget):
             ("Prompts", assets.PROMPTS_DIR, True),
             ("Images", assets.IMAGES_DIR, True),
             ("Videos", assets.VIDEOS_DIR, True),
+            ("Sound effects", assets.SOUND_DIR, True),
+            ("Voice / speech", assets.VOICE_DIR, True),
         ]:
             row = QHBoxLayout()
             row.setSpacing(T.SPACE["sm"])
@@ -171,6 +218,7 @@ class SettingsView(QWidget):
         layout.setSpacing(T.COLUMN_GAP)
         layout.addWidget(provider_card)
         layout.addWidget(text_card)
+        layout.addWidget(sound_card)
         layout.addWidget(paths_card)
         layout.addStretch(1)
 
@@ -195,6 +243,7 @@ class SettingsView(QWidget):
         outer.addWidget(scroll)
 
         self.refresh_key_state()
+        self.refresh_voice_list()
 
     def on_provider_changed(self, name):
         cfg = gi.PROVIDERS.get(name)
@@ -235,6 +284,35 @@ class SettingsView(QWidget):
             "over. Generating with a reference set is refused rather than silently ignored."
         )
         badge(self.text_key_badge, ask_llm.KEY_VAR)
+        badge(self.sound_key_badge, gsnd.KEY_VAR)
+
+    def refresh_voice_list(self):
+        task = VoiceListTask()
+        task.signals.finished.connect(self._on_voices_loaded)
+        task.signals.failed.connect(lambda reason: self.status.emit(reason))
+        self._voice_pool.start(task)
+
+    def _on_voices_loaded(self, voices):
+        self.voice_list.clear()
+        for voice in voices:
+            item = QListWidgetItem("{}  ({})".format(voice["name"], voice["category"]))
+            item.setData(Qt.ItemDataRole.UserRole, voice["voice_id"])
+            self.voice_list.addItem(item)
+
+    def delete_selected_voice(self):
+        item = self.voice_list.currentItem()
+        if not item:
+            self.status.emit("Pick a voice to delete first")
+            return
+        voice_id = item.data(Qt.ItemDataRole.UserRole)
+        task = VoiceDeleteTask(voice_id)
+        task.signals.finished.connect(self._on_voice_deleted)
+        task.signals.failed.connect(lambda reason: self.status.emit(reason))
+        self._voice_pool.start(task)
+
+    def _on_voice_deleted(self, _voice_id):
+        self.status.emit("Voice deleted")
+        self.refresh_voice_list()
 
     def open_path(self, path):
         path.mkdir(parents=True, exist_ok=True)

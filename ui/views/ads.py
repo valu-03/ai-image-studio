@@ -39,11 +39,14 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 import ad_lint as al  # noqa: E402
 import build_ad as ba  # noqa: E402
+import elevenlabs_voices as voices_tool  # noqa: E402
+import generate_image as gi  # noqa: E402  (key-presence check only)
+import generate_sound as gsnd  # noqa: E402  (KEY_VAR, WHERE - shared ElevenLabs constants)
 import realism_lint as rl  # noqa: E402
 
 from .. import assets, tokens as T  # noqa: E402
 from ..widgets import AiSuggestionBadge, Badge, Card, GateTree, MutedLabel, TitleLabel  # noqa: E402
-from ..workers import LlmTask  # noqa: E402
+from ..workers import LlmTask, SpeechTask, VoiceListTask  # noqa: E402
 
 
 class Timeline(QWidget):
@@ -137,8 +140,12 @@ class AdsView(QWidget):
         self.context = None                 # set by the controller: () -> spec dict
         self.pool = QThreadPool(self)
         self.pool.setMaxThreadCount(1)
+        self._voiceover_queue = []
+        self._voiceover_total = 0
+        self._voiceover_done = 0
         self.setup_ui()
         self.rebuild()
+        self.refresh_voices()
 
     # -- construction ------------------------------------------------------ #
     def setup_ui(self):
@@ -299,6 +306,17 @@ class AdsView(QWidget):
         self.progress.setFixedHeight(6)
         self.progress.setVisible(False)
 
+        self.voice_combo = QComboBox()
+        self.voice_combo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+        self.voice_combo.setMinimumContentsLength(6)
+        self.voice_combo.setMinimumWidth(72)
+        self.voice_combo.setToolTip("Voice for \"Voiceover\" - refreshed from your ElevenLabs account.")
+        self.voiceover_button = QPushButton("Voiceover")
+        self.voiceover_button.setProperty("class", "ghost")
+        self.voiceover_button.setToolTip(
+            "Sends each beat's copy line to ElevenLabs with the chosen voice.")
+        self.voiceover_button.clicked.connect(self.generate_voiceover)
+
         board = Card()
         board.body.addWidget(TitleLabel("Storyboard"))
         board.body.addWidget(self.timeline)
@@ -313,7 +331,19 @@ class AdsView(QWidget):
         gate.body.addLayout(header)
         gate.body.addWidget(self.gate, 1)
         gate.body.addWidget(self.identity_note)
-        gate.body.addWidget(self.generate_button)
+        # Voiceover shares the Generate row rather than adding a new one - the
+        # gate card has zero spare height at the 1100x700 floor already (see
+        # CLAUDE.md's "a layout that runs out of room does not refuse"
+        # lesson: a fixed-height row added here crushed identity_note and the
+        # gate detail text before this fix). Progress and results go through
+        # the shared status bar, the same way every other quick action here
+        # already reports.
+        actions_row = QHBoxLayout()
+        actions_row.setSpacing(T.SPACE["sm"])
+        actions_row.addWidget(self.generate_button, 1)
+        actions_row.addWidget(self.voice_combo)
+        actions_row.addWidget(self.voiceover_button)
+        gate.body.addLayout(actions_row)
         gate.body.addWidget(self.progress)
 
         page = QWidget()
@@ -560,6 +590,79 @@ class AdsView(QWidget):
         self.hook_tree.setColumnWidth(1, 420)
         self.status.emit("Checked {} hook(s)".format(len(lines)))
 
+    # -- real voiceover, per beat -------------------------------------------- #
+    def refresh_voices(self):
+        task = VoiceListTask()
+        task.signals.finished.connect(self._on_voices_loaded)
+        task.signals.failed.connect(self.status.emit)
+        self.pool.start(task)
+
+    def _on_voices_loaded(self, voices):
+        current = self.voice_combo.currentData()
+        self.voice_combo.clear()
+        for voice in voices:
+            self.voice_combo.addItem(voice["name"], voice["voice_id"])
+        index = self.voice_combo.findData(current)
+        if index >= 0:
+            self.voice_combo.setCurrentIndex(index)
+
+    def generate_voiceover(self):
+        """Real speech for every beat that has a copy line, one call at a time.
+
+        Reuses whatever `self.shots` the storyboard already built - the same
+        `shot["copy"]` line the beat tree already shows, read aloud rather
+        than re-typed anywhere.
+        """
+        if not self.shots:
+            self.status.emit("Build the storyboard first")
+            return
+        if not gi.env_value(gsnd.KEY_VAR):
+            self.status.emit(
+                "No {} set in .env - get one at {}".format(gsnd.KEY_VAR, gsnd.WHERE))
+            return
+        voice_id = self.voice_combo.currentData()
+        if not voice_id:
+            self.status.emit("Pick a voice first (Refresh if the list is empty).")
+            return
+        if self._voiceover_queue:
+            self.status.emit("Already generating voiceover")
+            return
+
+        queue = [(shot["copy"], "ad-{}-{}-voice.mp3".format(shot["n"], shot["key"]), voice_id)
+                for shot in self.shots if shot.get("copy")]
+        if not queue:
+            self.status.emit("No beat has a copy line yet - write or draft one first.")
+            return
+
+        self._voiceover_queue = queue
+        self._voiceover_total = len(queue)
+        self._voiceover_done = 0
+        self.voiceover_button.setEnabled(False)
+        self._advance_voiceover_queue()
+
+    def _advance_voiceover_queue(self):
+        if not self._voiceover_queue:
+            self.status.emit("Voiceover done - {} of {} beats voiced.".format(
+                self._voiceover_done, self._voiceover_total))
+            self.voiceover_button.setEnabled(True)
+            return
+        text, out_name, voice_id = self._voiceover_queue.pop(0)
+        self.status.emit("Generating voiceover {} of {}: {}".format(
+            self._voiceover_done + 1, self._voiceover_total, out_name))
+        task = SpeechTask(text, voice_id=voice_id, out_name=out_name)
+        task.signals.finished.connect(self._on_voiceover_item_done)
+        task.signals.failed.connect(self._on_voiceover_item_failed)
+        self.pool.start(task)
+
+    def _on_voiceover_item_done(self, _path):
+        self._voiceover_done += 1
+        self._advance_voiceover_queue()
+
+    def _on_voiceover_item_failed(self, reason):
+        self.status.emit(reason)
+        self._voiceover_done += 1
+        self._advance_voiceover_queue()
+
     # -- the optional text model ------------------------------------------- #
     def draft_copy(self):
         """Ask OpenRouter for the five beats. The gate decides, not the model."""
@@ -659,3 +762,5 @@ class AdsView(QWidget):
 
     def refresh(self):
         self.rebuild()
+        if not self.voice_combo.count():
+            self.refresh_voices()

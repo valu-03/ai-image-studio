@@ -691,8 +691,51 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   stacked 1x4, which pushed the primary **Generate** button below the fold of its own scroll area
   (now 2x2); and their labels are now short (Generate/Upscale/Refine/Copy (MJ)) with the full
   description in the tooltip.
+- **The Sound tab's ElevenLabs prompts now generate for real, and so does speech.**
+  `tools/generate_sound.py`/`generate_speech.py`/`elevenlabs_voices.py` are a new provider, not
+  a new architecture - ElevenLabs' sound-effect and TTS endpoints are simpler than Kie/
+  Higgsfield/Kling's submit-then-poll shape: one synchronous POST, audio bytes straight back.
+  `generate_sound.py` owns the shared transport (headers, the binary-response POST, error
+  parsing, multipart encoding for voice samples) the other two import, the same relationship
+  `generate_video.py` already has to `generate_image.py`. A sound-effect prompt is gated on
+  `sound_lint` before a generation is spent by default (`force=True`/`--force` to override
+  deliberately) - the same "score before you spend a generation" rule `realism_lint` enforces
+  for images. TTS has no equivalent content gate (spoken text isn't a layered prompt); the
+  safeguard there is `generate_speech.estimate_cost()`'s character/credit count, shown before
+  a real call, reading `pricing.json`'s new `elevenlabs` block through `generate_video.py`'s
+  own `PRICING_PATH`/`load_pricing()` rather than a second hardcoded constant.
+- **Voice cloning is the one place in this app's ElevenLabs integration with a real-world
+  consequence for someone who isn't the user.** `elevenlabs_voices.clone_voice()` refuses to
+  run without `consented=True` - enforced by the function itself, not only Sound's Voices tab
+  consent checkbox, so a scripted call cannot bypass it either. The GUI's Clone button stays
+  disabled until a name, at least one sample, and the checkbox are all present.
+- **Real audio generation is entirely local to the view that offers it, unlike images/video.**
+  Compose/Ads/Cats generation routes through `MainWindow` because it needs shared provider/
+  spec/credits state; a sound effect or a spoken line needs none of that, so `SoundView`,
+  `AdsView` and `CatsView` each own a small `QThreadPool` and call `SoundTask`/`SpeechTask`/
+  `VoiceListTask`/`VoiceCloneTask` (`ui/workers.py`) directly - no new `MainWindow` wiring was
+  needed for this feature at all. Settings gained its own small pool for the same reason
+  (`VoiceListTask`/`VoiceDeleteTask`, managing cloned voices).
+- **Adding real rows to Sound's Compose/Scenes tabs immediately reproduced the QScrollArea-
+  clipping bug this project had already found and fixed once** (see the "THE bug behind the
+  cut-off buttons" entry above) - neither tab had ever been wrapped in a `QScrollArea` at all,
+  so they had zero slack the moment a Generate/Play/Open-folder row was added, and
+  `clipped_scrollareas()` didn't catch it because there was no scroll area yet to be wrong
+  about; the failure showed up as plain overlap and crush instead. Fixed by wrapping all three
+  Sound tabs' content in `_scrolled()` (`AsNeeded`, matching Settings' own established pattern)
+  rather than trusting a page to keep fitting forever just because it fit today. Ads' new
+  per-beat voiceover control hit the *other* half of that same lesson from a different angle:
+  the Storyboard tab's `gate` card had zero spare height at the 1100x700 floor already, so even
+  one new fixed-height row crushed `identity_note` and the gate's own detail text - fixed by
+  sharing the existing Generate button's row instead of adding a new one, not by finding more
+  space. **The general lesson, restated**: a card that passes `test_layout.py` today is not
+  proof it has slack for tomorrow's row - run the gate again after every addition, not just
+  once at the end.
 - **Run `python tests/run_all.py` before calling anything done.** 1108 checks, no dependencies
-  beyond PyQt6, Qt runs offscreen.
+  beyond PyQt6, Qt runs offscreen. (One long-standing, unrelated failure as of this pass:
+  `test_story.py`'s `tools/motion_bank.json is unchanged` hash check fails against the file as
+  committed in `5f2a784` - pre-dates this session's work, not touched by it, and not
+  investigated here.)
 
 ---
 
@@ -716,7 +759,9 @@ camera-movement toolkit and the film glossary — builds the prompt and, since P
 generate the real clip too), **Ads** (the five-beat UGC advert: brief, storyboard, hook A/B,
 checklist, publishing), **Cats** (a story in scenes plus its CapCut edit sheet, and a Custom Prompt tab for a
 hand-written shot instead), **Sound**
-(the 100 ElevenLabs prompts, and three layers per scene), **Brief** (the text-model helpers),
+(the 100 ElevenLabs prompts, three layers per scene, and - with a real key - actual generated
+sound effects, text-to-speech and voice cloning; Ads and Cats can voice their own copy/scenes
+the same way), **Brief** (the text-model helpers),
 then History, Insights and Settings.
 
 This doc previously said clip generation and UGC ads/consistent characters were "not built
