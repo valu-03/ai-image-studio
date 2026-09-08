@@ -5,7 +5,8 @@ top of one.
   Library   the seven guides (rule of thirds, phi grid, diagonals, ...),
             browsable, reused straight from prompt_bank.json - not duplicated
   Compose   pick a guide or type your own framing text, stack realism
-            techniques on top, apply the result to Compose
+            techniques on top (or type one more of your own beyond the
+            seven), apply the result to Compose
 
 Nothing here replaces Compose's own composition combo (ui/spec_editor.py);
 this is the deeper tool behind an "Open Composition" link next to it, the
@@ -115,6 +116,11 @@ class CompositionView(QWidget):
             self.technique_checks[key] = box
             techniques_col.addWidget(box)
 
+        self.technique_custom = QLineEdit()
+        self.technique_custom.setPlaceholderText(
+            "or type one more realism phrase, e.g. \"the horizon kept low in the frame\"")
+        self.technique_custom.textChanged.connect(self.rebuild_compose)
+
         self.composed = QLabel("")
         self.composed.setWordWrap(True)
         self.composed.setProperty("class", "mono")
@@ -137,6 +143,7 @@ class CompositionView(QWidget):
         form.body.addWidget(self.custom_field)
         form.body.addWidget(MutedLabel("Realism techniques (optional, stack freely):"))
         form.body.addLayout(techniques_col)
+        form.body.addWidget(self.technique_custom)
 
         result = Card()
         header = QHBoxLayout()
@@ -208,7 +215,8 @@ class CompositionView(QWidget):
         try:
             phrase, _warnings = bc.compose_composition(
                 self.image_bank, self.bank, guide=guide, custom=custom,
-                techniques_=picked_techniques)
+                techniques_=picked_techniques,
+                technique_custom=self.technique_custom.text())
         except bc.CompositionError as exc:
             self.composed.setText("")
             self.status_badge.set_status("neutral", "pick something")

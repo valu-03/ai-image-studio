@@ -4,6 +4,10 @@
   Compose   pick a setup (fast) or direction + quality + source (deep),
             stack realism techniques on top, apply the result to Compose
 
+The deep path's three pickers, and the technique list, are all editable - a
+bank entry is a tested starting point, not a closed world; type your own and
+it is used exactly as typed. See tools/build_lighting.py's docstring.
+
 Two paths to a phrase - see tools/build_lighting.py's own docstring for why.
 Nothing here replaces Compose's own lighting combo (ui/spec_editor.py); this
 is the deeper tool behind an "Open Lighting" link next to it, the same
@@ -21,6 +25,7 @@ from PyQt6.QtWidgets import (
     QGridLayout,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QPushButton,
     QScrollArea,
     QTabWidget,
@@ -95,20 +100,32 @@ class LightingView(QWidget):
             "A named setup is a complete, pre-vetted recipe - pick one, or build your "
             "own from the three pickers below.")
 
-        self.direction_combo = QComboBox()
+        # Editable, like Compose's own shot/lighting/composition combos: the
+        # bank's entries are tested starting points, not a closed world - type
+        # your own direction/quality/source and it is used exactly as typed
+        # rather than rejected as a typo. See build_lighting.py's docstring.
+        self.direction_combo = QComboBox(editable=True)
+        self.direction_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.direction_combo.addItem("(none)", "")
         for key, cfg in bl.directions(self.bank).items():
             self.direction_combo.addItem(cfg["label"], key)
-        self.quality_combo = QComboBox()
+        self.quality_combo = QComboBox(editable=True)
+        self.quality_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.quality_combo.addItem("(none)", "")
         for key, cfg in bl.qualities(self.bank).items():
             self.quality_combo.addItem(cfg["label"], key)
-        self.source_combo = QComboBox()
+        self.quality_combo.setToolTip(
+            "Hard or soft, or type your own - conflict-checking against source "
+            "only applies when this is left on hard/soft.")
+        self.source_combo = QComboBox(editable=True)
+        self.source_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.source_combo.addItem("(none)", "")
         for key, cfg in bl.sources(self.bank).items():
             self.source_combo.addItem("{} ({})".format(cfg["label"], cfg["category"]), key)
         for combo in (self.direction_combo, self.quality_combo, self.source_combo):
-            combo.currentIndexChanged.connect(self.rebuild_compose)
+            # Editable combos must watch text, not index - typed text never
+            # moves the index. Same rule ui/spec_editor.py's own combos follow.
+            combo.currentTextChanged.connect(self.rebuild_compose)
 
         deep_row = QGridLayout()
         deep_row.setHorizontalSpacing(T.COLUMN_GAP)
@@ -129,6 +146,11 @@ class LightingView(QWidget):
             box.toggled.connect(self.rebuild_compose)
             self.technique_checks[key] = box
             techniques_col.addWidget(box)
+
+        self.technique_custom = QLineEdit()
+        self.technique_custom.setPlaceholderText(
+            "or type one more realism phrase, e.g. \"a hint of lens flare from the source\"")
+        self.technique_custom.textChanged.connect(self.rebuild_compose)
 
         self.composed = QLabel("")
         self.composed.setWordWrap(True)
@@ -155,6 +177,7 @@ class LightingView(QWidget):
         form.body.addLayout(deep_row)
         form.body.addWidget(MutedLabel("Realism techniques (optional, stack freely):"))
         form.body.addLayout(techniques_col)
+        form.body.addWidget(self.technique_custom)
 
         result = Card()
         header = QHBoxLayout()
@@ -215,6 +238,26 @@ class LightingView(QWidget):
             self.setup_combo.setCurrentIndex(index)
         self.tabs.setCurrentIndex(1)
 
+    @staticmethod
+    def _resolved(combo):
+        """The current value of an editable combo - the underlying bank key
+        if the typed/picked text names a listed item, else the raw typed
+        text as-is. Mirrors ui/spec_editor.py's own `_listed()` helper: an
+        editable combo's index never moves when text is typed rather than
+        picked, so currentData() alone would miss a typed value entirely,
+        and a typed value that happens to match a listed label still has to
+        resolve to that item's key rather than being sent through as text
+        that happens to equal the label.
+        """
+        text = combo.currentText().strip()
+        if not text or text == "(none)":
+            return ""
+        data = combo.currentData()
+        if data:
+            return data
+        index = combo.findText(text, Qt.MatchFlag.MatchFixedString)
+        return combo.itemData(index) if index >= 0 else text
+
     # -- compose -------------------------------------------------------------#
     def rebuild_compose(self):
         if not hasattr(self, "composed"):
@@ -224,15 +267,16 @@ class LightingView(QWidget):
         for combo in (self.direction_combo, self.quality_combo, self.source_combo):
             combo.setEnabled(deep_active)
 
-        direction = self.direction_combo.currentData() or None if deep_active else None
-        quality = self.quality_combo.currentData() or None if deep_active else None
-        source = self.source_combo.currentData() or None if deep_active else None
+        direction = self._resolved(self.direction_combo) or None if deep_active else None
+        quality = self._resolved(self.quality_combo) or None if deep_active else None
+        source = self._resolved(self.source_combo) or None if deep_active else None
         picked_techniques = [key for key, box in self.technique_checks.items() if box.isChecked()]
 
         try:
             phrase, warnings = bl.compose_lighting(
                 self.bank, setup=setup, direction=direction, quality=quality,
-                source=source, techniques_=picked_techniques)
+                source=source, techniques_=picked_techniques,
+                technique_custom=self.technique_custom.text())
         except bl.LightingError as exc:
             self.composed.setText("")
             self.warning_badge.set_status("neutral", "pick something")

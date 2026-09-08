@@ -848,7 +848,20 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   topology) doesn't fit anything here - there is no live control/simulation loop to evolve a
   policy against. The UCB upgrade above is the actual real version of that instinct: a bandit
   algorithm, applied to the one place this project already had an explore/exploit problem.
-- **Run `python tests/run_all.py` before calling anything done.** 1260 checks, all green
+- **Lighting's deep path and both sections' technique lists became genuinely customizable, not
+  just a closed dropdown.** `direction_combo`/`quality_combo`/`source_combo` in
+  `ui/views/lighting.py` are now editable (`QComboBox(editable=True)`, matching
+  `ui/spec_editor.py`'s own shot/lighting/composition combos) - a bank entry is a tested
+  starting point, not a closed world. `build_lighting._resolve()` (new) accepts EITHER a bank
+  key OR literal typed text for direction/quality/source; `setup` and a named `--technique`
+  stay strict-key, since those are complete recipes to pick from, not slots to customize. The
+  `conflicts` check now only fires when both quality and source resolve to recognised bank keys
+  - custom text for either one was never in that table to begin with, so it's skipped rather
+  than guessed at. Both Lighting and Composition also gained a `technique_custom` free-text
+  field alongside their checkbox lists, so a realism cue isn't limited to the seven predefined
+  ones either. `LightingView._resolved()` mirrors `SpecEditor._listed()`'s exact logic for
+  resolving a typed/picked combo value to its underlying key.
+- **Run `python tests/run_all.py` before calling anything done.** 1273 checks, all green
   (`test_history.py`, `test_lighting_bank.py`, `test_elevenlabs.py` and `test_composition_bank.py`
   are all now in `tests/run_all.py`'s `ORDER` - `test_elevenlabs.py` existed for a while but was
   never actually wired in, so it silently never ran as part of the suite until it was noticed),

@@ -18,7 +18,8 @@ at generation time; this function just previews the same result.
 `--technique` (repeatable) stacks realism cues on top of either a guide or
 custom text - opt-in, additive, never required: negative-space, lead-room,
 depth-layering, framing-device, visual-balance, scale-contrast,
-pattern-repetition.
+pattern-repetition. `--technique-custom` adds one more free-text phrase
+beyond that list - the seven are tested starting points, not a closed world.
 
 Unlike lighting's quality x source, the seven guides are already mutually
 exclusive by construction (one combo, one pin), and no technique here fights
@@ -60,7 +61,8 @@ class CompositionError(ValueError):
     given - the caller made a mistake, not something to silently drop."""
 
 
-def compose_composition(main_bank, comp_bank, guide=None, custom=None, techniques_=()):
+def compose_composition(main_bank, comp_bank, guide=None, custom=None, techniques_=(),
+                         technique_custom=None):
     """(phrase, warnings). Raises CompositionError for an unknown guide/
     technique key, or if neither `guide` nor `custom` resolves to anything.
 
@@ -89,6 +91,8 @@ def compose_composition(main_bank, comp_bank, guide=None, custom=None, technique
         if not cfg:
             raise CompositionError("Unknown technique '{}'. See --list.".format(name))
         parts.append(cfg["phrase"])
+    if technique_custom and technique_custom.strip():
+        parts.append(technique_custom.strip())
 
     return ", ".join(parts), []
 
@@ -104,6 +108,7 @@ def parse_args(argv):
     p.add_argument("--custom", help="typed framing text - beats --guide if both are given")
     p.add_argument("--technique", action="append", default=[],
                     help="a realism cue to stack on top, repeatable (see --list)")
+    p.add_argument("--technique-custom", help="one more free-text realism phrase to stack on top")
     p.add_argument("--list", action="store_true", help="print every option and exit")
     return p.parse_args(argv)
 
@@ -126,7 +131,7 @@ def main(argv=None):
     try:
         phrase, warnings = compose_composition(
             main_bank, comp_bank, guide=args.guide, custom=args.custom,
-            techniques_=args.technique)
+            techniques_=args.technique, technique_custom=args.technique_custom)
     except CompositionError as exc:
         sys.exit(str(exc))
 

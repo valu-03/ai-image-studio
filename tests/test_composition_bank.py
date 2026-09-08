@@ -83,6 +83,21 @@ check("still scores 8/8 with two techniques stacked on a guide",
       len(present) == 8 and not banned, "missing: {}".format(missing))
 
 print()
+print("=== technique_custom adds one more free-text phrase beyond the checklist ===")
+phrase, warnings = bc.compose_composition(
+    image_bank, comp_bank, guide="triangle", techniques_=["negative-space"],
+    technique_custom="the horizon kept low in the frame")
+check("both the checklist technique and the custom phrase appear",
+      "negative space" in phrase.lower() and "horizon kept low" in phrase.lower(), phrase)
+check("no warnings", not warnings, str(warnings))
+
+phrase, _ = bc.compose_composition(
+    image_bank, comp_bank, custom="framed through a car window",
+    technique_custom="reflections faintly visible in the glass")
+check("technique_custom stacks on custom framing text too, not just a guide",
+      "car window" in phrase and "reflections faintly visible" in phrase, phrase)
+
+print()
 print("=== bad input is refused, not silently ignored ===")
 try:
     bc.compose_composition(image_bank, comp_bank, guide="not-a-real-guide")
@@ -126,6 +141,10 @@ check("--custom + --technique exits 0", p.returncode == 0, p.stderr[:160])
 check("--custom beats nothing else and the technique is appended",
       "a hand-typed framing note" in p.stdout and "lead room" in p.stdout.lower(),
       p.stdout[:200])
+
+p = run(["--guide", "triangle", "--technique-custom", "the horizon kept low in the frame"])
+check("--technique-custom exits 0 and appends the phrase",
+      p.returncode == 0 and "horizon kept low" in p.stdout, p.stdout[:200])
 
 p = run(["--guide", "not-a-real-guide"])
 check("an unknown --guide exits non-zero", p.returncode != 0)

@@ -85,6 +85,33 @@ check("both techniques appear in the composed phrase",
       "catchlight" in phrase.lower() and "falling off" in phrase.lower(), phrase)
 
 print()
+print("=== the deep path also accepts free text, not just bank keys ===")
+phrase, warnings = bl.compose_lighting(bank, direction="a warm handheld flashlight beam")
+check("an unrecognised direction is used literally, not rejected",
+      phrase == "a warm handheld flashlight beam", phrase)
+check("no warnings for a wholly custom deep-path piece", not warnings, str(warnings))
+
+phrase, warnings = bl.compose_lighting(
+    bank, quality="very diffused, almost shadowless",
+    source="a lightbulb hanging from a bare wire")
+check("custom quality + custom source both pass through literally",
+      "very diffused" in phrase and "bare wire" in phrase, phrase)
+check("no conflict is guessed at for text that isn't a recognised quality/source pair",
+      not warnings, str(warnings))
+
+phrase, warnings = bl.compose_lighting(bank, direction="loop", quality="hard", source="overcast")
+check("a real bank key still resolves to its phrase alongside custom text",
+      "loop lighting" in phrase, phrase)
+check("the conflicts table still fires when both sides ARE recognised keys",
+      len(warnings) == 1, str(warnings))
+
+phrase, _ = bl.compose_lighting(
+    bank, setup="loop", techniques_=["catchlights"],
+    technique_custom="a hint of lens flare from the source")
+check("technique_custom appends one more free-text phrase beyond the checklist",
+      "catchlight" in phrase.lower() and "lens flare" in phrase.lower(), phrase)
+
+print()
 print("=== bad input is refused, not silently ignored ===")
 try:
     bl.compose_lighting(bank, setup="not-a-real-setup")
@@ -131,6 +158,14 @@ p = run(["--quality", "hard", "--source", "overcast"])
 check("a contradictory CLI combo still exits 0 (warned, not refused)", p.returncode == 0)
 check("the CLI prints the warning to stderr", "huge, close, diffuse source" in p.stderr,
       p.stderr[:200])
+
+p = run(["--direction", "a shaft of light through a broken window"])
+check("free-text --direction exits 0 and is used literally", p.returncode == 0
+      and "shaft of light through a broken window" in p.stdout, p.stdout[:200])
+
+p = run(["--setup", "loop", "--technique-custom", "a hint of lens flare from the source"])
+check("--technique-custom exits 0 and appends the phrase",
+      p.returncode == 0 and "lens flare" in p.stdout, p.stdout[:200])
 
 p = run(["--setup", "not-a-real-setup"])
 check("an unknown --setup exits non-zero", p.returncode != 0)
