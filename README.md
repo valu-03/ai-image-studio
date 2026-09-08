@@ -35,6 +35,8 @@ video is a command (or a click), not a memory exercise.
 
 ![AI Video Studio — Cats, a story in scenes](docs/screenshots/cats-scenes.png)
 
+![AI Video Studio — Sound's Voices tab: text-to-speech and voice cloning](docs/screenshots/sound-voices.png)
+
 ## Why it's built this way
 
 The project is organised around three parts, plus a GUI that is deliberately *not* a fourth:
