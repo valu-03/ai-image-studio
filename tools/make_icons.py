@@ -88,9 +88,17 @@ TEMPLATE = (
 # which is what this app does. Unlike the nav glyphs this one is filled rather
 # than stroked, because it has to survive being drawn at 16px in a taskbar
 # where hairline strokes disappear.
+#
+# The background gradient is `tokens.py`'s own `primary_gradient` colours
+# (#38BDF8 -> #8B5CF6, the exact pair reserved for the app's one CTA-gradient
+# per view and the credits/busy badge) rather than the mono-blue pair this
+# mark used before - the icon is the single outermost brand mark, the one
+# place that signature gradient belongs at full strength, not a second
+# invented palette living next to it.
 INK = "#0B0E14"
-GRADIENT_FROM = "#38BDF8"
-GRADIENT_TO = "#0EA5E9"
+GRADIENT_FROM = "#38BDF8"    # tokens.DARK["primary"]
+GRADIENT_TO = "#8B5CF6"      # tokens.DARK["accent2"]
+INK_HIGHLIGHT = "#232C3D"    # tokens.DARK["surface_variant_high"] - play-triangle sheen
 
 # Three chords of the ring, 120 degrees apart, each 7px from the centre. Three
 # such chords enclose a triangle, and set this way its vertex points right - so
@@ -102,25 +110,60 @@ GRADIENT_TO = "#0EA5E9"
 #   opening: (46,32) right vertex, (25,19.88) and (25,44.12)
 #
 # Drawn at half-length 18 rather than the full 18.73 so that the round cap ends
-# just inside the ring instead of poking through it.
+# just inside the ring instead of poking through it. This geometry is proven
+# (it is what reads correctly down to 16px) and untouched by the polish pass
+# below - only how it is coloured and what surrounds it changed.
 _BLADES = (
     '<path d="M19.91 47.06 L51.09 29.06"/>'
     '<path d="M25 50 L25 14"/>'
     '<path d="M19.91 16.94 L51.09 34.94"/>'
 )
-_PLAY = '<path d="M25 19.88 L25 44.12 L46 32 Z" fill="{ink}" stroke="none"/>'
+# A second, thinner ring just inside the main one - a coated-lens rim detail,
+# purely decorative at r=17.4 so it never intersects the blade/play geometry
+# above, which is all keyed off the outer r=20 ring.
+_INNER_RING = '<circle cx="32" cy="32" r="17.4" stroke-width="1.1" opacity="0.55"/>'
 _RING = '<circle cx="32" cy="32" r="20"/>'
+_PLAY = (
+    '<path d="M25 19.88 L25 44.12 L46 32 Z" fill="url(#play)" stroke="none"/>'
+)
 
 APP_MARK = (
     '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" '
     'viewBox="0 0 64 64">'
-    '<defs><linearGradient id="g" x1="0" y1="0" x2="64" y2="64" '
+    '<defs>'
+    '<linearGradient id="g" x1="2" y1="2" x2="62" y2="62" '
     'gradientUnits="userSpaceOnUse">'
     '<stop offset="0" stop-color="{a}"/><stop offset="1" stop-color="{b}"/>'
-    '</linearGradient></defs>'
-    '<rect x="0" y="0" width="64" height="64" rx="14" fill="url(#g)"/>'
-    '<g fill="none" stroke="{ink}" stroke-width="3.5" stroke-linecap="round">'
+    '</linearGradient>'
+    # The play triangle's own subtle gradient - flat ink read as a hole
+    # punched in the mark; a near-black-to-slightly-lighter fill reads as a
+    # lens with actual depth instead.
+    '<linearGradient id="play" x1="25" y1="20" x2="46" y2="44" '
+    'gradientUnits="userSpaceOnUse">'
+    '<stop offset="0" stop-color="{ink}"/><stop offset="1" stop-color="{ink_hi}"/>'
+    '</linearGradient>'
+    # A soft glass highlight in the upper-left, the way a real camera lens'
+    # coating catches light - clipped to the rounded square so it can never
+    # spill past the mark's own edge.
+    '<radialGradient id="sheen" cx="0.28" cy="0.22" r="0.55">'
+    '<stop offset="0" stop-color="#FFFFFF" stop-opacity="0.38"/>'
+    '<stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>'
+    '</radialGradient>'
+    # A faint bottom vignette for grounding - the same reasoning modern
+    # Fluent/macOS marks use a soft inner shadow at the base for.
+    '<linearGradient id="vignette" x1="0" y1="0" x2="0" y2="1">'
+    '<stop offset="0.55" stop-color="#000000" stop-opacity="0"/>'
+    '<stop offset="1" stop-color="#000000" stop-opacity="0.16"/>'
+    '</linearGradient>'
+    '<clipPath id="clip"><rect x="0" y="0" width="64" height="64" rx="16"/></clipPath>'
+    '</defs>'
+    '<g clip-path="url(#clip)">'
+    '<rect x="0" y="0" width="64" height="64" rx="16" fill="url(#g)"/>'
+    '<rect x="0" y="0" width="64" height="64" fill="url(#sheen)"/>'
+    '<rect x="0" y="0" width="64" height="64" fill="url(#vignette)"/>'
+    '<g fill="none" stroke="{ink}" stroke-width="3.8" stroke-linecap="round">'
     '{body}</g>'
+    '</g>'
     '</svg>'
 )
 
@@ -134,8 +177,9 @@ ICON_NAMES = set(GLYPHS) | {"app"}
 
 def app_mark():
     """The application mark, as SVG. One version: it reads down to 16px."""
-    body = _RING + _BLADES + _PLAY.format(ink=INK)
-    return APP_MARK.format(a=GRADIENT_FROM, b=GRADIENT_TO, ink=INK, body=body)
+    body = _RING + _INNER_RING + _BLADES + _PLAY
+    return APP_MARK.format(a=GRADIENT_FROM, b=GRADIENT_TO, ink=INK,
+                            ink_hi=INK_HIGHLIGHT, body=body)
 
 
 def build():

@@ -731,6 +731,30 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   space. **The general lesson, restated**: a card that passes `test_layout.py` today is not
   proof it has slack for tomorrow's row - run the gate again after every addition, not just
   once at the end.
+- **The application mark was redesigned onto the app's own real brand gradient, not a second
+  invented palette.** `make_icons.py`'s `APP_MARK` used a mono-blue pair (#38BDF8 -> #0EA5E9)
+  that matched nothing else in the app; `tokens.py`'s `primary_gradient` (#38BDF8 -> #8B5CF6,
+  the exact pair reserved for one CTA per view and the credits/busy badge) is the app's actual
+  signature look, and the outermost brand mark is the one place that belongs at full strength.
+  The proven aperture-ring/play-triangle geometry (documented trig, reads down to 16px) is
+  untouched - only its colouring and surroundings changed: a glass-highlight radial gradient,
+  a soft bottom vignette for depth, a thin decorative inner ring, and a subtle gradient on the
+  play triangle itself instead of flat ink. `tools/make_exe_icon.py` (new) rasterizes it into
+  `assets/icons/app.ico` for the Windows build - six sizes rendered separately from the vector
+  (a single downscaled 256px frame turns to mush at 16px), hand-packed into the ICO container
+  rather than trusting Pillow's `sizes=`/`append_images=` ICO writer, which silently kept only
+  the first frame when this was tried the straightforward way - confirmed by parsing the file's
+  own directory table afterward, not by assuming the call worked.
+- **`AIVideoStudio.spec` now points `EXE()` at that `.ico`**, and doing so surfaced a real,
+  previously-latent packaging gap: `tools/` ships as unanalysed data (see the header comment),
+  so a stdlib module imported ONLY from inside `tools/` - never from anything `ui/`/`gui.py`
+  itself imports - is invisible to PyInstaller's static analysis and silently missing from the
+  frozen build. `uuid` (used only by `generate_sound.py`'s multipart boundary) was exactly that
+  case; the built .exe raised `ModuleNotFoundError` on the very first view that imports the
+  ElevenLabs tools, found by actually launching the built .exe, not by reading the spec. Fixed
+  with an explicit `hiddenimports = ["uuid"]`. If a future `tools/*.py` file imports a stdlib
+  module nothing else in the project already uses, add it here too rather than assuming
+  PyInstaller's analysis will find it - it structurally cannot, by this spec's own design.
 - **Run `python tests/run_all.py` before calling anything done.** 1108 checks, no dependencies
   beyond PyQt6, Qt runs offscreen. (One long-standing, unrelated failure as of this pass:
   `test_story.py`'s `tools/motion_bank.json is unchanged` hash check fails against the file as

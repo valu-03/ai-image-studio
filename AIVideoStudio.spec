@@ -42,7 +42,17 @@
 # warning is expected and harmless, since the files are on disk via `datas`
 # at exactly the path the runtime sys.path trick already looks for them.
 
+from pathlib import Path
+
 from PyInstaller.utils.hooks import collect_all
+
+ROOT = Path(SPECPATH)
+# The .exe's own icon (Explorer, taskbar-before-launch, shortcuts) is separate
+# from the SVG QIcon the running app sets on its window - PyInstaller's EXE()
+# needs a real .ico file at build time, which tools/make_exe_icon.py renders
+# from assets/icons/app.svg. Re-run that script (after tools/make_icons.py,
+# if the mark itself changed) before rebuilding if app.ico is stale.
+ICON_PATH = ROOT / "assets" / "icons" / "app.ico"
 
 datas = [
     ("tools", "tools"),
@@ -50,7 +60,18 @@ datas = [
     (".env.example", "."),
 ]
 binaries = []
-hiddenimports = []
+# tools/ is unanalysed (see the header comment above), so a stdlib module
+# imported ONLY from inside tools/ - never from anything ui/ or gui.py
+# itself imports - is invisible to PyInstaller's static analysis and is
+# silently left out of the frozen build. `uuid` is exactly that case:
+# tools/generate_sound.py's multipart boundary is the only place in this
+# project that imports it. Found by actually launching the built .exe, not
+# by reading the spec - it raised ModuleNotFoundError on the very first
+# import of a view that reaches elevenlabs_voices.py -> generate_sound.py.
+# The other stdlib modules the new ElevenLabs tools use (json, mimetypes,
+# urllib.*, datetime, argparse, pathlib) were already proven safe by the
+# existing tools that also use them (generate_image.py, generate_video.py).
+hiddenimports = ["uuid"]
 
 # The app renders every icon from SVG at runtime (QIcon(str(svg_path)) in
 # ui/assets.py), which depends on Qt's SVG icon-engine plugin. Rather than
@@ -98,6 +119,7 @@ exe = EXE(
     entitlements_file=None,
     # The flat layout this whole spec exists for - see the file header.
     contents_directory=".",
+    icon=str(ICON_PATH),
 )
 
 coll = COLLECT(
