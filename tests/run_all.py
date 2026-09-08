@@ -36,6 +36,7 @@ ORDER = [
     "test_camera_angle_bank.py",
     "test_autofill.py",
     "test_autofill_gui.py",
+    "test_advisor_gui.py",
     "test_library.py",
     "test_ads.py",
     "test_sound.py",

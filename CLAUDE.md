@@ -952,13 +952,32 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   `ImagePreview` and the same vision path `brief.critique_image()` already uses) is scoped to
   its own turn only - `history` itself stays text-only, so a long conversation never silently
   re-uploads every earlier photo on every later turn.
-- **Run `python tests/run_all.py` before calling anything done.** 1502 checks, all green
-  across 27 suites (`test_history.py`, `test_lighting_bank.py`, `test_elevenlabs.py`,
+- **A conversation is inherently ordered, and disabling only the Send button did not stop a
+  second turn starting before the first one answered.** `AdvisorView.send()` disabled
+  `send_button` but not the `QLineEdit` itself, and `returnPressed` isn't gated by a button's
+  enabled state - pressing Enter twice quickly (before the first reply landed) dispatched two
+  turns at once, both reading and writing one shared `self._last_sent` attribute. Reproduced
+  directly: send "A", then "B" before "A" answers, and the transcript's history ended up
+  `[{"user": "B"}, {"assistant": "reply to A"}, {"user": "B"}, {"assistant": "reply to B"}]` -
+  a reply logged against the wrong user turn, and that corrupted pairing is exactly what gets
+  threaded into every later turn's context. Fixed two ways at once: a `self._busy` flag refuses
+  a second `send()` outright (checked first, before even reading the input box) and the pool
+  itself is capped at 1 concurrent turn (`BriefView`'s 4 independent one-shot tabs correctly
+  run 2; a single ordered transcript should never run more than 1) - and the sent message is
+  now bound into the `finished` callback via the lambda's own default argument rather than read
+  back from shared instance state at completion time, so correctness does not depend on the
+  guard alone. `tests/test_advisor_gui.py` (new) reproduces the exact scenario against a real
+  `MainWindow` and the mock API, confirmed to fail against the pre-fix code with
+  `AttributeError: 'AdvisorView' object has no attribute '_busy'` before passing after the fix -
+  found by testing the actual signal-driven flow, not by reasoning about `advisor.chat()` in
+  isolation (which takes `history` as an explicit argument and had nothing to race).
+- **Run `python tests/run_all.py` before calling anything done.** 1520 checks, all green
+  across 28 suites (`test_history.py`, `test_lighting_bank.py`, `test_elevenlabs.py`,
   `test_composition_bank.py`, `test_posing_bank.py`, `test_color_bank.py`,
-  `test_camera_angle_bank.py` and `test_advisor.py` are all now in `tests/run_all.py`'s
-  `ORDER` - `test_elevenlabs.py` existed for a while but was never actually wired in, so it
-  silently never ran as part of the suite until it was noticed), no dependencies beyond PyQt6,
-  Qt runs offscreen.
+  `test_camera_angle_bank.py`, `test_advisor.py` and `test_advisor_gui.py` are all now in
+  `tests/run_all.py`'s `ORDER` - `test_elevenlabs.py` existed for a while but was never actually
+  wired in, so it silently never ran as part of the suite until it was noticed), no dependencies
+  beyond PyQt6, Qt runs offscreen.
 
 ---
 

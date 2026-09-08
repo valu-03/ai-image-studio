@@ -70,11 +70,16 @@ class AdvisorView(QWidget):
         super().__init__(parent)
         self.bank = bank
         self.pool = QThreadPool(self)
-        self.pool.setMaxThreadCount(2)
+        # One at a time, on purpose: a conversation is inherently ordered (a
+        # turn is answered in light of the one before it), unlike BriefView's
+        # 4 independent one-shot tabs, which is why that pool runs 2. send()'s
+        # own busy-guard already refuses a second turn while one is in flight;
+        # this is the same invariant enforced at the pool too.
+        self.pool.setMaxThreadCount(1)
         self.context = None          # set by the controller: () -> (prompt, image)
         self.history = []            # [{"role": ..., "content": ...}, ...] - text only
         self._pending_image = ""
-        self._last_sent = ""
+        self._busy = False
         self._suggested_spec = None
         self.setup_ui()
 
@@ -179,6 +184,17 @@ class AdvisorView(QWidget):
 
     # -- sending -------------------------------------------------------------#
     def send(self):
+        # Belt and braces against a turn overlapping another: disabling the
+        # Send button alone left a hole open behind it - the QLineEdit's own
+        # returnPressed isn't gated by the button's enabled state, so pressing
+        # Enter twice quickly (before the first reply lands) used to dispatch
+        # two turns at once. A conversation is inherently ordered - a turn
+        # depends on knowing the prior reply - so a second turn while one is
+        # still in flight is refused outright, not merely made rare.
+        if self._busy:
+            self.status.emit("Wait for the current reply first")
+            return
+
         message = self.input.text().strip()
         if not message:
             self.status.emit("Say something first")
@@ -192,28 +208,40 @@ class AdvisorView(QWidget):
         self.clear_attachment()
         self._scroll_to_bottom()
 
-        self._last_sent = message
         context_prompt = None
         if self.context:
             context_prompt, _image = self.context()
 
+        self._busy = True
+        self.input.setEnabled(False)
         self.send_button.setEnabled(False)
         self.suggestion_badge.thinking("Thinking…")
         task = LlmTask("advisor_chat", self.bank, list(self.history), message,
                        image or None, context_prompt)
-        task.signals.finished.connect(self.on_finished)
+        # `message` is bound into the callback via the lambda default rather
+        # than read back from a shared `self.*` attribute at completion time -
+        # the busy-guard above already makes two turns overlap impossible, but
+        # this removes the hazard at the source instead of only fencing it off.
+        task.signals.finished.connect(
+            lambda action, result, sent=message: self.on_finished(action, result, sent))
         task.signals.failed.connect(self.on_failed)
-        task.signals.done.connect(lambda _a: self.send_button.setEnabled(True))
+        task.signals.done.connect(self._on_turn_done)
         self.pool.start(task)
 
+    def _on_turn_done(self, _a):
+        self._busy = False
+        self.input.setEnabled(True)
+        self.send_button.setEnabled(True)
+        self.input.setFocus()
+
     # -- results ---------------------------------------------------------------#
-    def on_finished(self, _action, result):
+    def on_finished(self, _action, result, sent_message):
         reply = result["reply"]
         self._add_bubble("assistant", reply)
         self._scroll_to_bottom()
         # The plain message, never the context-decorated version chat() sent -
         # the note is per-turn app context, not something the user said.
-        self.history.append({"role": "user", "content": self._last_sent})
+        self.history.append({"role": "user", "content": sent_message})
         self.history.append({"role": "assistant", "content": reply})
 
         suggestion = result.get("suggestion")
