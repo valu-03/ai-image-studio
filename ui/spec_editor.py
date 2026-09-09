@@ -403,9 +403,17 @@ class SpecEditor(QWidget):
         return (combo.itemData(index) or "") if index >= 0 else ""
 
     def composition_guide(self):
-        """The chosen framing geometry key, or "" for none or for typed text."""
-        return (self.composition.currentData()
-                or self._listed(self.composition, self.composition.currentText()))
+        """The chosen framing geometry key, or "" for none or for typed text.
+
+        `_listed()` alone, never `currentData()` first - picking a guide
+        moves the combo's index, but typing over the text afterward does NOT
+        move it back, so a `currentData()` fast path here used to keep
+        returning the OLD guide's key forever after retyping something else
+        over it, silently discarding the new text. `_listed()` resolves
+        purely from the current text, so it is immune to that staleness on
+        its own; it does not need `currentData()` checked first.
+        """
+        return self._listed(self.composition, self.composition.currentText())
 
     def composition_custom(self):
         """Typed framing text, or "" when a listed guide (or none) is chosen."""
@@ -415,8 +423,18 @@ class SpecEditor(QWidget):
         return "" if text in ("", NO_GUIDE_LABEL) else text
 
     def shot_value(self):
-        """The chosen preset key, or "" for auto or for typed text."""
-        return self.shot.currentData() or self._listed(self.shot, self.shot.currentText())
+        """The chosen preset key, or "" for auto or for typed text.
+
+        `_listed()` alone, never `currentData()` first - see
+        `composition_guide()`'s docstring for why: `currentData()` stays
+        stuck on whatever preset was last picked even after the text is
+        retyped, which used to make a hand-typed shot silently keep sending
+        the OLD preset (lens, composition and all) to `compose()` forever
+        after the first pick, confirmed by picking "portrait" then typing a
+        completely different shot over it and finding `shot_value()` still
+        returned "portrait".
+        """
+        return self._listed(self.shot, self.shot.currentText())
 
     def shot_custom(self):
         """Typed shot text, or "" when a listed preset (or auto) is chosen."""

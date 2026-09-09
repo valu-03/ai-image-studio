@@ -91,6 +91,21 @@ NAV_ITEMS = [
     ("settings", "Settings"),
 ]
 
+# tools/advisor.py's own SECTION_NAMES -> the SpecEditor setter each one's
+# composed phrase belongs in. Every setter here already exists and is already
+# what that section's own "Apply to Compose" button calls; the Advisor reuses
+# them rather than growing a second way to write the same fields. Note the
+# two that aren't a 1:1 name match on purpose: posing is descriptive spec
+# content (it lands in Action, not an override) and a camera angle lands as
+# typed custom shot text (see build_camera_angle.py's own docstring).
+ADVISOR_SECTION_SETTERS = {
+    "lighting": "set_lighting_override",
+    "composition": "set_composition_override",
+    "color": "set_colour_override",
+    "posing": "set_action_override",
+    "camera_angle": "set_shot_override",
+}
+
 
 class MainWindow(QMainWindow):
     """Single-window dashboard: rail + top bar + QStackedWidget canvas."""
@@ -376,6 +391,7 @@ class MainWindow(QMainWindow):
         self.advisor_view.context = self.current_context
         self.advisor_view.spec_suggested.connect(self.compose_view.apply_suggested_spec)
         self.advisor_view.spec_suggested.connect(lambda _: self.go_to("images"))
+        self.advisor_view.sections_suggested.connect(self.apply_advisor_sections)
 
         self.insights_view.learned_toggled.connect(self.compose_view.set_learned)
         self.settings_view.provider_changed.connect(self.set_provider)
@@ -432,6 +448,23 @@ class MainWindow(QMainWindow):
     def current_context(self):
         """(prompt, image) — what the Brief view acts on."""
         return self.compose_view.prompt_text(), str(self.compose_view.current_image or "")
+
+    def apply_advisor_sections(self, sections):
+        """The Advisor's technique-section picks -> the same SpecEditor
+        setters each section's own "Apply to Compose" button already calls.
+
+        No new setter methods: a suggested lighting phrase lands exactly where
+        LightingView's own Apply puts one, and so on for all five - which is
+        what keeps "the advisor filled it in" and "I picked it myself" from
+        ever producing two different results.
+        """
+        editor = self.compose_view.editor
+        for name, phrase in (sections or {}).items():
+            setter = ADVISOR_SECTION_SETTERS.get(name)
+            if setter and phrase:
+                getattr(editor, setter)(phrase)
+        if sections:
+            self.go_to("images")
 
     def on_nav_clicked(self, index):
         key, label = NAV_ITEMS[index]

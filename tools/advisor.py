@@ -34,6 +34,12 @@ import realism_lint as rl
 
 ROOT = Path(__file__).resolve().parent.parent
 
+# The optional second half of a fenced spec block: picks for the five
+# technique sections, each validated against that section's own bank and
+# composed by that section's own compose_X(). See _finalize_sections().
+SECTIONS_KEY = "sections"
+SECTION_NAMES = ("lighting", "composition", "color", "posing", "camera_angle")
+
 # One line each - the nav rail's own map. tools/ never imports the GUI layer,
 # so this is kept here rather than read from ui/main_window.py; if a section
 # is added to NAV_ITEMS there, add its line here too.
@@ -64,13 +70,16 @@ NAV_MAP = [
 
 def _bank_summary(title, entries):
     lines = ["{} ({}):".format(title, len(entries))]
-    for cfg in entries.values():
+    for key, cfg in entries.items():
         # Every technique/mood/pose/axis entry carries `note`; lighting's
         # `setups` is the one shape that names its explanation `teaches`
         # instead (build_lighting.py's own bank has both a taught setup and
         # a plain technique dict under one module).
         note = cfg.get("note") or cfg.get("teaches", "")
-        lines.append("  {} - {}".format(cfg.get("label", ""), note))
+        # The real KEY comes first, not just the label - a "sections"
+        # suggestion is validated against exact bank keys, so the model has
+        # to be told the key, not just the human-readable name it maps to.
+        lines.append("  {} ({}) - {}".format(key, cfg.get("label", ""), note))
     return "\n".join(lines)
 
 
@@ -108,7 +117,8 @@ def advisor_brief(bank):
     layers = ", ".join(bp.LAYER_ORDER)
     nav = "\n".join("  {} - {}".format(name, desc) for name, desc in NAV_MAP)
     guides_text = "\n".join(
-        "  {} - {}".format(cfg["label"], cfg["note"]) for cfg in bp.guides(bank).values())
+        "  {} ({}) - {}".format(key, cfg["label"], cfg["note"])
+        for key, cfg in bp.guides(bank).items())
     shots = ", ".join(bank["shot_presets"])
     purposes = ", ".join(bank.get("purposes", {}))
 
@@ -128,7 +138,28 @@ def advisor_brief(bank):
         + purposes + "), aspect (one of: 1:1, 4:5, 3:2, 16:9, 9:16), extra (array "
         "of short strings). Any other key is discarded before it ever reaches a "
         "prompt - do not bother proposing seed, reference, lock_identity or "
-        "overrides, they are the user's own machinery, never the model's to set."
+        "overrides, they are the user's own machinery, never the model's to set.\n\n"
+        "The same object may ALSO carry one more optional key, \"sections\", to "
+        "propose a value for one or more of the five technique sections - use ONLY "
+        "the exact keys and bank entries listed further below under each "
+        "section's own heading, never an invented one:\n"
+        "```\n"
+        "\"sections\": {\n"
+        "  \"lighting\": {\"setup\": \"<a Lighting setups key>\"} "
+        "OR {\"direction\": \"<key>\", \"quality\": \"hard|soft\", \"source\": "
+        "\"<key>\"} - either shape, plus an optional \"techniques\": [\"<key>\", ...],\n"
+        "  \"composition\": {\"guide\": \"<a composition guide key>\", "
+        "\"techniques\": [\"<key>\", ...]},\n"
+        "  \"color\": {\"mood\": \"<a Color moods key>\"} OR "
+        "{\"film_look\": \"<a Color film look key>\"}, plus an optional "
+        "\"techniques\": [\"<key>\", ...],\n"
+        "  \"posing\": {\"pose\": \"<a Poses key>\", \"techniques\": [\"<key>\", ...]},\n"
+        "  \"camera_angle\": {\"vertical\": \"<key>\", \"side\": \"<key>\", "
+        "\"size\": \"<key>\"} - any subset\n"
+        "}\n```\n"
+        "Every value must be one of the exact keys named in this brief, not the "
+        "human-readable label - keys are the short hyphenated form (e.g. "
+        "\"clam-shell\", not \"Clam shell\")."
     )
 
     body = brief.build_brief(
@@ -170,6 +201,18 @@ def advisor_brief(bank):
             "If asked about something outside this app, answer briefly, then "
             "bring it back to how it applies here.",
             "Never use these words: " + ", ".join(bank["banned"]) + ".",
+            "Once you have enough to describe the avatar, don't stop at the core "
+            "spec - also propose one entry for every one of the five technique "
+            "sections (Lighting, Composition, Color Grading, Posing, Camera Angle) "
+            "inside \"sections\", picking whichever single entry per section best "
+            "fits what was described. Leave a section out only when the request "
+            "genuinely gives you nothing to base a pick on for it.",
+            "\"shot\" and \"sections.camera_angle\" write to the same field, so "
+            "give one or the other, never both: a shot preset also carries lens "
+            "and framing language, while a bare angle phrase names no camera at "
+            "all and costs the camera realism layer. Prefer the preset unless the "
+            "angle itself is the point of the shot; if both arrive, the preset "
+            "wins and the angle is dropped.",
         ],
         examples=[
             'user: "how do I make my photos look better?"\n'
@@ -185,13 +228,20 @@ def advisor_brief(bank):
             "tired, worked expression under practical light. Then open Posing -> "
             "Compose, pick \"forward-lean\" from the headshot category, and stack "
             "the \"relaxed-hands\" technique - a stiff pose is one of the fastest "
-            "AI tells.\n"
+            "AI tells. I've filled in every section below - review it, then apply.\n"
             "```spec\n"
             '{"subject": "a nurse in her forties, dark circles under her eyes, '
             'hair coming loose from a bun", "wardrobe": "wrinkled blue scrubs", '
             '"setting": "a hospital corridor at dawn, fluorescent light", '
             '"action": "leaning against the wall, eyes closed for a moment", '
-            '"mood": "exhausted, relieved", "shot": "portrait"}\n'
+            '"mood": "exhausted, relieved", "shot": "portrait", '
+            '"sections": {'
+            '"lighting": {"setup": "old-hollywood"}, '
+            '"composition": {"guide": "rule-of-thirds", "techniques": ["lead-room"]}, '
+            '"color": {"mood": "melancholy-lonely"}, '
+            '"posing": {"pose": "forward-lean", "techniques": ["relaxed-hands"]}, '
+            '"camera_angle": {"vertical": "eye-level", "side": "three-quarter", '
+            '"size": "medium-close-up"}}}\n'
             "```",
         ],
     )
@@ -232,6 +282,134 @@ def extract_spec_block(text):
     return payload if isinstance(payload, dict) else None
 
 
+def _picked(table, value):
+    """`value` if it names a real entry in `table`, else None.
+
+    A *suggested* pick stays inside the vocabulary the model was actually
+    shown - deliberately stricter than each section's own GUI, where a user's
+    typed custom text is meant to win. The model has every key in its brief;
+    anything outside that list is a mistake, not a creative choice.
+    """
+    value = str(value or "").strip()
+    return value if value in table else None
+
+
+def _picked_list(table, values):
+    """Only the entries of `values` that name real keys in `table`."""
+    if isinstance(values, str):
+        values = [values]
+    return [v for v in (str(x or "").strip() for x in values or ()) if v in table]
+
+
+def _compose_section(bank, name, block):
+    """One section's validated picks -> its composed phrase, produced by that
+    section's OWN compose_X(). Nothing here writes phrasing of its own, so a
+    suggestion is exactly what that section's "Apply to Compose" button would
+    have produced from the same picks. Raises the composer's own error when
+    the picks add up to nothing usable.
+    """
+    if name == "lighting":
+        lighting = bl.load_bank()
+        setup = _picked(bl.setups(lighting), block.get("setup"))
+        techniques_ = _picked_list(bl.techniques(lighting), block.get("techniques"))
+        # A setup already encodes its own direction, quality and source, and
+        # compose_lighting() refuses the two shapes together on purpose. Rather
+        # than drop an otherwise-good suggestion because the reply over-
+        # specified, the setup wins and the deep-path fields are ignored - the
+        # same precedence build_lighting.py's own docstring argues for.
+        if setup:
+            return bl.compose_lighting(
+                lighting, setup=setup, techniques_=techniques_)[0]
+        return bl.compose_lighting(
+            lighting,
+            direction=_picked(bl.directions(lighting), block.get("direction")),
+            quality=_picked(bl.qualities(lighting), block.get("quality")),
+            source=_picked(bl.sources(lighting), block.get("source")),
+            techniques_=techniques_,
+        )[0]
+
+    if name == "composition":
+        composition = bc.load_bank()
+        return bc.compose_composition(
+            bank, composition,
+            guide=_picked(bp.guides(bank), block.get("guide")),
+            techniques_=_picked_list(bc.techniques(composition), block.get("techniques")),
+        )[0]
+
+    if name == "color":
+        color = bcol.load_bank()
+        mood = _picked(bcol.moods(color), block.get("mood"))
+        film_look = _picked(bcol.film_looks(color), block.get("film_look"))
+        # Two complete recipes; compose_color() refuses both together. Same
+        # reasoning as lighting's setup above - pick one deterministically
+        # rather than losing the whole suggestion to an over-specified reply.
+        if mood:
+            film_look = None
+        return bcol.compose_color(
+            color, mood=mood, film_look=film_look,
+            techniques_=_picked_list(bcol.techniques(color), block.get("techniques")),
+        )[0]
+
+    if name == "posing":
+        posing = bpo.load_bank()
+        return bpo.compose_posing(
+            posing,
+            pose=_picked(bpo.poses(posing), block.get("pose")),
+            techniques_=_picked_list(bpo.techniques(posing), block.get("techniques")),
+        )[0]
+
+    camera_angle = bca.load_bank()
+    return bca.compose_camera_angle(
+        camera_angle,
+        vertical=_picked(bca.verticals(camera_angle), block.get("vertical")),
+        side=_picked(bca.sides(camera_angle), block.get("side")),
+        size=_picked(bca.sizes(camera_angle), block.get("size")),
+    )[0]
+
+
+def _finalize_sections(bank, payload, spec=None):
+    """{section: composed phrase} for every technique section the reply
+    proposed and that actually validated - the other half of "the model
+    suggests, the app decides", for the five sections the core spec has no
+    field for.
+
+    A section whose picks are all invalid, or whose own composer refuses them,
+    is dropped from the result rather than failing the turn - the same
+    treatment an invalid `shot` already gets in the core spec. Nothing here is
+    auto-applied: the caller shows it and the user decides, exactly like
+    brief.autofill_spec()'s own held-back `suggestions`.
+
+    `spec` is the already-finalized core spec, and it settles the one real
+    conflict between the two halves: `camera_angle` and a `shot` preset write
+    to the SAME field, and a bare angle phrase names no capture device, so
+    letting both through would silently cost the camera layer and drop an
+    otherwise-8/8 suggestion to 7/8. A preset carries lens and composition
+    language the angle phrase would throw away, so the preset wins and the
+    angle is dropped - the same "an explicit pick beats a generic fill"
+    precedence the rest of this project already follows, and the user can
+    still open Camera Angle and choose that tradeoff deliberately.
+    """
+    sections = payload.get(SECTIONS_KEY)
+    if not isinstance(sections, dict):
+        return {}
+
+    out = {}
+    for name in SECTION_NAMES:
+        if name == "camera_angle" and (spec or {}).get("shot"):
+            continue
+        block = sections.get(name)
+        if not isinstance(block, dict):
+            continue
+        try:
+            phrase = _compose_section(bank, name, block)
+        except (bl.LightingError, bc.CompositionError, bcol.ColorError,
+                bpo.PosingError, bca.CameraAngleError):
+            continue
+        if phrase and phrase.strip():
+            out[name] = phrase.strip()
+    return out
+
+
 def _finalize_spec(bank, payload):
     """Whitelist -> validate -> recompose -> relint, the same tail already in
     brief.autofill_spec()/spec_from_idea(). Written fresh here rather than
@@ -240,7 +418,10 @@ def _finalize_spec(bank, payload):
     rather than risking a heavily-tested file for a new feature.
     """
     spec = {k: v for k, v in payload.items() if k in brief.SPEC_KEYS}
-    dropped = sorted(set(payload) - brief.SPEC_KEYS)
+    # "sections" is not a spec field and not a dropped one either - it is
+    # handled separately by _finalize_sections(), so reporting it as dropped
+    # here would be a lie the user would reasonably act on.
+    dropped = sorted(set(payload) - brief.SPEC_KEYS - {SECTIONS_KEY})
     if isinstance(spec.get("extra"), str):
         spec["extra"] = [spec["extra"]]
 
@@ -283,10 +464,12 @@ def _context_note(bank, prompt):
 def chat(bank, history, message, image_path=None, context_prompt=None, ask=None):
     """One turn of the advisor conversation.
 
-    Returns {"ok": True, "reply": str, "suggestion": dict_or_None} on success,
-    {"ok": False, "error": str} on failure. `suggestion` is the validated
-    result of _finalize_spec() when the reply carried a usable fenced spec
-    block, else None - a reply with nothing to apply is a normal, useful
+    Returns {"ok": True, "reply": str, "suggestion": dict_or_None,
+    "sections": dict} on success, {"ok": False, "error": str} on failure.
+    `suggestion` is the validated result of _finalize_spec() when the reply
+    carried a usable fenced spec block, else None; `sections` is
+    _finalize_sections()'s {section: composed phrase} for the five technique
+    sections, or {} - a reply with nothing to apply is a normal, useful
     outcome, not a lesser one.
 
     `image_path` is scoped to this turn only: `history` itself stays text-only,
@@ -317,7 +500,9 @@ def chat(bank, history, message, image_path=None, context_prompt=None, ask=None)
 
     payload = extract_spec_block(text)
     suggestion = _finalize_spec(bank, payload) if payload else None
-    return {"ok": True, "reply": text, "suggestion": suggestion}
+    sections = _finalize_sections(
+        bank, payload, (suggestion or {}).get("spec")) if payload else {}
+    return {"ok": True, "reply": text, "suggestion": suggestion, "sections": sections}
 
 
 # --------------------------------------------------------------------------- #
@@ -387,6 +572,8 @@ def main(argv=None):
         return 3
 
     print(result["reply"])
+    for name, phrase in (result.get("sections") or {}).items():
+        print("\n[section] {}: {}".format(name, phrase), file=sys.stderr)
     suggestion = result["suggestion"]
     if suggestion:
         print("\n[spec] {}/8 {}".format(

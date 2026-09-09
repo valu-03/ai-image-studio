@@ -54,6 +54,46 @@ whole reply for any `{...}`, because a conversational answer routinely has other
 prose around a spec block. No fence, or a malformed one, is a normal outcome (plain
 conversation, nothing to apply), not an error.
 
+## Autofilling every section, not just the core spec
+
+Describe an avatar with enough detail and the advisor doesn't stop at `subject`/`wardrobe`/
+`setting` - it also proposes one pick for every one of the five technique sections (Lighting,
+Composition, Color Grading, Posing, Camera Angle), inside the same fenced block:
+
+```
+```spec
+{"subject": "...", "shot": "portrait",
+ "sections": {
+   "lighting": {"setup": "old-hollywood"},
+   "composition": {"guide": "rule-of-thirds", "techniques": ["lead-room"]},
+   "color": {"mood": "melancholy-lonely"},
+   "posing": {"pose": "forward-lean", "techniques": ["relaxed-hands"]},
+   "camera_angle": {"vertical": "eye-level", "side": "three-quarter", "size": "medium-close-up"}
+ }}
+```
+```
+
+Every field name and value matches that section's own real `compose_X()` parameters exactly,
+and every value has to be one of the real bank keys the brief already listed the advisor -
+never an invented one. `_finalize_sections()` validates each section's picks against that
+section's OWN bank (`build_lighting.setups()`, `build_posing.poses()`, and so on) and composes
+the phrase through that section's OWN `compose_X()` - the advisor never writes phrasing of its
+own, so a suggested lighting phrase is byte-identical to what Lighting's own "Apply to Compose"
+button would have produced from the same pick. A section whose picks don't validate, or whose
+own composer refuses them, is simply left out of the reply - it never fails the whole turn.
+
+**One click, everything the advisor proposed.** The Advisor's Apply button fires both the core
+spec and every section suggestion together - `MainWindow.apply_advisor_sections()` routes each
+section's phrase to the exact same `SpecEditor.set_X_override()` its own section view's Apply
+button already calls, so nothing here writes to a field through a second path.
+
+**`shot` and `sections.camera_angle` write to the same field, on purpose.** A shot preset also
+carries lens and framing language a bare angle phrase doesn't; if a reply proposes both, the
+preset wins and the angle pick is dropped, rather than silently costing the camera realism
+layer the way choosing an angle-only shot always legitimately can (see `build_camera_angle.py`'s
+own "honest tradeoff"). Ask specifically for an angle-driven shot and the advisor is told to
+prefer the angle instead.
+
 ## The gate still decides. Always.
 
 **The model suggests; `realism_lint` decides - the same rule every AI feature in this project

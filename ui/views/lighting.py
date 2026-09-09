@@ -242,19 +242,21 @@ class LightingView(QWidget):
     def _resolved(combo):
         """The current value of an editable combo - the underlying bank key
         if the typed/picked text names a listed item, else the raw typed
-        text as-is. Mirrors ui/spec_editor.py's own `_listed()` helper: an
-        editable combo's index never moves when text is typed rather than
-        picked, so currentData() alone would miss a typed value entirely,
-        and a typed value that happens to match a listed label still has to
-        resolve to that item's key rather than being sent through as text
-        that happens to equal the label.
+        text as-is. Mirrors ui/spec_editor.py's own `_listed()` helper.
+
+        Resolved from `currentText()` alone, never `currentData()`/
+        `currentIndex()` - picking an item moves the index, but typing over
+        the text afterward does NOT move it back, so `currentData()` stays
+        stuck on whatever was last picked even as the visible text changes.
+        A `currentData()`-first fast path here used to return that stale key
+        forever once any entry had ever been picked, silently freezing the
+        composed phrase on the old choice no matter what was typed next -
+        found by actually picking an entry, then retyping over it, not by
+        reading the code.
         """
         text = combo.currentText().strip()
         if not text or text == "(none)":
             return ""
-        data = combo.currentData()
-        if data:
-            return data
         index = combo.findText(text, Qt.MatchFlag.MatchFixedString)
         return combo.itemData(index) if index >= 0 else text
 

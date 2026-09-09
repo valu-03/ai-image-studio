@@ -971,13 +971,66 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   `AttributeError: 'AdvisorView' object has no attribute '_busy'` before passing after the fix -
   found by testing the actual signal-driven flow, not by reasoning about `advisor.chat()` in
   isolation (which takes `history` as an explicit argument and had nothing to race).
-- **Run `python tests/run_all.py` before calling anything done.** 1520 checks, all green
-  across 28 suites (`test_history.py`, `test_lighting_bank.py`, `test_elevenlabs.py`,
+- **An editable `QComboBox`'s `currentData()` goes stale the moment the user types over a
+  picked item, and a `currentData()`-first fast path trusted it anyway - found live in four
+  places at once, not just where it was reported.** Reported as "Posing: custom text shows no
+  prompt." Root cause: picking an item moves `currentIndex` (so `currentData()` becomes that
+  item's key), but typing over the text afterward does NOT move it back - Qt leaves
+  `currentIndex` exactly where it was. `PosingView._resolved()` and the byte-identical
+  `LightingView._resolved()` both did `data = combo.currentData(); if data: return data` before
+  a text-based fallback, so once any entry had ever been picked, that stale key was returned
+  forever after, silently freezing the composed phrase on the OLD choice no matter what was
+  typed next - no exception, no `PosingError`, just a wrong answer that looks like nothing is
+  happening. **The same pattern was in `ui/spec_editor.py` too** - `shot_value()`
+  (`self.shot.currentData() or self._listed(...)`) and `composition_guide()`, the CORE Compose
+  form's Shot and Composition fields. Verified directly: pick the "portrait" preset, retype a
+  completely different shot over it, and `shot_value()` kept returning `"portrait"` - the typed
+  text was silently discarded and the OLD preset (with its own lens and composition language)
+  kept being sent to `compose()`. `SpecEditor._listed()` itself, which both call sites already
+  delegated to on the fallback path, was always correct - it resolves purely from
+  `combo.findText()`/`findData()` against the CURRENT text, never touching `currentIndex()` at
+  all; it was the `currentData()` shortcut wrapped around it that reintroduced the staleness.
+  Fixed the same way in all four places: drop the `currentData()` fast path entirely, resolve
+  only from the current text. Every other editable combo checked (`self.lighting`,
+  `self.colour`, `self.aspect`) reads `currentText()` directly with no key-resolution step, so
+  it was never exposed to this; every section that pairs a non-editable combo with a *separate*
+  `custom_field` (`ColorGradingView`, `CameraAngleView`, `CompositionView`'s own guide combo) is
+  structurally immune to this whole class of bug, which is the shape to reach for, not an
+  editable combo doing double duty. `tests/test_combo_resolve.py` (new) reproduces the exact
+  pick-then-retype scenario in all four locations - confirmed to fail with 8 FAILs against the
+  pre-fix code before passing after.
+- **The Advisor autofills every technique section now, not just the core spec - one click,
+  everything at once.** The same fenced `\`\`\`spec\`\`\`` block gains one more optional key,
+  `"sections"`, whose schema matches each section's own real `compose_X()` parameters exactly
+  (`lighting`: `setup` or `direction`+`quality`+`source`; `composition`: `guide`; `color`:
+  `mood` or `film_look`; `posing`: `pose`; `camera_angle`: any subset of
+  `vertical`/`side`/`size` - all five accept an optional `techniques` list too).
+  `_finalize_sections()` validates every field against that section's OWN real bank keys (never
+  free text - unlike a section's own "Apply to Compose", which is the user's explicit deep-path
+  override, a *suggested* pick has to stay inside vocabulary the model was actually shown) and
+  composes it through that section's OWN `compose_X()`, so a suggested phrase is byte-identical
+  to what that section's own button would have produced from the same pick - nothing here
+  writes phrasing of its own. A section that doesn't validate, or whose own composer refuses
+  the picks, is simply left out of the reply rather than failing the turn, the same treatment
+  an invalid `shot` already gets. **`shot` and `sections.camera_angle` collide on purpose** -
+  both write the Shot field, and a bare angle phrase names no camera at all, so proposing both
+  in one reply used to cost the camera realism layer and drop an otherwise-8/8 full autofill to
+  7/8; now the shot preset wins and the angle pick is silently dropped, confirmed directly (a
+  full autofill with a preset scores 8/8; the same autofill with no preset correctly still
+  applies the angle at the honest 7/8 cost). `AdvisorView`'s one Apply button fires both
+  `spec_suggested` and the new `sections_suggested(dict)` together -
+  `MainWindow.apply_advisor_sections()` routes each phrase to the exact same
+  `SpecEditor.set_X_override()` each section's own Apply button already calls, via a small
+  `ADVISOR_SECTION_SETTERS` name map (posing → `set_action_override`, camera_angle →
+  `set_shot_override` - not a 1:1 name match, since posing is descriptive spec content and an
+  angle lands as typed custom shot text, exactly like every other section's own precedent).
+- **Run `python tests/run_all.py` before calling anything done.** 1590 checks, all green
+  across 29 suites (`test_history.py`, `test_lighting_bank.py`, `test_elevenlabs.py`,
   `test_composition_bank.py`, `test_posing_bank.py`, `test_color_bank.py`,
-  `test_camera_angle_bank.py`, `test_advisor.py` and `test_advisor_gui.py` are all now in
-  `tests/run_all.py`'s `ORDER` - `test_elevenlabs.py` existed for a while but was never actually
-  wired in, so it silently never ran as part of the suite until it was noticed), no dependencies
-  beyond PyQt6, Qt runs offscreen.
+  `test_camera_angle_bank.py`, `test_advisor.py`, `test_advisor_gui.py` and
+  `test_combo_resolve.py` are all now in `tests/run_all.py`'s `ORDER` - `test_elevenlabs.py`
+  existed for a while but was never actually wired in, so it silently never ran as part of the
+  suite until it was noticed), no dependencies beyond PyQt6, Qt runs offscreen.
 
 ---
 

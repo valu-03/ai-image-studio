@@ -36,10 +36,23 @@ from ..widgets import AiSuggestionBadge, Card, ImagePreview, MutedLabel, TitleLa
 from ..workers import LlmTask  # noqa: E402
 
 GREETING = (
-    "Ask me anything about getting a premium-quality image out of this app - "
-    "which section to open, which technique to stack, what your current "
-    "prompt is missing. I can also look at a photo if you attach one."
+    "Describe the avatar you want and I'll fill in every section for you - "
+    "subject, lighting, composition, colour grade, posing and camera angle - "
+    "ready to apply in one click. Or just ask: which section to open, which "
+    "technique to stack, what your current prompt is missing. I can also look "
+    "at a photo if you attach one."
 )
+
+# How each technique section is named in the badge's summary line. The keys
+# are tools/advisor.py's own SECTION_NAMES; the labels match the nav rail so
+# "+ Color Grading" points at something the user can actually go and open.
+SECTION_LABELS = {
+    "lighting": "Lighting",
+    "composition": "Composition",
+    "color": "Color Grading",
+    "posing": "Posing",
+    "camera_angle": "Camera Angle",
+}
 
 
 class _Bubble(QFrame):
@@ -60,11 +73,16 @@ class _Bubble(QFrame):
 
 
 class AdvisorView(QWidget):
-    """Emits `status` and `spec_suggested(dict)` - the second reuses
-    BriefView's exact signal name/shape, so MainWindow wires it identically."""
+    """Emits `status`, `spec_suggested(dict)` - reusing BriefView's exact
+    signal name/shape, so MainWindow wires it identically - and
+    `sections_suggested(dict)`, `{section: composed phrase}` for the five
+    technique sections, routed by MainWindow to the same
+    `SpecEditor.set_X_override()` methods each section's own Apply button
+    already calls."""
 
     status = pyqtSignal(str)
     spec_suggested = pyqtSignal(dict)
+    sections_suggested = pyqtSignal(dict)
 
     def __init__(self, bank, parent=None):
         super().__init__(parent)
@@ -81,6 +99,7 @@ class AdvisorView(QWidget):
         self._pending_image = ""
         self._busy = False
         self._suggested_spec = None
+        self._section_suggestions = {}
         self.setup_ui()
 
     # -- construction ------------------------------------------------------ #
@@ -142,9 +161,10 @@ class AdvisorView(QWidget):
         card.body.addWidget(MutedLabel(
             "A running conversation, not a one-shot helper - it remembers what "
             "you've already said, and it knows your current prompt's real score. "
-            "When it has enough to propose a ready spec, an Apply button appears "
-            "below with the real number - the same \"the model suggests, the "
-            "gate decides\" rule as everywhere else in this app."
+            "Describe an avatar and it fills in the character spec plus all five "
+            "technique sections; one Apply button below writes the lot into "
+            "Compose, with the real score shown first - the same \"the model "
+            "suggests, the gate decides\" rule as everywhere else in this app."
         ))
         card.body.addWidget(self.scroll, 1)
         card.body.addLayout(attach_row)
@@ -245,16 +265,28 @@ class AdvisorView(QWidget):
         self.history.append({"role": "assistant", "content": reply})
 
         suggestion = result.get("suggestion")
-        if suggestion:
-            self._suggested_spec = suggestion["spec"]
+        sections = result.get("sections") or {}
+        self._suggested_spec = suggestion["spec"] if suggestion else None
+        self._section_suggestions = dict(sections)
+
+        # Visible whenever there is ANYTHING to apply - a turn that proposes
+        # only technique sections (the subject was already settled earlier in
+        # the conversation) has plenty to apply and used to show nothing at
+        # all, because the badge was gated on the core spec alone.
+        if suggestion or sections:
+            parts = []
+            status = "success"
+            if suggestion:
+                parts.append("{}/8 {}".format(
+                    suggestion["score"], "ready" if suggestion["passed"] else "needs work"))
+                status = "success" if suggestion["passed"] else "warning"
+            if sections:
+                parts.append("+ " + ", ".join(
+                    SECTION_LABELS.get(name, name) for name in sections))
             self.suggestion_badge.ready(
-                suggestion["spec"],
-                "{}/8 {}".format(suggestion["score"],
-                                 "ready" if suggestion["passed"] else "needs work"),
-                status="success" if suggestion["passed"] else "warning",
-            )
+                {"spec": self._suggested_spec, "sections": self._section_suggestions},
+                " · ".join(parts), status=status)
         else:
-            self._suggested_spec = None
             self.suggestion_badge.reset()
         self.status.emit("Advisor replied")
 
@@ -266,8 +298,18 @@ class AdvisorView(QWidget):
 
     # -- applying -------------------------------------------------------------#
     def apply_suggestion(self):
+        """One button, everything the advisor proposed this turn.
+
+        The core spec and the five technique sections go together on purpose -
+        "describe the avatar, get every section filled in" is one action from
+        the user's side, so splitting it across two buttons would only make
+        them press both every time.
+        """
         if self._suggested_spec:
             self.spec_suggested.emit(dict(self._suggested_spec))
+        if self._section_suggestions:
+            self.sections_suggested.emit(dict(self._section_suggestions))
+        if self._suggested_spec or self._section_suggestions:
             self.status.emit("Applied to Compose")
 
     # -- theming / lifecycle ----------------------------------------------------#

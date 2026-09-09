@@ -231,6 +231,102 @@ check("no context prompt -> no note prepended", cap3["prompt"] == "hello")
 
 
 print()
+print("=== sections: every technique section the reply proposes ===")
+
+ALL_SECTIONS = {
+    "lighting": {"setup": "old-hollywood"},
+    "composition": {"guide": "rule-of-thirds", "techniques": ["lead-room"]},
+    "color": {"mood": "melancholy-lonely"},
+    "posing": {"pose": "forward-lean", "techniques": ["relaxed-hands"]},
+    "camera_angle": {"vertical": "eye-level", "side": "three-quarter",
+                     "size": "medium-close-up"},
+}
+
+
+def sections_for(block, spec=None):
+    return adv._finalize_sections(bank, {"sections": block}, spec)
+
+
+got = sections_for(ALL_SECTIONS)
+check("all five sections compose", sorted(got) == sorted(ALL_SECTIONS), str(sorted(got)))
+for name in ALL_SECTIONS:
+    check("{} produced a non-empty phrase".format(name), bool(got.get(name, "").strip()))
+
+# Composed by the section's OWN composer, never re-worded here - so the phrase
+# must be byte-identical to what that section's Apply to Compose would produce.
+expected_posing, _ = bpo.compose_posing(
+    pb, pose="forward-lean", techniques_=["relaxed-hands"])
+check("posing phrase is exactly build_posing's own output",
+      got["posing"] == expected_posing, got["posing"][:60])
+expected_lighting, _ = bl.compose_lighting(lb, setup="old-hollywood")
+check("lighting phrase is exactly build_lighting's own output",
+      got["lighting"] == expected_lighting, got["lighting"][:60])
+
+check("an all-invalid section is dropped, not raised",
+      sections_for({"lighting": {"setup": "not-a-real-setup"}}) == {})
+check("an invalid technique is dropped but a valid pose still composes",
+      "posing" in sections_for({"posing": {"pose": "s-curve", "techniques": ["bogus"]}}))
+check("an unknown section name is ignored",
+      sorted(sections_for({"bogus": {"x": 1}, "posing": {"pose": "s-curve"}})) == ["posing"])
+check("a non-dict section block is ignored", sections_for({"lighting": "clam-shell"}) == {})
+check("an empty section block is ignored", sections_for({"lighting": {}}) == {})
+check("a non-dict sections value is ignored",
+      adv._finalize_sections(bank, {"sections": "nope"}) == {})
+check("no sections key at all", adv._finalize_sections(bank, {"subject": "x"}) == {})
+bare_string_result = sections_for(
+    {"posing": {"pose": "s-curve", "techniques": "relaxed-hands"}})
+check("a technique given as a bare string (not a list) still resolves",
+      "relaxed" in bare_string_result.get("posing", ""), str(bare_string_result))
+check("a partial camera-angle subset composes",
+      "camera_angle" in sections_for({"camera_angle": {"size": "close-up"}}))
+
+# Both composers refuse their two shapes together; an over-specified reply
+# should still yield a usable suggestion rather than losing the whole section.
+check("setup wins over deep-path fields rather than dropping lighting",
+      sections_for({"lighting": {"setup": "clam-shell", "direction": "rembrandt"}}).get(
+          "lighting", "").startswith("clam shell"))
+check("mood wins over film_look rather than dropping colour",
+      bool(sections_for({"color": {"mood": "epic-heroic", "film_look": "dune"}}).get("color")))
+
+print()
+print("=== sections: the shot/camera_angle conflict is settled, not silently paid for ===")
+
+check("camera_angle is dropped when the core spec carries a shot preset",
+      "camera_angle" not in sections_for(ALL_SECTIONS, {"shot": "portrait"}))
+check("the other four sections survive that drop",
+      sorted(sections_for(ALL_SECTIONS, {"shot": "portrait"}))
+      == ["color", "composition", "lighting", "posing"])
+check("camera_angle applies when there is no shot preset",
+      "camera_angle" in sections_for(ALL_SECTIONS, {"subject": "a nurse"}))
+
+# The whole point of the tie-break: a full autofill with a preset shot still
+# scores 8/8 rather than losing the camera layer to a bare angle phrase.
+full = dict({"subject": "a nurse in her forties, dark circles under her eyes",
+             "wardrobe": "wrinkled blue scrubs", "shot": "portrait"},
+            sections=ALL_SECTIONS)
+r = adv.chat(bank, [], "build it", ask=fake("done\n```spec\n" + json.dumps(full) + "\n```"))
+check("a full autofill still scores 8/8", r["suggestion"]["score"] == 8,
+      str(r["suggestion"]["score"]))
+check("chat() returns the sections dict", sorted(r["sections"])
+      == ["color", "composition", "lighting", "posing"], str(sorted(r["sections"])))
+check("'sections' is never reported as a dropped spec key",
+      "sections" not in r["suggestion"]["dropped"], str(r["suggestion"]["dropped"]))
+
+r = adv.chat(bank, [], "hi", ask=fake("just chatting, no block here"))
+check("no fenced block -> sections is an empty dict, not missing", r["sections"] == {})
+
+print()
+print("=== sections: the brief teaches the real keys, not just the labels ===")
+
+brief_text = adv.advisor_brief(bank)
+check("the schema is documented", "\"sections\"" in brief_text)
+for key in ("old-hollywood", "rule-of-thirds", "melancholy-lonely", "forward-lean",
+            "medium-close-up"):
+    check("brief names the real key '{}'".format(key), key in brief_text)
+check("brief warns that shot and camera_angle collide",
+      "same field" in brief_text and "camera_angle" in brief_text)
+
+print()
 print("=== CLI parity ===")
 
 p = subprocess.run([sys.executable, str(TOOL), "show"], capture_output=True, text=True, cwd=str(ROOT))

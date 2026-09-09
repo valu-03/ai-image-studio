@@ -170,6 +170,76 @@ check("apply routes to the Images tab",
 
 
 print()
+print("=== a reply carrying a full autofill fills every section in one click ===")
+
+full_payload = {
+    "subject": "a nurse in her forties, dark circles under her eyes",
+    "wardrobe": "wrinkled blue scrubs",
+    "shot": "portrait",
+    "sections": {
+        "lighting": {"setup": "old-hollywood"},
+        "composition": {"guide": "rule-of-thirds", "techniques": ["lead-room"]},
+        "color": {"mood": "melancholy-lonely"},
+        "posing": {"pose": "forward-lean", "techniques": ["relaxed-hands"]},
+        "camera_angle": {"vertical": "eye-level", "side": "three-quarter",
+                         "size": "medium-close-up"},
+    },
+}
+mock_api.STATE["reply"] = "Filled everything in.\n```spec\n" + json.dumps(full_payload) + "\n```"
+win.stack.setCurrentIndex(list(win.nav_buttons).index("advisor"))
+av.input.setText("a tired nurse finishing a night shift")
+av.send()
+pump(until=settled)
+
+check("core spec captured", av._suggested_spec is not None)
+check("all four non-conflicting sections captured (camera_angle drops - a shot preset "
+      "was also given)", sorted(av._section_suggestions) ==
+      ["color", "composition", "lighting", "posing"], str(sorted(av._section_suggestions)))
+check("badge names every section it will apply",
+      all(label in av.suggestion_badge.badge.text() for label in
+          ("Lighting", "Composition", "Color Grading", "Posing")),
+      av.suggestion_badge.badge.text())
+check("camera_angle correctly absent from the badge (shot preset wins)",
+      "Camera Angle" not in av.suggestion_badge.badge.text())
+
+sections_applied = {}
+av.sections_suggested.connect(lambda s: sections_applied.setdefault("sections", s))
+av.apply_suggestion()
+pump(seconds=1)
+
+check("sections_suggested fired with all four phrases",
+      sorted(sections_applied.get("sections", {})) ==
+      ["color", "composition", "lighting", "posing"])
+
+editor = win.compose_view.editor
+check("lighting landed in the Scene tab's Lighting combo",
+      "old hollywood" in editor.lighting.currentText().lower(), editor.lighting.currentText())
+check("colour landed in the Scene tab's Colour combo",
+      "melancholic" in editor.colour.currentText().lower()
+      or "melancholy" in editor.colour.currentText().lower(), editor.colour.currentText())
+check("composition landed as custom framing text",
+      "rule of thirds" in editor.composition.currentText().lower(),
+      editor.composition.currentText())
+check("posing landed in the Subject tab's Action field",
+      "forward lean" in editor.action.text().lower()
+      or "forward-lean" in editor.action.text().lower()
+      or "lean toward" in editor.action.text().lower(), editor.action.text())
+check("the core spec's own shot preset was left alone (camera_angle never touched it)",
+      editor.shot.currentText() == "Portrait" or "portrait" in editor.shot.currentText().lower(),
+      editor.shot.currentText())
+check("routes to the Images tab", win.stack.currentWidget() is win.images_view)
+
+spec = editor.spec()
+import build_prompt as bp  # noqa: E402
+import realism_lint as rl  # noqa: E402
+bank = win.bank
+prompt, _ = bp.compose(bank, dict(spec, seed=0))
+present, _, banned, _, _ = rl.lint(prompt.lower(), bank)
+check("the fully-autofilled prompt scores 8/8, not paying for the shot/angle "
+      "conflict", len(present) == 8 and not banned, "{}/8 banned={}".format(len(present), banned))
+
+
+print()
 if fails:
     print("FAILURES: " + ", ".join(fails))
     sys.exit(1)
