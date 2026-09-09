@@ -704,6 +704,14 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   safeguard there is `generate_speech.estimate_cost()`'s character/credit count, shown before
   a real call, reading `pricing.json`'s new `elevenlabs` block through `generate_video.py`'s
   own `PRICING_PATH`/`load_pricing()` rather than a second hardcoded constant.
+- **The Sound Compose tab guides instead of going silently blank** (same fix as Posing's).
+  `build_sound.compose()` is unchanged - a sound-effect prompt genuinely needs a source and
+  an action, and Where/How alone are not one - but `SoundView.rebuild_compose()` no longer
+  just clears the Result and shows a bare "0/4" when Source and Action are both empty: with
+  Where or How filled it puts "Fill in Source and Action..." in `compose_advice`, and the
+  output box carries a placeholder naming the four fields. Also fixed: `__init__` now calls
+  `rebuild_compose()`, so the Generate button starts disabled rather than enabled-with-
+  nothing-composed. Covered by `tests/test_sound_gui.py` (new - Sound had no GUI suite).
 - **Voice cloning is the one place in this app's ElevenLabs integration with a real-world
   consequence for someone who isn't the user.** `elevenlabs_voices.clone_voice()` refuses to
   run without `consented=True` - enforced by the function itself, not only Sound's Voices tab

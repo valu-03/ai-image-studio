@@ -70,6 +70,7 @@ class SoundView(QWidget):
         self._sample_paths = []
         self.setup_ui()
         self.reload_library()
+        self.rebuild_compose()
         self.rebuild()
         self.refresh_voices()
 
@@ -142,6 +143,8 @@ class SoundView(QWidget):
         self.composed = QLineEdit()
         self.composed.setReadOnly(True)
         self.composed.setProperty("class", "mono")
+        self.composed.setPlaceholderText(
+            "Source + Action build the prompt - Where and How refine it")
 
         self.compose_badge = Badge("0/4", "neutral")
         self.compose_tree = QTreeWidget()
@@ -336,10 +339,13 @@ class SoundView(QWidget):
         source = self.source.text().strip()
         action = self.action.text().strip()
         if not source and not action:
+            started = self.place.text().strip() or self.treatment.text().strip()
             self.composed.setText("")
             self.compose_tree.clear()
             self.compose_badge.set_status("neutral", "0/4")
-            self.compose_advice.setText("")
+            self.compose_advice.setText(
+                "Fill in Source and Action - what makes the sound and what it is "
+                "doing. Where and How are optional." if started else "")
             self.generate_effect_button.setEnabled(False)
             return
 
