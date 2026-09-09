@@ -131,6 +131,21 @@ check("posing: an untouched pick still composes a non-empty phrase",
       bool(pv2.composed.text()), pv2.composed.text())
 check("posing: apply enabled on an untouched pick", pv2.apply_button.isEnabled())
 
+print()
+print("=== posing: a technique alone (no base pose) composes ===")
+
+pv3 = PosingView()
+check("posing: empty form disables Apply", not pv3.apply_button.isEnabled())
+box = next(iter(pv3.technique_checks.values()))
+box.setChecked(True)
+check("posing: ticking a technique with no pose fills the Result",
+      pv3._has_result and bool(pv3.composed.text().strip()), pv3.composed.text())
+check("posing: Apply enabled from a lone technique", pv3.apply_button.isEnabled())
+box.setChecked(False)
+check("posing: unticking it empties the Result again", not pv3._has_result)
+check("posing: Apply disabled once the form is empty again",
+      not pv3.apply_button.isEnabled())
+
 ed3 = SpecEditor(bank)
 ed3.shot.setCurrentIndex(ed3.shot.findData("selfie"))
 check("shot: an untouched pick still resolves to the preset key", ed3.shot_value() == "selfie")

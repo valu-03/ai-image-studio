@@ -1,7 +1,7 @@
 {
   "source": "Standard posing vocabulary taught across portrait/editorial photography courses (weight shift, S-curve, forced perspective, triangle grouping, catch-in-motion candids) - not one course's material specifically, the same broad-vocabulary approach prompt_bank.json's own core/camera/lens layers already take.",
   "version": 1,
-  "note": "Posing is descriptive spec content, like wardrobe/setting/mood - it is NOT one of realism_lint.py's 8 gated photorealism layers, so nothing here needs a DETECT keyword. A pose (picked or typed) is the base; `techniques` stack on top, additive and opt-in, never required. No conflicts list: one pose is picked at a time and no technique fights a pose or another technique.",
+  "note": "Posing is descriptive spec content, like wardrobe/setting/mood - it is NOT one of realism_lint.py's 8 gated photorealism layers, so nothing here needs a DETECT keyword. A pose (picked or typed) is the recommended base; `techniques` stack on top, additive and opt-in. None of it is individually required - a lone technique stack or a single free-text phrase composes on its own, only a wholly empty request is refused. No conflicts list: one pose is picked at a time and no technique fights a pose or another technique.",
 
   "poses": {
     "portrait": {

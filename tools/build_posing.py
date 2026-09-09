@@ -13,6 +13,11 @@ build_lighting.py's deep path and ui/spec_editor.py's own editable combos
 already follow. A value that matches a bank key uses that entry's phrase;
 anything else is used exactly as typed, never rejected as a typo.
 
+A base pose is the recommended starting point but is NOT required - a stack of
+`--technique` cues, or a single `--technique-custom` phrase, composes on its
+own. Only a wholly empty call (no pose, no technique, no custom text) is
+refused.
+
 `--technique` (repeatable) stacks a posing-realism cue on top of either a
 picked or typed pose - opt-in, additive, never required: asymmetrical-weight,
 relaxed-hands, soft-eyed-expression, negative-space-limbs, relaxed-posture.
@@ -56,9 +61,10 @@ def techniques(bank):
 
 
 class PosingError(ValueError):
-    """An unknown technique key was asked for, or nothing at all was given -
-    the caller made a mistake, not something to silently drop. `pose` itself
-    is never strict - see _resolve()."""
+    """An unknown technique key was asked for, or nothing at all was given (no
+    pose, no technique, no custom text) - the caller made a mistake, not
+    something to silently drop. `pose` itself is never strict - see _resolve()
+    - and a pose is not required as long as something else was supplied."""
 
 
 def _resolve(table, value):
@@ -75,16 +81,15 @@ def compose_posing(bank, pose=None, techniques_=(), technique_custom=None):
     are picked one at a time and no technique fights a pose or another
     technique, so there is nothing to warn about.
 
-    Raises PosingError for an unknown technique key, or if `pose` resolves
-    to nothing at all.
+    A base pose is recommended but not required: a technique stack or a single
+    `technique_custom` phrase composes on its own. Raises PosingError for an
+    unknown technique key, or if nothing at all was supplied (no pose, no
+    technique, no custom text).
     """
     parts = []
 
     if pose:
         parts.append(_resolve(poses(bank), pose))
-
-    if not parts:
-        raise PosingError("Give --pose - a bank key or your own text.")
 
     for name in techniques_:
         cfg = techniques(bank).get(name)
@@ -93,6 +98,10 @@ def compose_posing(bank, pose=None, techniques_=(), technique_custom=None):
         parts.append(cfg["phrase"])
     if technique_custom and technique_custom.strip():
         parts.append(technique_custom.strip())
+
+    if not parts:
+        raise PosingError(
+            "Give a pose, a technique, or your own text - nothing was provided.")
 
     return ", ".join(parts), []
 

@@ -847,7 +847,13 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
      never interferes with the 8 layers that ARE gated. Apply to Compose writes into the
      Subject tab's Action field (`SpecEditor.set_action_override()`, new - a plain
      `QLineEdit`, already wired to `changed`, so `setText()` alone was enough, no new signal
-     plumbing needed).
+     plumbing needed). **A base pose is recommended but NOT required** (fixed after a repeat
+     of the "no prompt below" report): `compose_posing()` composes from any of pose /
+     technique / free-text phrase and only raises `PosingError` on a wholly empty request;
+     `PosingView` then shows an `EMPTY_HINT` line (not a blank label) and tracks real-vs-hint
+     state in `self._has_result` so Copy/Apply don't fire on the hint text. The combo's
+     empty label is `"(none - or type your own pose here)"` - the old `"...below"` wording
+     sent users to type their pose into the technique field directly beneath it.
   2. **Deepened the existing Lighting bank**, not a new section - four more named setups
      (Clam shell, Beauty box, Checkerboard, Old Hollywood hard light) and a light-shaping
      modifier vocabulary (silver/white reflector, direct/diffused/bounced) folded into the

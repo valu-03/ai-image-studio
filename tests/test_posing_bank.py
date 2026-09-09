@@ -64,18 +64,47 @@ check("both named techniques and the custom phrase all appear",
       phrase)
 
 print()
+print("=== a base pose is recommended but not required ===")
+phrase, warnings = bpo.compose_posing(bank, techniques_=["relaxed-hands"])
+check("a lone technique composes on its own",
+      phrase == bank["techniques"]["relaxed-hands"]["phrase"], phrase)
+check("no warnings for a lone technique", not warnings, str(warnings))
+
+phrase, _ = bpo.compose_posing(bank, technique_custom="weight rocked slightly forward")
+check("a lone custom phrase is used exactly as typed",
+      phrase == "weight rocked slightly forward", phrase)
+
+phrase, _ = bpo.compose_posing(
+    bank, techniques_=["relaxed-hands"], technique_custom="chin down")
+check("technique + custom phrase join with ', ' and no pose",
+      phrase == bank["techniques"]["relaxed-hands"]["phrase"] + ", chin down", phrase)
+
+print()
 print("=== bad input is refused, not silently ignored ===")
 try:
     bpo.compose_posing(bank)
-    check("giving no pose at all raises", False)
+    check("giving nothing at all raises", False)
 except bpo.PosingError:
-    check("giving no pose at all raises", True)
+    check("giving nothing at all raises", True)
+
+try:
+    bpo.compose_posing(bank, technique_custom="   ")
+    check("a blank-only custom phrase still raises", False)
+except bpo.PosingError:
+    check("a blank-only custom phrase still raises", True)
 
 try:
     bpo.compose_posing(bank, pose="s-curve", techniques_=["not-a-real-technique"])
     check("an unknown technique raises", False)
 except bpo.PosingError:
     check("an unknown technique raises", True)
+
+try:
+    bpo.compose_posing(bank, techniques_=["not-a-real-technique"],
+                       technique_custom="a valid phrase")
+    check("an unknown technique raises even alongside valid input", False)
+except bpo.PosingError:
+    check("an unknown technique raises even alongside valid input", True)
 
 print()
 print("=== CLI ===")
@@ -99,6 +128,14 @@ p = run(["--pose", "a hand-typed pose instruction", "--technique", "relaxed-post
 check("typed --pose + --technique exits 0", p.returncode == 0, p.stderr[:160])
 check("both appear", "a hand-typed pose instruction" in p.stdout and "relaxed" in p.stdout.lower(),
       p.stdout[:200])
+
+p = run(["--technique-custom", "weight rocked slightly forward"])
+check("--technique-custom alone exits 0", p.returncode == 0, p.stderr[:160])
+check("--technique-custom alone prints the phrase",
+      "weight rocked slightly forward" in p.stdout, p.stdout[:160])
+
+p = run(["--technique", "relaxed-hands"])
+check("--technique alone exits 0", p.returncode == 0, p.stderr[:160])
 
 p = run([])
 check("no arguments at all exits non-zero", p.returncode != 0)
