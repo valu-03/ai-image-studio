@@ -94,6 +94,28 @@ layer the way choosing an angle-only shot always legitimately can (see `build_ca
 own "honest tradeoff"). Ask specifically for an angle-driven shot and the advisor is told to
 prefer the angle instead.
 
+## Pasting a full prompt: inspiration, not reproduction
+
+The chat input takes any length of text, so you can paste an already-written, fully-detailed
+prompt instead of a short idea - one of your own from another tool, or an example you found
+somewhere. By default the advisor treats it as a **style reference, not something to
+reproduce**: it carries over the vibe, mood and technique direction (the kind of lighting, pose,
+composition it's going for) but invents a subject who is a clearly different person - a
+different name, different physical features, different specific wardrobe and setting details.
+It says so plainly in the reply rather than silently substituting a new person in.
+
+**An explicit instruction always overrides that default.** Say "keep the setting" or "same
+wardrobe, change everything else" - in the same message or a follow-up turn - and it keeps
+exactly what you asked to be kept, the same "an explicit choice beats a generic fill" rule
+every other suggestion in this app already follows. A follow-up works because `history` already
+threads the whole conversation turn to turn - nothing new was needed for that half of this.
+
+The five technique sections never have this problem in the first place: `_finalize_sections()`
+only ever composes from that section's own real bank vocabulary, never the model's free
+phrasing, so a lighting/composition/colour/posing/camera-angle suggestion can't literally echo
+a pasted prompt's sentences even before this rule existed - only the free-text
+subject/wardrobe/setting/action/mood half needed the explicit "invent someone else" instruction.
+
 ## The gate still decides. Always.
 
 **The model suggests; `realism_lint` decides - the same rule every AI feature in this project

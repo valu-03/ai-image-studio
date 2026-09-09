@@ -327,6 +327,75 @@ check("brief warns that shot and camera_angle collide",
       "same field" in brief_text and "camera_angle" in brief_text)
 
 print()
+print("=== a pasted full prompt is a style reference, not something to reproduce ===")
+
+brief_text = adv.advisor_brief(bank)
+check("the inspiration-only rule is in the brief", "STYLE REFERENCE" in brief_text)
+check("the rule explains what carries over vs. what changes",
+      "vibe, mood and technique direction" in brief_text
+      and "different specific wardrobe and setting details" in brief_text)
+check("an explicit user instruction is documented as overriding the default",
+      "UNLESS the user explicitly says what to keep" in brief_text
+      and "explicit choice beats a generic fill" in brief_text)
+check("the worked example's pasted-prompt subject and the proposed subject "
+      "are different people", "Mara" in brief_text and "Elena" in brief_text)
+for key in ("loop", "diagonals", "framing-device", "romantic-dreamy", "mid-gesture"):
+    check("the new example uses the real bank key '{}'".format(key), key in brief_text)
+
+# The example's own fenced block, pulled straight out of the brief text and run
+# through the exact same finalize pipeline chat() uses - this is a structural
+# check (the app-side pipeline handles this input correctly), not a test of
+# what a live model chooses to write, which nothing here can unit-test.
+marker = "```spec"
+last_block_start = brief_text.rfind(marker)
+block_end = brief_text.find("```", last_block_start + len(marker))
+example_payload = adv.extract_spec_block(
+    "irrelevant prose\n" + brief_text[last_block_start:block_end + 3])
+check("the new example's fenced block parses as JSON", example_payload is not None)
+example_result = adv._finalize_spec(bank, example_payload)
+check("the new example's spec scores 8/8 clean", example_result is not None
+      and example_result["score"] == 8 and example_result["passed"]
+      and not example_result["dropped"],
+      str(example_result))
+example_sections = adv._finalize_sections(bank, example_payload, example_result["spec"])
+check("all 5 technique sections in the new example compose",
+      sorted(example_sections) == sorted(adv.SECTION_NAMES), str(sorted(example_sections)))
+
+# End to end through chat(): a fake "pasted prompt" user message, a fake reply
+# shaped like the new example (different subject, full sections) - confirms
+# nothing about this scenario trips the ordinary whitelist/compose/relint tail.
+pasted_prompt_message = (
+    "Ultra-realistic close-up portrait of Priya, a 24-year-old woman with "
+    "waist-length black hair, sitting on a rooftop at sunset in a burgundy "
+    "silk dress, one hand shading her eyes, backlit by the setting sun, 50mm "
+    "lens, warm golden color grade."
+)
+inspired_reply = (
+    "Using that as a style reference for the backlit golden-hour mood, not "
+    "recreating Priya - here's a different person with the sections filled "
+    "in.\n```spec\n"
+    '{"subject": "Noor, a woman in her late twenties, close-cropped silver '
+    'hair, a septum ring", "wardrobe": "an oversized denim jacket", '
+    '"setting": "a fire escape overlooking a city block at dusk", '
+    '"action": "sitting with her knees pulled up, looking toward the '
+    'skyline", "mood": "reflective, at ease", '
+    '"sections": {"lighting": {"setup": "rim"}, '
+    '"composition": {"guide": "golden-ratio"}, '
+    '"color": {"mood": "vintage-nostalgic"}, '
+    '"posing": {"pose": "asymmetrical-stance"}, '
+    '"camera_angle": {"vertical": "low-angle", "side": "profile", '
+    '"size": "medium-close-up"}}}\n```'
+)
+r = adv.chat(bank, [], pasted_prompt_message, ask=fake(inspired_reply))
+check("chat() succeeds on a long pasted-prompt-style message", r["ok"], r.get("error", ""))
+check("the finalized subject names a different person than the pasted prompt",
+      "Priya" not in r["suggestion"]["spec"]["subject"]
+      and "Noor" in r["suggestion"]["spec"]["subject"], r["suggestion"]["spec"]["subject"])
+check("the finalized spec scores 8/8", r["suggestion"]["score"] == 8 and r["suggestion"]["passed"])
+check("all 5 sections came through", sorted(r["sections"]) == sorted(adv.SECTION_NAMES),
+      str(sorted(r["sections"])))
+
+print()
 print("=== CLI parity ===")
 
 p = subprocess.run([sys.executable, str(TOOL), "show"], capture_output=True, text=True, cwd=str(ROOT))

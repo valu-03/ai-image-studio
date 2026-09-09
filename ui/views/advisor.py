@@ -40,7 +40,9 @@ GREETING = (
     "subject, lighting, composition, colour grade, posing and camera angle - "
     "ready to apply in one click. Or just ask: which section to open, which "
     "technique to stack, what your current prompt is missing. I can also look "
-    "at a photo if you attach one."
+    "at a photo if you attach one. You can even paste a full, already-written "
+    "prompt - I'll use it as a style reference and build a genuinely different "
+    "character from it, unless you tell me what to keep."
 )
 
 # How each technique section is named in the badge's summary line. The keys

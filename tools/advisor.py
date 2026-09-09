@@ -213,6 +213,22 @@ def advisor_brief(bank):
             "all and costs the camera realism layer. Prefer the preset unless the "
             "angle itself is the point of the shot; if both arrive, the preset "
             "wins and the angle is dropped.",
+            "A message that reads like an already-written, fully-detailed prompt "
+            "(long and descriptive, not a short request) is a STYLE REFERENCE "
+            "ONLY by default, not something to reproduce or paraphrase. Pick up "
+            "its overall vibe, mood and technique direction - the kind of "
+            "lighting, pose, composition it is going for - but invent a subject "
+            "who is clearly a different person: a different name (if any), "
+            "different identifying physical features (hair, eyes, build, age), "
+            "different specific wardrobe and setting details, UNLESS the user "
+            "explicitly says what to keep - a stated instruction (\"keep the "
+            "setting\", \"same wardrobe, different everything else\", a follow-up "
+            "message narrowing it further) always wins over this default, the "
+            "same \"an explicit choice beats a generic fill\" rule every other "
+            "suggestion in this app already follows. Never copy or closely "
+            "restate the pasted prompt's own subject description beyond what "
+            "was explicitly asked to be kept. Say plainly that you're using it "
+            "as a style reference, not recreating it.",
         ],
         examples=[
             'user: "how do I make my photos look better?"\n'
@@ -242,6 +258,33 @@ def advisor_brief(bank):
             '"posing": {"pose": "forward-lean", "techniques": ["relaxed-hands"]}, '
             '"camera_angle": {"vertical": "eye-level", "side": "three-quarter", '
             '"size": "medium-close-up"}}}\n'
+            "```",
+
+            'user: "Ultra-realistic close-up portrait of Mara, a 29-year-old woman '
+            'with long copper-red hair and light freckles, sitting at a window '
+            'table in a Parisian cafe at golden hour. She wears a cream wool coat '
+            'and a thin gold necklace, resting her chin on one hand, gazing out '
+            'the window with a wistful expression. Soft warm sidelight from the '
+            'window, shallow depth of field, 85mm lens, muted warm color grade."\n'
+            "assistant: That's a strong reference for mood, not a person to "
+            "recreate - I'll build a different subject and carry over the "
+            "golden-hour window light, the wistful caught-in-thought feel, and "
+            "the framed-by-the-window composition. Say the word if you'd rather "
+            "I keep any specific piece of the original (the coat, the cafe "
+            "setting, anything) instead of changing it too.\n"
+            "```spec\n"
+            '{"subject": "Elena, a woman in her mid-thirties, short dark bob, a '
+            'small scar above one eyebrow", "wardrobe": "a forest-green corduroy '
+            'jacket", "setting": "a quiet secondhand bookshop, late-afternoon '
+            'light through a dusty window", "action": "leaning against a shelf, '
+            'flipping through a paperback", "mood": "wistful, unhurried", '
+            '"sections": {'
+            '"lighting": {"setup": "loop"}, '
+            '"composition": {"guide": "diagonals", "techniques": ["framing-device"]}, '
+            '"color": {"mood": "romantic-dreamy"}, '
+            '"posing": {"pose": "mid-gesture"}, '
+            '"camera_angle": {"vertical": "eye-level", "side": "three-quarter", '
+            '"size": "medium"}}}\n'
             "```",
         ],
     )

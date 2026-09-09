@@ -1074,7 +1074,30 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   New) as a named regression, confirmed against the pre-fix code before the fix (every OTHER
   field cleared correctly in isolation, which is exactly what made this easy to miss without
   running the real "load then New" sequence end to end).
-- **Run `python tests/run_all.py` before calling anything done.** 1702 checks, all green
+- **The Advisor treats a pasted full prompt as a style reference by default, never a
+  reproduction - and an explicit instruction still wins over that default.** Asked for
+  directly: "give the advisor a prompt and it fills everything" but "uses the prompt just as
+  inspiration... creates something uniquely different," with the explicit follow-up that the
+  user can still say what to keep (a setting, a wardrobe piece). This needed no new code path -
+  `advisor_brief()`'s `constraints` list gained one instruction telling the model that a long,
+  already-detailed message (as opposed to a short idea) is a style reference: carry over vibe/
+  mood/technique direction, invent a different name and different identifying physical/wardrobe/
+  setting details, UNLESS the user explicitly says what to keep, which outranks the default -
+  the same "an explicit choice beats a generic fill" precedence every other suggestion in this
+  app already follows, and something `chat()`'s existing `history` threading already supports
+  for a follow-up turn with zero changes. The five technique sections never needed this rule at
+  all: `_finalize_sections()`/`_compose_section()` already only ever compose from that section's
+  OWN real bank vocabulary (never the model's free phrasing), so a section suggestion structurally
+  cannot echo a pasted prompt's sentences - only the free-text subject/wardrobe/setting/action/
+  mood half could, which is what the new constraint (plus a new worked few-shot example -
+  a pasted "Mara" cafe portrait producing an unrelated "Elena" bookshop scene, same golden-hour/
+  wistful vibe, different person) actually addresses. Verified for real, not just written: the
+  new example's own fenced spec block, pulled straight out of `advisor_brief()`'s text and run
+  through the real `_finalize_spec()`/`_finalize_sections()` pipeline, scores a clean 8/8 with
+  all 5 sections composing - `tests/test_advisor.py` locks this down as a structural regression
+  check (the app-side pipeline handles this input shape correctly), which is the most that can
+  be unit-tested here since nothing can assert what a live model chooses to write.
+- **Run `python tests/run_all.py` before calling anything done.** 1718 checks, all green
   across 31 suites (`test_history.py`, `test_lighting_bank.py`, `test_elevenlabs.py`,
   `test_composition_bank.py`, `test_posing_bank.py`, `test_color_bank.py`,
   `test_camera_angle_bank.py`, `test_advisor.py`, `test_advisor_gui.py`,
