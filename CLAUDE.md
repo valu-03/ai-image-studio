@@ -1024,13 +1024,64 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   `ADVISOR_SECTION_SETTERS` name map (posing → `set_action_override`, camera_angle →
   `set_shot_override` - not a 1:1 name match, since posing is descriptive spec content and an
   angle lands as typed custom shot text, exactly like every other section's own precedent).
-- **Run `python tests/run_all.py` before calling anything done.** 1590 checks, all green
-  across 29 suites (`test_history.py`, `test_lighting_bank.py`, `test_elevenlabs.py`,
+- **Influencer Studio is a persona builder, not a second character-spec system.** No structured
+  gender/age/hair/eye slot exists anywhere in `tools/brief.py`'s `SPEC_KEYS` or
+  `build_prompt.subject_clause()` - every other section in this app that has ever needed one of
+  those concepts (the course's own worked examples included) has folded it into `subject` as
+  prose, so `tools/persona_bank.json`/`build_persona.py`'s job is to compose structured picks
+  (name, one of 4 genders, one of 8 age ranges, any number of 10 aesthetic style tags, one of 15
+  hair colours, one of 8 eye colours, plus free-text details) into exactly that: one flowing
+  Subject sentence, never a new spec key. `compose_persona()` never raises - unlike a technique
+  section's own composer (`LightingError`/`ColorError`/... for an over-specified pick), there is
+  no invalid *combination* here, so an unrecognised key (gender, age range, hair/eye colour) is
+  simply dropped and the whole thing falls back to `"a person."`, the same default
+  `SpecEditor.PLACEHOLDER_SUBJECT` already uses for an empty Subject box. `SpecEditor.
+  set_subject_override()` (new, the same five-line shape as the other five `set_X_override()`
+  setters) writes the composed sentence into Subject wholesale, the same "typed text wins
+  outright" precedence every Apply-to-Compose button already follows. The roster itself
+  (`temp/resources/personas/<slug>.json`) is a parallel, lighter-weight copy of
+  `ui/views/compose.py`'s own character-library CRUD shape (`reload_roster()`/`load_selected()`/
+  `save_persona()`/`new_persona()`/`rename_persona()`/`delete_persona()`), in its own folder
+  rather than crammed into `assets.CHARACTERS_DIR` - a persona and a full character spec are
+  different JSON shapes with different lifecycles (a persona feeds *into* a character's Subject,
+  it is not itself one).
+- **Reference images in Influencer Studio are a mood board, never an identity lock, and no
+  attractiveness/face-shape/body-shape control exists here, on purpose.** Both were decided
+  in-conversation before any code was written, not discovered as bugs afterward. Up to 8 images
+  (drag-and-drop - the first drag-and-drop handling anywhere in this codebase - or
+  `QFileDialog.getOpenFileNames`) are stored as raw paths on the persona's own JSON and rendered
+  as small thumbnails; they are never passed to `SpecEditor.set_reference()`/`lock_identity`,
+  the app's actual face-lock mechanism, confirmed directly (`SpecEditor.reference()` stays `""`
+  through a full build-save-load-apply cycle in `tests/test_influencer_studio_gui.py`). Every
+  other structured field here describes an aesthetic or a fact (gender, age, colour, style) or
+  routes to free-text prose (Additional Details) for anything else, including a face or build -
+  never a slider tuned toward an idealised standard, unlike the sexualized "indistinguishable
+  from real photography" content this feature was explicitly scoped away from when it was asked
+  for.
+- **A `QButtonGroup` with `exclusive=True` refuses to let its OWN currently-checked button be
+  unchecked via `setChecked(False)` - found live building "New persona" (blank), not by reading
+  Qt's docs first.** `ui/widgets.chip_row()`'s Age Range/Hair Color/Eye Color pickers each sit in
+  an exclusive group (Style & Aesthetic does not - it is multi-select, no group at all); calling
+  `button.setChecked(False)` on every button in the group, including the one already checked,
+  looked like it should clear the selection to none, and every OTHER field in the same reset
+  (name, style chips, details) correctly cleared - but the previously-checked Age/Hair/Eye chip
+  stayed visibly checked, and its phrase stayed in the composed sentence, because Qt's exclusive
+  `QButtonGroup` is written to always keep exactly one button checked once any button in it ever
+  has been, and silently ignores a `setChecked(False)` that would leave zero checked. Fixed with
+  `InfluencerStudioView._set_exclusive_selection()`: toggle the GROUP's own `setExclusive(False)`
+  before clearing, restore `True` after - that is what actually lets zero be a valid state.
+  `tests/test_influencer_studio_gui.py` reproduces the exact scenario (load a real persona, then
+  New) as a named regression, confirmed against the pre-fix code before the fix (every OTHER
+  field cleared correctly in isolation, which is exactly what made this easy to miss without
+  running the real "load then New" sequence end to end).
+- **Run `python tests/run_all.py` before calling anything done.** 1702 checks, all green
+  across 31 suites (`test_history.py`, `test_lighting_bank.py`, `test_elevenlabs.py`,
   `test_composition_bank.py`, `test_posing_bank.py`, `test_color_bank.py`,
-  `test_camera_angle_bank.py`, `test_advisor.py`, `test_advisor_gui.py` and
-  `test_combo_resolve.py` are all now in `tests/run_all.py`'s `ORDER` - `test_elevenlabs.py`
-  existed for a while but was never actually wired in, so it silently never ran as part of the
-  suite until it was noticed), no dependencies beyond PyQt6, Qt runs offscreen.
+  `test_camera_angle_bank.py`, `test_advisor.py`, `test_advisor_gui.py`,
+  `test_combo_resolve.py`, `test_persona_bank.py` and `test_influencer_studio_gui.py` are all
+  now in `tests/run_all.py`'s `ORDER` - `test_elevenlabs.py` existed for a while but was never
+  actually wired in, so it silently never ran as part of the suite until it was noticed), no
+  dependencies beyond PyQt6, Qt runs offscreen.
 
 ---
 
@@ -1065,7 +1116,10 @@ is descriptive spec content, not one of the 8 gated realism layers), **Camera An
 (vertical position + side + shot size, three independent axes, any subset composed together;
 Apply to Compose writes the result as typed custom shot text - a pure angle phrase with no
 camera vocabulary can honestly score the camera check 0/8, same as any other typed shot),
-**Videos**
+**Influencer Studio** (a saved roster of personas - name, gender, age range, any number of
+style tags, hair/eye colour, free-text details, up to 8 mood-reference images - composed
+into one Subject description; Apply to Compose writes into the Subject field wholesale, and
+reference images stay a local mood board, never wired into identity lock), **Videos**
 (the Kling camera-movement toolkit and the film glossary — builds the prompt and, since Phase 3,
 can generate the real clip too), **Ads** (the five-beat UGC advert: brief, storyboard, hook A/B,
 checklist, publishing), **Cats** (a story in scenes plus its CapCut edit sheet, and a Custom Prompt tab for a

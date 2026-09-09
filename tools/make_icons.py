@@ -124,6 +124,15 @@ GLYPHS = {
         '<path d="M6 10.5A8 8 0 0 1 18 5"/>'
         '<path d="M15.5 3.8 18 5l-1 2.7"/>'
     ),
+    # A persona/contact card - a rounded card, an avatar circle with shoulders,
+    # two text lines - reads as "a saved profile" distinctly from "posing"'s
+    # walking stick figure and "cats"'s animal glyph.
+    "influencer_studio": (
+        '<rect x="3" y="4" width="18" height="16" rx="2"/>'
+        '<circle cx="8.5" cy="10.3" r="2.2"/>'
+        '<path d="M5 16c0-1.9 1.6-3 3.5-3s3.5 1.1 3.5 3"/>'
+        '<path d="M14.5 9h4M14.5 12.5h4"/>'
+    ),
 }
 
 TEMPLATE = (

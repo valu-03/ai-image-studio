@@ -14,6 +14,13 @@ ASSET_DIR = ROOT / "assets"
 ICON_DIR = ASSET_DIR / "icons"
 
 CHARACTERS_DIR = ROOT / "temp" / "resources" / "characters"
+# Influencer Studio's own roster - a lighter, structured JSON shape (name,
+# gender, age range, style tags, hair/eye colour, details, reference image
+# paths) than a full character spec, so it gets its own folder rather than
+# being crammed into CHARACTERS_DIR. Reference images stay a local mood
+# board here; they are never copied elsewhere and never touch
+# SpecEditor.set_reference()/lock_identity.
+PERSONAS_DIR = ROOT / "temp" / "resources" / "personas"
 PROMPTS_DIR = ROOT / "temp" / "outputs" / "prompts"
 IMAGES_DIR = ROOT / "temp" / "outputs" / "images"
 VIDEOS_DIR = ROOT / "temp" / "outputs" / "videos"
@@ -28,7 +35,8 @@ ENV_PATH = ROOT / ".env"
 # nothing created it until the first clip was ever rendered and Settings had
 # no "Open Videos folder" button to offer. SOUND_DIR/VOICE_DIR follow the same
 # rule from day one of the ElevenLabs integration, not added after the fact.
-ALL_OUTPUT_DIRS = (CHARACTERS_DIR, PROMPTS_DIR, IMAGES_DIR, VIDEOS_DIR, SOUND_DIR, VOICE_DIR)
+ALL_OUTPUT_DIRS = (CHARACTERS_DIR, PERSONAS_DIR, PROMPTS_DIR, IMAGES_DIR, VIDEOS_DIR,
+                   SOUND_DIR, VOICE_DIR)
 
 
 def ensure_output_dirs():
@@ -38,8 +46,8 @@ def ensure_output_dirs():
     at import time - tests repoint `assets.CHARACTERS_DIR` at a temp directory
     for isolation, and this must follow that redirection, not the original.
     """
-    for name in ("CHARACTERS_DIR", "PROMPTS_DIR", "IMAGES_DIR", "VIDEOS_DIR",
-                 "SOUND_DIR", "VOICE_DIR"):
+    for name in ("CHARACTERS_DIR", "PERSONAS_DIR", "PROMPTS_DIR", "IMAGES_DIR",
+                 "VIDEOS_DIR", "SOUND_DIR", "VOICE_DIR"):
         globals()[name].mkdir(parents=True, exist_ok=True)
 
 ICON_SIZE = QSize(20, 20)
@@ -65,6 +73,8 @@ ICONS = {
     "posing": (ICON_DIR / "posing.svg", ICON_DIR / "posing-active.svg"),
     "color": (ICON_DIR / "color.svg", ICON_DIR / "color-active.svg"),
     "camera_angle": (ICON_DIR / "camera_angle.svg", ICON_DIR / "camera_angle-active.svg"),
+    "influencer_studio": (ICON_DIR / "influencer_studio.svg",
+                          ICON_DIR / "influencer_studio-active.svg"),
     # Actions and sub-views
     "compose": (ICON_DIR / "compose.svg", ICON_DIR / "compose-active.svg"),
     "variants": (ICON_DIR / "variants.svg", ICON_DIR / "variants-active.svg"),

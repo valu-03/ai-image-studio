@@ -495,6 +495,16 @@ class SpecEditor(QWidget):
         """
         self.colour.setCurrentText((phrase or "").strip())
 
+    def set_subject_override(self, phrase):
+        """Load a composed description from Influencer Studio into the
+        Subject field. `subject` is a plain QPlainTextEdit already wired to
+        `changed` via textChanged, so setPlainText() alone is enough - same
+        reasoning set_action_override() already documents for its own field.
+        Replaces the whole box rather than appending, the same "typed text
+        wins outright" precedence every other set_X_override() follows.
+        """
+        self.subject.setPlainText((phrase or "").strip())
+
     def set_shot_override(self, phrase):
         """Load a composed phrase from the Camera Angle section into the
         Shot field, as typed custom text - reuses build_prompt.

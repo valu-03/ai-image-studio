@@ -1,0 +1,65 @@
+{
+  "source": "Structured persona vocabulary for the Influencer Studio nav section - gender, age range, hair/eye colour and aesthetic style tags, each carrying the prose fragment build_persona.py folds into a single Subject description. Not transcribed from the course; this is app-original vocabulary in the same spirit as the other technique banks.",
+  "version": 1,
+  "note": "A persona is descriptive spec content, like wardrobe/setting/mood - it is NOT one of realism_lint.py's 8 gated photorealism layers, so nothing here needs a DETECT keyword. Every field is optional; compose_persona() always returns something usable (falling back to 'a person', the same default SpecEditor.PLACEHOLDER_SUBJECT already uses) rather than raising, since there is no invalid combination here the way an over-specified lighting/colour pick can be. Deliberately excluded: any attractiveness, face-shape or body-shape control - a face or build belongs in the free-text `details` field as prose, the same way SpecEditor's own Subject field already works everywhere else in this app.",
+
+  "genders": {
+    "woman": { "label": "Woman", "phrase": "a woman" },
+    "man": { "label": "Man", "phrase": "a man" },
+    "non-binary": { "label": "Non-binary", "phrase": "a non-binary person" },
+    "unspecified": { "label": "Prefer not to say", "phrase": "a person" }
+  },
+
+  "age_ranges": {
+    "18-24": { "label": "18-24", "phrase": "in their late teens to early twenties" },
+    "25-30": { "label": "25-30", "phrase": "in their late twenties" },
+    "31-37": { "label": "31-37", "phrase": "in their mid-thirties" },
+    "38-45": { "label": "38-45", "phrase": "in their early forties" },
+    "46-55": { "label": "46-55", "phrase": "in their late forties to early fifties" },
+    "56-65": { "label": "56-65", "phrase": "in their late fifties to early sixties" },
+    "66-75": { "label": "66-75", "phrase": "in their late sixties to early seventies" },
+    "76-85": { "label": "76-85", "phrase": "in their late seventies to early eighties" }
+  },
+
+  "style_tags": {
+    "luxury": { "label": "Luxury", "phrase": "elevated, high-end" },
+    "lifestyle": { "label": "Lifestyle", "phrase": "warm, lifestyle-editorial" },
+    "fitness": { "label": "Fitness", "phrase": "athletic, high-energy" },
+    "casual": { "label": "Casual", "phrase": "relaxed, everyday-casual" },
+    "streetwear": { "label": "Streetwear", "phrase": "streetwear-inspired, urban" },
+    "artistic": { "label": "Artistic", "phrase": "expressive, art-directed" },
+    "corporate": { "label": "Corporate", "phrase": "polished, corporate-professional" },
+    "soft-girl": { "label": "Soft Girl", "phrase": "soft, gentle, pastel-leaning" },
+    "edgy": { "label": "Edgy", "phrase": "edgy, high-contrast" },
+    "minimalist": { "label": "Minimalist", "phrase": "clean, minimalist" }
+  },
+
+  "hair_colors": {
+    "black": { "label": "Black", "swatch": "#1A1A1A", "phrase": "black hair" },
+    "dark-brown": { "label": "Dark Brown", "swatch": "#3B2414", "phrase": "dark brown hair" },
+    "light-brown": { "label": "Light Brown", "swatch": "#8B5A2B", "phrase": "light brown hair" },
+    "blonde": { "label": "Blonde", "swatch": "#E8C27A", "phrase": "blonde hair" },
+    "platinum-blonde": { "label": "Platinum Blonde", "swatch": "#F0E6D2", "phrase": "platinum blonde hair" },
+    "red": { "label": "Red", "swatch": "#A83232", "phrase": "red hair" },
+    "auburn": { "label": "Auburn", "swatch": "#8A3324", "phrase": "auburn hair" },
+    "ginger": { "label": "Ginger", "swatch": "#D2691E", "phrase": "ginger hair" },
+    "grey": { "label": "Grey", "swatch": "#9B9B9B", "phrase": "grey hair" },
+    "white": { "label": "White", "swatch": "#F5F5F5", "phrase": "white hair" },
+    "pink": { "label": "Pink", "swatch": "#E79DC4", "phrase": "pink hair" },
+    "blue": { "label": "Blue", "swatch": "#5B8DEF", "phrase": "blue hair" },
+    "purple": { "label": "Purple", "swatch": "#8B5CF6", "phrase": "purple hair" },
+    "green": { "label": "Green", "swatch": "#4CAF7D", "phrase": "green hair" },
+    "silver": { "label": "Silver", "swatch": "#C0C0C0", "phrase": "silver hair" }
+  },
+
+  "eye_colors": {
+    "brown": { "label": "Brown", "swatch": "#6B4226", "phrase": "brown eyes" },
+    "dark-brown": { "label": "Dark Brown", "swatch": "#3B2414", "phrase": "dark brown eyes" },
+    "hazel": { "label": "Hazel", "swatch": "#8E7145", "phrase": "hazel eyes" },
+    "green": { "label": "Green", "swatch": "#4CAF7D", "phrase": "green eyes" },
+    "blue": { "label": "Blue", "swatch": "#5B8DEF", "phrase": "blue eyes" },
+    "grey": { "label": "Grey", "swatch": "#9B9B9B", "phrase": "grey eyes" },
+    "amber": { "label": "Amber", "swatch": "#D99A2B", "phrase": "amber eyes" },
+    "black": { "label": "Black", "swatch": "#1A1A1A", "phrase": "black eyes" }
+  }
+}

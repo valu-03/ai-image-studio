@@ -143,6 +143,28 @@ QPushButton[class="danger"] {{
 }}
 QPushButton[class="danger"]:hover {{ background: {c['error']}; color: {c['text']}; }}
 
+/* A pill toggle - Influencer Studio's Age Range/Style/Hair/Eye pickers. Same
+   checked look as the nav rail's own checked chip (primary_fixed background,
+   primary text and border) rather than the gradient, which stays reserved
+   for one CTA per view. */
+QPushButton[class="chip"] {{
+    background: {c['surface_variant']};
+    color: {c['text']};
+    border: 1px solid {c['outline_variant']};
+    border-radius: {r['pill']}px;
+    padding: {s['xs']}px {s['md']}px;
+    font-size: {T.TYPO['body_sm'][0]}px;
+    font-weight: 600;
+    min-height: 18px;
+}}
+QPushButton[class="chip"]:hover {{ border-color: {c['outline']}; }}
+QPushButton[class="chip"]:checked {{
+    background: {c['primary_fixed']};
+    color: {c['primary']};
+    border: 1px solid {c['primary']};
+    font-weight: 700;
+}}
+
 QToolButton {{
     background: transparent;
     border: 1px solid transparent;

@@ -45,6 +45,7 @@ from .views import (  # noqa: E402
     CompositionView,
     HistoryView,
     ImagesView,
+    InfluencerStudioView,
     InsightsView,
     LightingView,
     PosingView,
@@ -80,6 +81,7 @@ NAV_ITEMS = [
     ("color", "Color Grading"),
     ("posing", "Posing"),
     ("camera_angle", "Camera Angle"),
+    ("influencer_studio", "Influencer Studio"),
     ("videos", "Videos"),
     ("ads", "Ads"),
     ("cats", "Cats"),
@@ -267,6 +269,7 @@ class MainWindow(QMainWindow):
         self.color_view = ColorGradingView(self.theme.palette)
         self.posing_view = PosingView(self.theme.palette)
         self.camera_angle_view = CameraAngleView(self.theme.palette)
+        self.influencer_studio_view = InfluencerStudioView(self.theme.palette)
         self.brief_view = BriefView(self.bank)
         self.advisor_view = AdvisorView(self.bank)
         self.history_view = HistoryView(self.theme.palette)
@@ -280,6 +283,7 @@ class MainWindow(QMainWindow):
             "color": self.color_view,
             "posing": self.posing_view,
             "camera_angle": self.camera_angle_view,
+            "influencer_studio": self.influencer_studio_view,
             "videos": self.videos_view,
             "ads": self.ads_view,
             "cats": self.cats_view,
@@ -362,6 +366,7 @@ class MainWindow(QMainWindow):
         self.posing_view.posing_applied.connect(self.apply_posing_phrase)
         self.color_view.color_applied.connect(self.apply_color_phrase)
         self.camera_angle_view.angle_applied.connect(self.apply_camera_angle_phrase)
+        self.influencer_studio_view.persona_applied.connect(self.apply_persona_phrase)
         # The sound sheet is generated from whatever story is open in Cats, so
         # the two stay in step without either knowing about the other.
         self.sound_view.context = lambda: self.cats_view.scenes
@@ -498,6 +503,8 @@ class MainWindow(QMainWindow):
             self.color_view.refresh()
         elif key == "camera_angle":
             self.camera_angle_view.refresh()
+        elif key == "influencer_studio":
+            self.influencer_studio_view.refresh()
 
     def on_search(self, text):
         self.compose_view.set_filter(text)
@@ -531,6 +538,7 @@ class MainWindow(QMainWindow):
         self.posing_view.set_palette_tokens(self.theme.palette)
         self.color_view.set_palette_tokens(self.theme.palette)
         self.camera_angle_view.set_palette_tokens(self.theme.palette)
+        self.influencer_studio_view.set_palette_tokens(self.theme.palette)
         self.insights_view.set_palette_tokens(self.theme.palette)
         self.statusBar().showMessage("{} theme".format(name.capitalize()))
 
@@ -567,6 +575,15 @@ class MainWindow(QMainWindow):
         """Camera Angle's "Apply to Compose" - identical shape to
         apply_lighting_phrase(), landing in the Shot field as custom text."""
         self.compose_view.editor.set_shot_override(phrase)
+        self.go_to("images")
+        self.images_view.show_compose()
+
+    def apply_persona_phrase(self, phrase):
+        """Influencer Studio's "Apply to Compose" - identical shape to
+        apply_lighting_phrase(), landing in the Subject field. Reference
+        images stay local to the persona - this never touches
+        SpecEditor.set_reference()/lock_identity."""
+        self.compose_view.editor.set_subject_override(phrase)
         self.go_to("images")
         self.images_view.show_compose()
 

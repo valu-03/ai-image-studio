@@ -5,9 +5,11 @@ stylesheets, so a theme switch repaints it with no extra work.
 """
 
 from PyQt6.QtCore import QSize, Qt, pyqtSignal
-from PyQt6.QtGui import QColor, QPixmap
+from PyQt6.QtGui import QColor, QIcon, QPainter, QPixmap
 from PyQt6.QtWidgets import (
+    QButtonGroup,
     QFrame,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
     QPushButton,
@@ -440,6 +442,69 @@ class GateTree(QWidget):
 
     def all_passed(self):
         return all(c.get("passed") for c in self._checks)
+
+
+def _swatch_icon(hex_color):
+    """A small filled circle, for a chip that names a colour rather than a
+    plain option - Hair/Eye colour need to show the colour, not just say it."""
+    pixmap = QPixmap(12, 12)
+    pixmap.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(pixmap)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+    painter.setBrush(QColor(hex_color))
+    painter.setPen(Qt.PenStyle.NoPen)
+    painter.drawEllipse(0, 0, 12, 12)
+    painter.end()
+    return QIcon(pixmap)
+
+
+class ChipButton(QPushButton):
+    """A pill-shaped toggle. Age Range, Style & Aesthetic, Hair Color and Eye
+    Color (Influencer Studio) all reuse this one class rather than four
+    bespoke widgets - `swatch`, an optional hex colour, renders as a small
+    dot before the label for the two colour pickers and is omitted for a
+    plain text chip.
+    """
+
+    def __init__(self, key, label, swatch=None, parent=None):
+        super().__init__(label, parent)
+        self.key = key
+        self.setCheckable(True)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setProperty("class", "chip")
+        if swatch:
+            self.setIcon(_swatch_icon(swatch))
+            self.setIconSize(QSize(12, 12))
+
+
+def chip_row(options, exclusive=False, columns=4):
+    """Lay `options` - (key, label) or (key, label, swatch_hex) - into a
+    wrapping QGridLayout of ChipButtons.
+
+    Returns (layout, {key: ChipButton}, group_or_None). `group` is a real
+    QButtonGroup when `exclusive` (Age Range, Hair Color, Eye Color - pick
+    one), else None (Style & Aesthetic - toggle any number independently).
+    The caller must keep a reference to the returned group (assign it to a
+    `self.` attribute) - an unparented QButtonGroup with no surviving Python
+    reference is a real "the exclusivity silently stopped working" bug.
+    """
+    layout = QGridLayout()
+    layout.setHorizontalSpacing(T.SPACE["xs"])
+    layout.setVerticalSpacing(T.SPACE["xs"])
+    group = None
+    if exclusive:
+        group = QButtonGroup()
+        group.setExclusive(True)
+    buttons = {}
+    for index, option in enumerate(options):
+        key, label = option[0], option[1]
+        swatch = option[2] if len(option) > 2 else None
+        button = ChipButton(key, label, swatch)
+        buttons[key] = button
+        layout.addWidget(button, index // columns, index % columns)
+        if group:
+            group.addButton(button)
+    return layout, buttons, group
 
 
 def mark_error(widget, is_error):
