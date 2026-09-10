@@ -22,10 +22,11 @@ photographically restrained (neon cyberpunk, hot pink Barbie) - unlike every
 other bank so far, its phrases were checked against banned/warn, not just
 detectability, before shipping (see tests/test_color_bank.py).
 
-The result is meant for spec["overrides"]["colour"] - build_prompt.py's
-overrides mechanism already works generically for any layer name, so no
-change was needed there; ui/spec_editor.py's own "Colour grade" combo writes
-to the exact same slot.
+The result is meant for spec["overrides"]["colour"] - "colour" is one of
+build_prompt.py's eight LAYER_ORDER names, so select_layers() places it
+directly; ui/spec_editor.py's own "Colour grade" combo writes to the same
+slot. (An override for a name that ISN'T a layer - "style" - is folded into
+the free extra segment by build_prompt.free_overrides() instead.)
 
 Standard library only. No API keys, no network.
 """

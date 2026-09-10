@@ -95,6 +95,19 @@ def select_layers(bank, spec, rng, weights=None):
     return selected, preset
 
 
+def free_overrides(spec):
+    """Values of any spec["overrides"] entry that isn't one of the eight
+    layers (e.g. "style" from the Style toolkit). Without this they'd be
+    silently dropped - select_layers only walks LAYER_ORDER. They join the
+    free "extra" segment, the same tail spec["extra"] already lands in."""
+    out = []
+    for name, value in (spec.get("overrides") or {}).items():
+        if name in LAYER_ORDER:
+            continue
+        out.extend([value] if isinstance(value, str) else list(value))
+    return out
+
+
 def guides(bank):
     """The composition guides table: key -> {label, phrase, note}."""
     return bank.get("composition_guides", {}).get("guides", {})
@@ -202,7 +215,8 @@ def build_compact(bank, spec, selected, preset):
     for name in ["camera", "lens", "lighting", "texture", "colour", "composition", "grain"]:
         segments.append(", ".join(selected[name]))
 
-    extra = list(preset.get("extra", [])) + list(spec.get("extra", []))
+    extra = (list(preset.get("extra", [])) + free_overrides(spec)
+             + list(spec.get("extra", [])))
     if extra:
         segments.append(", ".join(extra))
 
@@ -242,7 +256,8 @@ def build_detailed(bank, spec, selected, preset):
         ),
     ]
 
-    extra = list(preset.get("extra", [])) + list(spec.get("extra", []))
+    extra = (list(preset.get("extra", [])) + free_overrides(spec)
+             + list(spec.get("extra", [])))
     if extra:
         sentences.append("Additional direction: {}.".format(", ".join(extra)))
 

@@ -34,6 +34,7 @@ ORDER = [
     "test_combo_resolve.py",
     "test_workers.py",
     "test_color_bank.py",
+    "test_style_bank.py",
     "test_posing_bank.py",
     "test_camera_angle_bank.py",
     "test_persona_bank.py",

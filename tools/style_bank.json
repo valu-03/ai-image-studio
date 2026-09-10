@@ -1,0 +1,179 @@
+{
+  "source": "AI Video Bootcamp Phase 3 'Style Reference Library' (AVB_Style_Reference_Library_clean.pdf) - 24 visual styles, each with the look, when to reach for it, and an example prompt. The course's own rule: add the style keywords at the END of the prompt, after the scene description, never lead with them.",
+  "version": 1,
+  "note": "Two groups. `photoreal` styles are compatible with the 8/8 realism gate - they describe a real camera/film/lighting look. `stylised` styles deliberately are NOT photographic (anime, oil painting, watercolour); applying one drops the realism score on purpose, the same way tools/story_bank.json's animated look does, and the Style section warns before it is applied. `keywords` is the phrase that gets appended (spec['overrides']['style'], folded into the free extra segment by build_prompt.free_overrides). `custom` typed text always beats a picked style.",
+
+  "photoreal": {
+    "35mm-film": {
+      "label": "35mm film",
+      "keywords": "shot on 35mm film, warm tones, natural grain, slightly soft focus, organic colour shifts",
+      "look": "Warm tones, natural grain, slightly soft focus, the look of analog photography.",
+      "when": "When you want a timeless, nostalgic, 'this feels real' quality.",
+      "example": "A couple walking through a flea market on a Sunday morning, the woman holding a vintage vase she just found, shot on 35mm film"
+    },
+    "polaroid": {
+      "label": "Polaroid",
+      "keywords": "taken on a Polaroid instant camera, square format, faded colours, soft warm tones, slight vignette, white border frame",
+      "look": "Square format, faded colours, slight vignette, soft warm tones, white border.",
+      "when": "Instant nostalgia - casual, personal, intimate moments.",
+      "example": "Friends sitting on a rooftop at sunset passing around drinks, someone laughing, taken on a Polaroid camera"
+    },
+    "cinematic-widescreen": {
+      "label": "Cinematic widescreen",
+      "keywords": "cinematic widescreen 2.39:1, shallow depth of field, dramatic lighting, colour graded",
+      "look": "2.39:1 frame, shallow depth of field, dramatic lighting, graded colour.",
+      "when": "Hero shots, establishing shots, anything that needs to feel like a movie.",
+      "example": "A lone figure walking through a bamboo forest in the rain, cinematic widescreen, moody lighting"
+    },
+    "film-noir": {
+      "label": "Film noir",
+      "keywords": "film noir, high-contrast black and white, dramatic shadows, venetian-blind lighting",
+      "look": "High-contrast black and white, hard shadows, venetian-blind light.",
+      "when": "Mystery, drama, sophistication, moody storytelling.",
+      "example": "A detective standing under a streetlight in an empty alley, cigarette smoke rising, film noir, black and white, dramatic shadows"
+    },
+    "vintage-magazine": {
+      "label": "Vintage magazine",
+      "keywords": "styled like a 1960s magazine editorial, warm muted tones, fine grain, clean composition",
+      "look": "Clean composition, warm muted tones, grain, 1960s editorial styling.",
+      "when": "Fashion content, lifestyle brands, retro-inspired projects.",
+      "example": "A woman in a trench coat walking through a Paris street market, styled like a 1960s magazine editorial"
+    },
+    "editorial-fashion": {
+      "label": "Editorial fashion",
+      "keywords": "editorial fashion photography, high-end styling, a dramatic pose, controlled directional lighting, magazine quality",
+      "look": "High-end styling, dramatic poses, controlled light, magazine quality.",
+      "when": "Fashion brands, luxury products, high-end social content.",
+      "example": "Model in an oversized blazer standing in an empty white studio, strong directional light from the left, editorial fashion photography"
+    },
+    "street-photography": {
+      "label": "Street photography",
+      "keywords": "candid street photography, a real-world setting, raw, a decisive moment caught, natural light",
+      "look": "Candid, urban, raw, the decisive moment, real-world setting.",
+      "when": "Authentic-feeling content, urban stories, real-world scenes.",
+      "example": "A delivery driver checking his phone on a busy corner, steam rising from a manhole, golden hour, street photography"
+    },
+    "drone-photography": {
+      "label": "Drone photography",
+      "keywords": "aerial drone photography, a bird's-eye perspective, strong patterns seen from above, a sense of scale",
+      "look": "Aerial perspective, patterns from above, a sense of scale.",
+      "when": "Landscapes, architecture, revealing scale and pattern.",
+      "example": "Aerial view of a winding coastal road along turquoise cliffs, a tiny white car on the road, drone photography"
+    },
+    "macro-photography": {
+      "label": "Macro photography",
+      "keywords": "extreme macro photography, incredible fine detail on a tiny subject, very shallow depth of field",
+      "look": "Extreme close-up, huge detail on tiny subjects, shallow depth.",
+      "when": "Product details, nature, textures - anywhere detail matters.",
+      "example": "A single drop of water on a green leaf with the forest reflected in the droplet, macro photography"
+    },
+    "long-exposure": {
+      "label": "Long exposure",
+      "keywords": "long-exposure photograph, motion blur on the moving elements, sharp static elements, light trails",
+      "look": "Motion blur on moving elements, sharp static elements, light trails.",
+      "when": "Night cityscapes, waterfalls, traffic - motion in a still image.",
+      "example": "A waterfall in a forest with smooth silky water from a long exposure, mossy rocks, peaceful and serene"
+    },
+    "tilt-shift": {
+      "label": "Tilt-shift",
+      "keywords": "tilt-shift photography, a selective focus band, the scene made to look like a miniature model",
+      "look": "A selective focus band that makes real scenes look like toy models.",
+      "when": "Making ordinary scenes look like miniatures, creative perspective.",
+      "example": "A busy intersection seen from above, tilt-shift effect making the cars and people look like tiny models"
+    },
+    "golden-hour-portrait": {
+      "label": "Golden hour portrait",
+      "keywords": "golden hour portrait, warm backlight, golden skin tones, a gentle sun flare, magic-hour glow",
+      "look": "Warm backlight, golden skin tones, sun flare, magic-hour glow.",
+      "when": "Portraits, lifestyle, any content that needs warmth and beauty.",
+      "example": "A woman laughing with her eyes closed in a wheat field, golden hour backlight catching her hair, warm and joyful"
+    },
+    "studio-lighting": {
+      "label": "Studio lighting",
+      "keywords": "clean studio lighting, controlled and dramatic, a seamless background, a professional product-photography look",
+      "look": "Controlled, dramatic, clean background, professional.",
+      "when": "Product photography, headshots, clean brand content.",
+      "example": "A pair of white sneakers on a clean grey background, soft studio lighting, a slight shadow underneath"
+    },
+    "double-exposure": {
+      "label": "Double exposure",
+      "keywords": "a double-exposure effect, a portrait blended with a landscape, moody and atmospheric",
+      "look": "Two images blended into one - usually a portrait merged with nature.",
+      "when": "Creative portraits, symbolic storytelling, artistic social content.",
+      "example": "A woman's silhouette filled with a mountain forest landscape, double exposure effect, moody and atmospheric"
+    }
+  },
+
+  "stylised": {
+    "anime-manga": {
+      "label": "Anime / manga",
+      "keywords": "anime and manga style, clean linework, vibrant colours, expressive characters, a stylised background",
+      "look": "Clean lines, vibrant colours, expressive characters, stylised backgrounds.",
+      "when": "Character design, fantasy scenes, anything that needs an animated look.",
+      "example": "A girl sitting on a rooftop overlooking a neon-lit futuristic city at night, anime style, vibrant colours"
+    },
+    "oil-painting": {
+      "label": "Oil painting",
+      "keywords": "in the style of a classical oil painting, visible brush strokes, rich colours, dramatic light",
+      "look": "Visible brush strokes, rich colours, dramatic light, classical composition.",
+      "when": "Fantasy, historical, dramatic or epic scenes.",
+      "example": "A stormy seascape with a small sailing ship, dramatic clouds, in the style of a classical oil painting"
+    },
+    "watercolor": {
+      "label": "Watercolour",
+      "keywords": "painted in soft watercolour, soft edges, transparent washes of colour, white paper showing through",
+      "look": "Soft edges, transparent washes of colour, white paper showing through, dreamy.",
+      "when": "Gentle, delicate subjects - nature, florals, soft portraits.",
+      "example": "A field of wildflowers with a small cottage in the distance, morning mist, painted in soft watercolour"
+    },
+    "pencil-sketch": {
+      "label": "Pencil sketch",
+      "keywords": "a detailed pencil sketch on cream paper, graphite, varying line weight, cross-hatched shadows",
+      "look": "Graphite on paper, varying line weight, cross-hatching for shadows, raw.",
+      "when": "Concept art, architectural studies, character design, raw creative energy.",
+      "example": "An old man's face with deep wrinkles, detailed pencil sketch on cream paper, expressive eyes"
+    },
+    "pop-art": {
+      "label": "Pop art",
+      "keywords": "bold pop art style, bright primary colours, thick outlines, halftone dots, high contrast",
+      "look": "Bold primary colours, thick outlines, halftone dots, high contrast.",
+      "when": "Bold statements, brand content, playful and eye-catching.",
+      "example": "A woman drinking coffee with a surprised expression, bold pop art style, bright primary colours, comic-book dots"
+    },
+    "dark-academia": {
+      "label": "Dark academia",
+      "keywords": "dark academia aesthetic, muted browns, warm candlelight, old books, classical architecture",
+      "look": "Muted browns, warm candlelight, old books, classical architecture.",
+      "when": "Education content, literary vibes, an intellectual aesthetic.",
+      "example": "A stack of old leather-bound books on a mahogany desk, reading glasses on top, candlelight, dark academia aesthetic"
+    },
+    "vaporwave": {
+      "label": "Vaporwave",
+      "keywords": "vaporwave aesthetic, neon pink and blue, glitch effects, a retro-futuristic 80s digital look, a glowing grid floor",
+      "look": "Neon pink and blue, glitch effects, retro-futuristic 80s digital.",
+      "when": "Bold social content, music-related, nostalgic-futuristic branding.",
+      "example": "A retro computer setup with neon pink and blue lighting, a palm tree in the background, vaporwave aesthetic, glowing grid floor"
+    },
+    "cottagecore": {
+      "label": "Cottagecore",
+      "keywords": "a soft cottagecore aesthetic, soft natural light, meadows and wildflowers, linen, handmade, pastoral",
+      "look": "Soft natural light, meadows, flowers, linen, handmade, pastoral.",
+      "when": "Lifestyle brands, natural products, wellness, food content.",
+      "example": "A woman in a linen dress picking wildflowers in a sun-drenched meadow, a wicker basket, soft cottagecore aesthetic"
+    },
+    "cyberpunk": {
+      "label": "Cyberpunk",
+      "keywords": "cyberpunk aesthetic, neon-lit rain-slicked streets, holographic advertisements, a tech-heavy dystopia",
+      "look": "Neon-lit dystopia, rain-slicked streets, holographic ads, tech-heavy.",
+      "when": "Sci-fi content, tech brands, futuristic storytelling.",
+      "example": "A street vendor selling noodles under a neon sign in a rainy cyberpunk alley, holographic advertisements reflecting in puddles"
+    },
+    "minimalist": {
+      "label": "Minimalist",
+      "keywords": "minimalist, clean and simple, generous negative space, a single focal point, soft even lighting",
+      "look": "Clean, simple, lots of negative space, one focal point.",
+      "when": "Clean brand content, modern design, luxury - when less is more.",
+      "example": "A single red chair in the centre of a vast white room, soft even lighting, minimalist, clean"
+    }
+  }
+}
