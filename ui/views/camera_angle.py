@@ -42,6 +42,8 @@ import build_camera_angle as bca  # noqa: E402
 from .. import assets, tokens as T  # noqa: E402
 from ..widgets import Badge, Card, MutedLabel, TitleLabel  # noqa: E402
 
+EMPTY_HINT = "Pick a vertical, side or size — or type your own angle."
+
 
 class CameraAngleView(QWidget):
     """Emits `status`; `angle_applied(phrase)` on Apply to Compose."""
@@ -61,7 +63,7 @@ class CameraAngleView(QWidget):
     def setup_ui(self):
         self.tabs = QTabWidget()
         self.tabs.addTab(self._build_library_tab(), "Library")
-        self.tabs.addTab(self._build_compose_tab(), "Compose")
+        self.tabs.addTab(self._build_compose_tab(), "Build")
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -73,14 +75,20 @@ class CameraAngleView(QWidget):
         self.library.setHeaderLabels(["AXIS", "OPTION", "WHAT IT DOES"])
         self.library.setRootIsDecorated(False)
         self.library.setAlternatingRowColors(True)
+        self.library.itemDoubleClicked.connect(self._use_library_option)
+
+        use_button = QPushButton("Use this option")
+        use_button.clicked.connect(lambda: self._use_library_option(self.library.currentItem()))
 
         card = Card()
         card.body.addWidget(TitleLabel("Vertical, side, and size"))
         card.body.addWidget(MutedLabel(
-            "Three independent axes - combine any of them on the Compose tab. "
+            "Three independent axes - combine any of them on the Build tab. "
             "Angle sets where the viewer stands; side sets the relationship to the "
-            "subject; size sets what the viewer is meant to read."))
+            "subject; size sets what the viewer is meant to read. Double-click one, "
+            "or select it and press \"Use this option\", to set it on the Build tab."))
         card.body.addWidget(self.library, 1)
+        card.body.addWidget(use_button)
         return self._wrap(card)
 
     def _build_compose_tab(self):
@@ -117,7 +125,8 @@ class CameraAngleView(QWidget):
         self.composed = QLabel("")
         self.composed.setWordWrap(True)
         self.composed.setProperty("class", "mono")
-        self.status_badge = Badge("pick something", "neutral")
+        self._has_result = False
+        self.status_badge = Badge("empty", "neutral")
 
         copy_button = QPushButton("Copy")
         copy_button.setProperty("class", "ghost")
@@ -182,13 +191,26 @@ class CameraAngleView(QWidget):
     # -- library ------------------------------------------------------------ #
     def rebuild_library(self):
         self.library.clear()
-        for axis, items in [("Vertical", bca.verticals(self.bank)),
-                             ("Side", bca.sides(self.bank)),
-                             ("Size", bca.sizes(self.bank))]:
+        for axis, combo, items in [
+                ("Vertical", "vertical_combo", bca.verticals(self.bank)),
+                ("Side", "side_combo", bca.sides(self.bank)),
+                ("Size", "size_combo", bca.sizes(self.bank))]:
             for key, cfg in items.items():
-                QTreeWidgetItem(self.library, [axis, cfg["label"], cfg["note"]])
+                item = QTreeWidgetItem(self.library, [axis, cfg["label"], cfg["note"]])
+                item.setData(0, Qt.ItemDataRole.UserRole, (combo, key))
         self.library.setColumnWidth(0, 70)
         self.library.setColumnWidth(1, 130)
+
+    def _use_library_option(self, item):
+        if item is None:
+            self.status.emit("Pick an option first")
+            return
+        combo_name, key = item.data(0, Qt.ItemDataRole.UserRole)
+        combo = getattr(self, combo_name)
+        index = combo.findData(key)
+        if index >= 0:
+            combo.setCurrentIndex(index)
+        self.tabs.setCurrentIndex(1)
 
     # -- compose -------------------------------------------------------------#
     def rebuild_compose(self):
@@ -203,29 +225,29 @@ class CameraAngleView(QWidget):
             phrase, _warnings = bca.compose_camera_angle(
                 self.bank, vertical=vertical, side=side, size=size, custom=custom)
         except bca.CameraAngleError:
-            self.composed.setText("")
-            self.status_badge.set_status("neutral", "pick something")
+            self._has_result = False
+            self.composed.setText(EMPTY_HINT)
+            self.status_badge.set_status("neutral", "empty")
             self.apply_button.setEnabled(False)
             return
 
+        self._has_result = True
         self.composed.setText(phrase)
         self.status_badge.set_status("success", "ready")
         self.apply_button.setEnabled(True)
 
     def copy_composed(self):
-        text = self.composed.text().strip()
-        if not text:
+        if not self._has_result:
             self.status.emit("Nothing composed yet")
             return
-        QGuiApplication.clipboard().setText(text)
-        self.status.emit("Copied: " + text)
+        QGuiApplication.clipboard().setText(self.composed.text().strip())
+        self.status.emit("Copied: " + self.composed.text().strip())
 
     def apply_to_compose(self):
-        text = self.composed.text().strip()
-        if not text:
+        if not self._has_result:
             self.status.emit("Nothing composed yet")
             return
-        self.angle_applied.emit(text)
+        self.angle_applied.emit(self.composed.text().strip())
         self.status.emit("Applied to Compose")
 
     # -- theming -------------------------------------------------------------#

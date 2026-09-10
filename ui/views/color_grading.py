@@ -40,6 +40,8 @@ import build_color as bcol  # noqa: E402
 from .. import assets, tokens as T  # noqa: E402
 from ..widgets import Badge, Card, MutedLabel, TitleLabel  # noqa: E402
 
+EMPTY_HINT = "Pick a mood or film look, tick a technique, or type your own grade."
+
 AUTO_LABEL = "(none - type your own below)"
 
 
@@ -61,7 +63,7 @@ class ColorGradingView(QWidget):
     def setup_ui(self):
         self.tabs = QTabWidget()
         self.tabs.addTab(self._build_library_tab(), "Library")
-        self.tabs.addTab(self._build_compose_tab(), "Compose")
+        self.tabs.addTab(self._build_compose_tab(), "Build")
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -83,7 +85,7 @@ class ColorGradingView(QWidget):
         card.body.addWidget(MutedLabel(
             "12 named moods and 10 film-reference looks, straight from the course's own "
             "Mood → Color → Prompt cheat sheet. Double-click one, or select it and "
-            "press \"Use this look\", to load it on the Compose tab."))
+            "press \"Use this look\", to load it on the Build tab."))
         card.body.addWidget(self.library, 1)
         card.body.addWidget(use_button)
         return self._wrap(card)
@@ -121,7 +123,8 @@ class ColorGradingView(QWidget):
         self.composed = QLabel("")
         self.composed.setWordWrap(True)
         self.composed.setProperty("class", "mono")
-        self.status_badge = Badge("pick something", "neutral")
+        self._has_result = False
+        self.status_badge = Badge("empty", "neutral")
 
         copy_button = QPushButton("Copy")
         copy_button.setProperty("class", "ghost")
@@ -219,29 +222,29 @@ class ColorGradingView(QWidget):
                 self.bank, mood=mood, film_look=film_look, custom=custom,
                 techniques_=picked_techniques)
         except bcol.ColorError:
-            self.composed.setText("")
-            self.status_badge.set_status("neutral", "pick something")
+            self._has_result = False
+            self.composed.setText(EMPTY_HINT)
+            self.status_badge.set_status("neutral", "empty")
             self.apply_button.setEnabled(False)
             return
 
+        self._has_result = True
         self.composed.setText(phrase)
         self.status_badge.set_status("success", "ready")
         self.apply_button.setEnabled(True)
 
     def copy_composed(self):
-        text = self.composed.text().strip()
-        if not text:
+        if not self._has_result:
             self.status.emit("Nothing composed yet")
             return
-        QGuiApplication.clipboard().setText(text)
-        self.status.emit("Copied: " + text)
+        QGuiApplication.clipboard().setText(self.composed.text().strip())
+        self.status.emit("Copied: " + self.composed.text().strip())
 
     def apply_to_compose(self):
-        text = self.composed.text().strip()
-        if not text:
+        if not self._has_result:
             self.status.emit("Nothing composed yet")
             return
-        self.color_applied.emit(text)
+        self.color_applied.emit(self.composed.text().strip())
         self.status.emit("Applied to Compose")
 
     # -- theming -------------------------------------------------------------#

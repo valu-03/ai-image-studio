@@ -67,7 +67,7 @@ class PosingView(QWidget):
     def setup_ui(self):
         self.tabs = QTabWidget()
         self.tabs.addTab(self._build_library_tab(), "Library")
-        self.tabs.addTab(self._build_compose_tab(), "Compose")
+        self.tabs.addTab(self._build_compose_tab(), "Build")
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -89,7 +89,7 @@ class PosingView(QWidget):
         card.body.addWidget(MutedLabel(
             "Portrait, editorial, headshot, group and candid - the standard vocabulary a "
             "working photographer directs a subject with. Double-click one, or select it "
-            "and press \"Use this pose\", to load it on the Compose tab."))
+            "and press \"Use this pose\", to load it on the Build tab."))
         card.body.addWidget(self.library, 1)
         card.body.addWidget(use_button)
         return self._wrap(card)

@@ -390,34 +390,38 @@ class InfluencerStudioView(QWidget):
     def rebuild_compose(self):
         if not hasattr(self, "composed"):
             return
+        name = self.name_field.text().strip()
+        gender = self.gender_combo.currentData() or None
+        age = self._picked_single(self.age_buttons)
+        styles = self._picked_style_tags()
+        hair = self._picked_single(self.hair_buttons)
+        eye = self._picked_single(self.eye_buttons)
+        details = self.details_field.toPlainText().strip()
         phrase = bper.compose_persona(
-            self.bank,
-            name=self.name_field.text().strip(),
-            gender=self.gender_combo.currentData() or None,
-            age_range=self._picked_single(self.age_buttons),
-            style_tags_=self._picked_style_tags(),
-            hair_color=self._picked_single(self.hair_buttons),
-            eye_color=self._picked_single(self.eye_buttons),
-            details=self.details_field.toPlainText(),
+            self.bank, name=name, gender=gender, age_range=age, style_tags_=styles,
+            hair_color=hair, eye_color=eye, details=details,
         )
-        self.composed.setText(phrase)
-        self.status_badge.set_status("success", "ready")
-        self.apply_button.setEnabled(bool(phrase.strip()))
+        # compose_persona never raises - a blank form still returns "a person."
+        # - so an empty form must not read as a green "ready" persona.
+        filled = any([name, gender, age, styles, hair, eye, details])
+        self.composed.setText(phrase if filled else "Describe the persona above to build a Subject sentence.")
+        self.status_badge.set_status(
+            "success" if filled else "neutral", "ready" if filled else "empty")
+        self.apply_button.setEnabled(filled)
 
     def copy_composed(self):
-        text = self.composed.text().strip()
-        if not text:
+        if not self.apply_button.isEnabled():
             self.status.emit("Nothing composed yet")
             return
+        text = self.composed.text().strip()
         QGuiApplication.clipboard().setText(text)
         self.status.emit("Copied: " + text)
 
     def apply_to_compose(self):
-        text = self.composed.text().strip()
-        if not text:
+        if not self.apply_button.isEnabled():
             self.status.emit("Nothing composed yet")
             return
-        self.persona_applied.emit(text)
+        self.persona_applied.emit(self.composed.text().strip())
         self.status.emit("Applied to Compose")
 
     # -- persona dict in/out --------------------------------------------------#

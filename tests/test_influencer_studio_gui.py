@@ -143,8 +143,9 @@ check("no eye chip stays checked", view._picked_single(view.eye_buttons) is None
       view._picked_single(view.eye_buttons))
 check("no style chips stay checked", view._picked_style_tags() == [],
       str(view._picked_style_tags()))
-check("composed text falls back to the plain default", view.composed.text().strip() == "a person.",
-      view.composed.text())
+check("a blank form shows the empty hint, not a green 'a person.'",
+      "Describe the persona" in view.composed.text()
+      and not view.apply_button.isEnabled(), view.composed.text())
 check("nothing written to disk by New alone", stems() == ["zoe"], str(stems()))
 check("roster selection cleared", view.roster.currentRow() == -1, str(view.roster.currentRow()))
 
