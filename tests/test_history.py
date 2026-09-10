@@ -151,6 +151,20 @@ check("pick() over zero-history weights matches uniform sampling within toleranc
       worst_ratio < 0.08, "worst deviation {:.1%}".format(worst_ratio))
 
 print()
+print("=== _fmt_row tolerates a corrupt rating/id/seed field ===")
+# load() skips a corrupt LINE; _fmt_row must also survive a corrupt FIELD in
+# an otherwise-parseable row, or one hand-edited entry makes `history list`
+# unrunnable.
+for bad in ({"rating": "5"}, {"rating": 4.0}, {"rating": 99}, {"rating": -1},
+            {"seed": None}, {}):
+    try:
+        row = hist._fmt_row(dict({"id": "x", "score": 8}, **bad))
+        check("_fmt_row survives {!r}".format(bad), isinstance(row, str))
+    except Exception as exc:
+        check("_fmt_row survives {!r}".format(bad), False,
+              "{}: {}".format(type(exc).__name__, exc))
+
+print()
 if fails:
     print("FAILED: {}".format(", ".join(fails)))
 else:

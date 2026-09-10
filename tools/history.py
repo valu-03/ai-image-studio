@@ -291,13 +291,17 @@ def diff_prompts(prompt_a, prompt_b):
 # CLI
 # --------------------------------------------------------------------------- #
 def _fmt_row(entry):
-    rating = entry.get("rating")
+    try:
+        rating = int(entry.get("rating"))
+    except (TypeError, ValueError):
+        rating = 0
+    rating = max(0, min(5, rating))
     stars = "*" * rating + "." * (5 - rating) if rating else "-----"
     return "{id}  {stars}  {score}/8  seed {seed:<5} {slug}".format(
-        id=entry["id"],
+        id=entry.get("id", "?"),
         stars=stars,
         score=entry.get("score", "?"),
-        seed=entry.get("seed", 0),
+        seed=entry.get("seed") if entry.get("seed") is not None else 0,
         slug=(entry.get("slug") or entry.get("subject", ""))[:40],
     )
 

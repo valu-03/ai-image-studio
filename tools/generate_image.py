@@ -398,7 +398,9 @@ def credits_consumed(payload):
     price before a run is an estimate off a published table; this is the only
     figure that is measured, so it is what a cost estimate gets corrected by.
     """
-    data = (payload or {}).get("data") or {}
+    data = (payload or {}).get("data")
+    if not isinstance(data, dict):
+        return None
     for field in ("creditsConsumed", "credits_consumed", "credits"):
         if data.get(field) is not None:
             try:
@@ -410,7 +412,9 @@ def credits_consumed(payload):
 
 def parse_kie_status(payload):
     """(done, image_url, error). done=False means keep polling."""
-    data = (payload or {}).get("data") or {}
+    data = (payload or {}).get("data")
+    if not isinstance(data, dict):
+        return False, None, None
     state = str(data.get("state") or "").lower()
     if state == "fail":
         reason = data.get("failMsg") or data.get("failCode") or "the job failed"
@@ -426,7 +430,7 @@ def parse_kie_status(payload):
             result = json.loads(result)
         except json.JSONDecodeError:
             return True, None, "Kie returned an unreadable result: {}".format(result[:200])
-    urls = (result or {}).get("resultUrls") or []
+    urls = result.get("resultUrls") or [] if isinstance(result, dict) else []
     if not urls:
         return True, None, None
     return True, urls[0], None

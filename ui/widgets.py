@@ -363,6 +363,7 @@ class AiSuggestionBadge(QWidget):
         self.apply_button.hide()
 
     def reset(self):
+        self.is_thinking = False
         self._payload = None
         self.badge.hide()
         self.apply_button.hide()
@@ -441,7 +442,9 @@ class GateTree(QWidget):
             self.detail.setText(check.get("fix") or "")
 
     def all_passed(self):
-        return all(c.get("passed") for c in self._checks)
+        # `all([])` is True - an empty checklist must not read as a passing
+        # gate (callers use this to enable a Generate button).
+        return bool(self._checks) and all(c.get("passed") for c in self._checks)
 
 
 def _swatch_icon(hex_color):

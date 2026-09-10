@@ -478,7 +478,9 @@ def main(argv=None):
             "[learned] biasing on {} rated term(s)".format(len(weights)), file=sys.stderr
         )
 
-    base_seed = spec.get("seed", 0)
+    # `.get("seed", 0)` still returns None when the spec file literally has
+    # "seed": null (not merely omits it), and None + index is a TypeError.
+    base_seed = spec.get("seed") or 0
     for index in range(max(1, args.variants)):
         variant = dict(spec, seed=base_seed + index)
         prompt, layers = compose(bank, variant, detailed=args.detailed, weights=weights)

@@ -293,9 +293,16 @@ def main(argv=None):
     _cfg, _key, model, _base = _resolve(args.model)
 
     if args.price:
-        seconds = args.duration * args.count
+        # Quote the duration the job will actually run, not the raw flag -
+        # build_submit clamps to 3-15s, so --duration 30 would otherwise
+        # quote 2x the real charge.
+        per_clip = max(DURATION_MIN, min(DURATION_MAX, args.duration))
+        seconds = per_clip * args.count
         total, confidence, note = estimate(model, seconds, mode=args.mode, sound=args.sound)
-        print("{} clip(s) x {}s = {}s".format(args.count, args.duration, seconds))
+        if per_clip != args.duration:
+            print("(duration clamped to {}s - Kling accepts {}-{}s)".format(
+                per_clip, DURATION_MIN, DURATION_MAX))
+        print("{} clip(s) x {}s = {}s".format(args.count, per_clip, seconds))
         print("mode={}  sound={}".format(args.mode, args.sound))
         print("~{} credits ({})".format(total, confidence))
         left, error = gi.credits()

@@ -15,6 +15,7 @@ from PyQt6.QtWidgets import (
     QLineEdit,
     QListWidget,
     QListWidgetItem,
+    QMessageBox,
     QPushButton,
     QScrollArea,
     QVBoxLayout,
@@ -303,6 +304,17 @@ class SettingsView(QWidget):
         item = self.voice_list.currentItem()
         if not item:
             self.status.emit("Pick a voice to delete first")
+            return
+        # Deleting removes the voice from the ElevenLabs account - irreversible,
+        # and not local like the character/persona deletes, which both confirm.
+        answer = QMessageBox.question(
+            self, "Delete this voice?",
+            "{}\n\nThis removes it from your ElevenLabs account permanently. "
+            "It cannot be undone.".format(item.text()),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
             return
         voice_id = item.data(Qt.ItemDataRole.UserRole)
         task = VoiceDeleteTask(voice_id)

@@ -268,6 +268,15 @@ check("higgsfield reads images[0].url",
       == (True, "http://x/y.png", None))
 check("unknown state keeps polling",
       gi.parse_higgsfield_status({"status": "something-new"}) == (False, None, None))
+# A non-dict `data` (an unexpected JSON array) must not crash the poll loop
+# with an AttributeError that escapes generate().
+check("kie status tolerates a non-dict data",
+      gi.parse_kie_status({"data": ["unexpected"]}) == (False, None, None))
+check("kie status tolerates a non-dict resultJson",
+      gi.parse_kie_status({"data": {"state": "success", "resultJson": "[1,2,3]"}})
+      == (True, None, None))
+check("credits_consumed tolerates a non-dict data",
+      gi.credits_consumed({"data": [1, 2, 3]}) is None)
 check("redaction catches any credential header",
       gi.redact_headers({"X-Api-Key": "s", "Authorization": "s", "Accept": "json"})
       == {"X-Api-Key": "<redacted>", "Authorization": "<redacted>", "Accept": "json"})
