@@ -7,9 +7,10 @@ that returned success immediately would leave the polling loop untested, which
 is most of the new code.
 
 Error scenarios are selected by a path segment injected into the base URL, the
-same trick the synchronous providers used: BASE + "/boom" (HTTP 400),
+same trick the synchronous providers used: BASE + "/boom" (HTTP 400 on submit),
 "/noimage" (finishes with no image URL), "/fails" (the job reports failure),
-"/forever" (never leaves the queue), "/empty" (text route returns no content).
+"/forever" (never leaves the queue), "/empty" (text route returns no content),
+"/pollerr" (HTTP 429 on the status poll - a mid-render provider error).
 """
 import base64
 import json
@@ -101,7 +102,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def _prefix(self):
         """The scenario segment injected into the base URL, if any."""
-        for flag in ("/boom", "/noimage", "/fails", "/forever", "/empty"):
+        for flag in ("/boom", "/noimage", "/fails", "/forever", "/empty", "/pollerr"):
             if flag in self.path:
                 return flag
         return ""
@@ -116,6 +117,11 @@ class Handler(BaseHTTPRequestHandler):
 
         if "recordInfo" in self.path:
             STATE["last_status"] = STATE["last_get"]
+            # A provider error DURING polling (token expiry, 429, 500) - the
+            # image and video fetch loops must both surface it, not read it as
+            # "keep polling" until the 5-minute timeout.
+            if _flag(self.path, "pollerr"):
+                return self._send(429, {"error": {"message": "rate limited"}})
             return self._send(200, {"code": 200, "msg": "success",
                                     "data": self._kie_state()})
 

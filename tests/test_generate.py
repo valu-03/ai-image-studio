@@ -176,6 +176,14 @@ for provider, env in (("kie", KIE), ("higgsfield", HF)):
     p = run(["--provider", provider, "--prompt", "x", "--base-url", BASE + "/noimage"], env)
     check("{} no image exits 4".format(provider), p.returncode == 4, str(p.returncode))
 
+    if provider == "kie":
+        p = run(["--provider", provider, "--prompt", "x",
+                 "--base-url", BASE + "/pollerr"], env)
+        check("kie: a 4xx during polling exits 3, not a 5-minute timeout",
+              p.returncode == 3, str(p.returncode))
+        check("kie: the poll error is surfaced", "Status check failed 429" in p.stderr,
+              p.stderr[:200])
+
     p = run(["--provider", provider, "--prompt", "x",
              "--base-url", "http://127.0.0.1:9"], env)
     check("{} unreachable exits 3".format(provider), p.returncode == 3, str(p.returncode))
@@ -219,6 +227,26 @@ try:
     check("cancel stops the loop", False, "no error raised")
 except gi.GenerationError as exc:
     check("cancel stops the loop", "Cancelled" in str(exc), str(exc))
+
+print()
+print("=== video shares the poll path: a 4xx mid-render is surfaced, not a timeout ===")
+import generate_video as gv  # noqa: E402
+
+_saved = {k: os.environ.get(k) for k in ("AIVS_ENV_FILE", "KIE_API_KEY")}
+os.environ["AIVS_ENV_FILE"] = str(EMPTY_ENV)   # ignore the real .env
+os.environ["KIE_API_KEY"] = "kie-key"
+try:
+    path, err, _credits = gv.generate(
+        prompt="slow push in on the cat", base=BASE + "/pollerr")
+finally:
+    for k, v in _saved.items():
+        if v is None:
+            os.environ.pop(k, None)
+        else:
+            os.environ[k] = v
+check("video generate returns an error, not a path", path is None and err is not None)
+check("and it names the poll status, not a timeout",
+      "Status check failed 429" in str(err) and "Timed out" not in str(err), str(err))
 
 print()
 print("=== parsers, without a network ===")

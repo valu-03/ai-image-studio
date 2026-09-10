@@ -868,7 +868,11 @@ class ComposeView(QWidget):
 
     # -- results handed back from the Brief view ---------------------------- #
     def apply_suggested_spec(self, spec):
-        """Merge a model-drafted spec over the form, keeping what you already set."""
+        """Merge a model-drafted spec over the form: the fields the draft names
+        are overwritten, the fields it leaves out keep your values. Used by
+        both Brief's idea->spec (a fresh draft, meant to fill the form) and the
+        Advisor (an iterative tweak - "make her older" returns just `subject`,
+        and only that changes)."""
         self.editor.apply_partial(spec)
         self.status.emit("Applied the drafted character — review it before generating")
 

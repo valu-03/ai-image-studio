@@ -239,7 +239,13 @@ def generate(prompt="", out_name=None, image=None, duration=5, aspect_ratio=None
 
     def fetch():
         poll_url, poll_headers = gi.build_kie_status(base, task_id, key)
-        _, poll_payload, _ = gi.get_json(poll_url, poll_headers)
+        code, poll_payload, poll_raw = gi.get_json(poll_url, poll_headers)
+        # Without this a token expiry / 429 / 500 mid-render reads as "keep
+        # polling" until JOB_TIMEOUT (5 min) and is then reported as a
+        # timeout - the wrong diagnosis. The image path checks the same way.
+        if code >= 400:
+            raise gi.GenerationError("Status check failed {}: {}".format(
+                code, gi.describe_api_error(poll_payload, poll_raw)), 3)
         if used["credits"] is None:
             used["credits"] = gi.credits_consumed(poll_payload)
         return gi.parse_kie_status(poll_payload)

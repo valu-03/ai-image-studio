@@ -155,7 +155,16 @@ HASHES = {
     # section's side/size keys not already covered by motion_bank.json's own
     # framing terms - see tests/test_color_bank.py, test_composition_bank.py,
     # test_lighting_bank.py, test_camera_angle_bank.py, test_autofill.py.
-    "tools/realism_lint.py": "349eecdc03ff62db",
+    # Bumped again: the DETECT layer check was a bare `key in text` substring
+    # match, so "wear" scored the texture layer inside "streetwear" and let a
+    # brief.upgrade_prompt() rewrite that stripped every real texture word
+    # still pass 8/8. Single plain-word keys are now start-anchored
+    # (`\bkey`), multi-token keys stay substrings so "mm lens" still catches
+    # "85mm lens" and "imperfection" still catches "imperfections". No key
+    # added or removed; find_terms()/banned/warn/negatives untouched - the
+    # gate only got STRICTER. Every bank suite's own detectability audit still
+    # passes, confirming no real phrase became invisible.
+    "tools/realism_lint.py": "1571e1641f8f9164",
     # Bumped for a larger style_presets list (version 2 -> 3) - ten more
     # camera/lighting/grade combinations drawn from the same PDF vocabulary
     # the image side already had, cycled by seed the same way the original

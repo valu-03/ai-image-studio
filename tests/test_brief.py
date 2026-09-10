@@ -75,6 +75,22 @@ r = brief.upgrade_prompt(bank, GOOD, ask=fake(GOOD + (" more words" * 400)))
 check("runaway length REJECTED", not r["accepted"], r.get("reason", "")[:60])
 check("original kept", r["prompt"] == GOOD)
 
+# A rewrite that drops every real texture word but happens to say "streetwear"
+# used to score the texture layer on the bare "wear" substring and slip
+# through at a fake 8/8. The layer check is start-anchored now.
+present = [n for n, _, _ in rl.lint(
+    "a photorealistic model in luxury streetwear and footwear, DSLR photography, "
+    "shot on an 85mm lens with shallow depth of field, soft natural daylight, "
+    "rule of thirds, earthy colour grading, subtle film grain", bank)[0]]
+check("'streetwear'/'footwear' do NOT satisfy the texture layer",
+      "texture" not in present, str(present))
+check("the other seven layers still read", len(present) == 7, str(present))
+check("'imperfections' still satisfies texture (start-anchored, not exact)",
+      "texture" in [n for n, _, _ in rl.lint(
+          "with visible skin imperfections and open pores", bank)[0]])
+check("'85mm lens' still satisfies the lens layer (multi-token substring kept)",
+      "lens" in [n for n, _, _ in rl.lint("shot on an 85mm lens", bank)[0]])
+
 r = brief.upgrade_prompt(bank, GOOD, ask=fake(None, error="OPENROUTER_API_KEY is not set"))
 check("no key -> ok False", not r["ok"])
 check("prompt untouched", r["prompt"] == GOOD)

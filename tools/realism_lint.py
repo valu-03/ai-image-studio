@@ -162,6 +162,26 @@ def is_negated(text, index):
     return bool(NEGATION.search(text[max(0, index - 30):index]))
 
 
+_PLAIN_WORD = re.compile(r"[a-z]+")
+
+
+def _layer_key_present(key, text):
+    """True when a DETECT layer key appears in `text`.
+
+    A multi-token key ("mm lens", "depth of field", "true-to-life") stays a
+    plain substring test - it can't hide inside another word, and it needs to
+    match a suffix like the "mm lens" in "85mm lens". A single plain word is
+    anchored at its START instead: "imperfection" still catches
+    "imperfections", but "wear" no longer fires inside "streetwear" and lets a
+    rewrite that dropped every real texture word still pass the texture layer
+    - which is exactly what brief.upgrade_prompt() gates on. The old test was
+    a bare `key in text` substring match for every key."""
+    key = key.lower()
+    if _PLAIN_WORD.fullmatch(key):
+        return re.search(r"\b" + key, text) is not None
+    return key in text
+
+
 def find_terms(text, terms):
     """Return (positive_hits, negated_hits) for a list of terms."""
     positive, negated = [], []
@@ -178,7 +198,7 @@ def lint(text, bank):
     present, missing = [], []
     for name in ["core", "camera", "lens", "lighting", "texture", "colour", "composition", "grain"]:
         cfg = DETECT[name]
-        hit = next((k for k in cfg["keys"] if k in lower), None)
+        hit = next((k for k in cfg["keys"] if _layer_key_present(k, lower)), None)
         (present if hit else missing).append((name, cfg, hit))
 
     banned_hits, _ = find_terms(lower, bank["banned"])
