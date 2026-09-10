@@ -133,6 +133,24 @@ GLYPHS = {
         '<path d="M5 16c0-1.9 1.6-3 3.5-3s3.5 1.1 3.5 3"/>'
         '<path d="M14.5 9h4M14.5 12.5h4"/>'
     ),
+    # An eye - the "Look" section is literally about how the image looks.
+    # Distinct from every other rail glyph; no filled iris, matching the
+    # small stroked-ring convention "images"/"composition" already use.
+    "look": (
+        '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/>'
+        '<circle cx="12" cy="12" r="3"/>'
+    ),
+    # A speech bubble with three dots - a helper you talk to, one step
+    # simpler than "advisor"'s bubble-with-spark (which is now a tab inside
+    # this section, not its own rail entry).
+    "assistant": (
+        '<path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.2'
+        'A8.4 8.4 0 0 1 4 11.5 8.5 8.5 0 0 1 12.5 3 8.5 8.5 0 0 1 21 11.5z"/>'
+        '<path d="M9 12h.01M12.5 12h.01M16 12h.01"/>'
+    ),
+    # An activity pulse line - "Activity" groups History and What works.
+    # Distinct from "insights"' static bar chart.
+    "activity": '<path d="M3 12h3.5l2.5 7 4.5-15 3 8H21"/>',
 }
 
 TEMPLATE = (

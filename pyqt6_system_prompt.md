@@ -79,28 +79,59 @@ produced by `tools/generate_image.py`. The GUI is a front end over those
 functions and must call them — never reimplement them. If the GUI and the CLI
 could ever disagree about what a good prompt is, the architecture is broken.
 
-### Navigation rail — five views in a `QStackedWidget`
+### Navigation rail — ten sections in a `QStackedWidget`
 
-1. **Compose** — the character spec form (subject, wardrobe, setting, action,
-   mood, shot preset, aspect, lighting override, extra directions, seed). The
-   composed prompt and a live 8-layer realism score update as the user types,
-   debounced. A preview pane shows the generated image beside the prompt, with a
-   1–5 star rating control and a "Set as reference" action.
-2. **Variants** — build N prompts from consecutive seeds, generate them
-   concurrently, present them as a selectable thumbnail grid. Choosing a winner
-   records the outcome and adopts that seed. This is the real iteration loop:
-   sample and select, not perfect-one-prompt.
-3. **History** — every logged generation as a sortable table (id, rating, score,
-   seed, slug, image). Select any two rows to diff their prompts, showing added
-   and removed segments so the user can see exactly what changed between a good
-   result and a bad one.
-4. **Insights** — the payoff of rating. Per realism layer, which vocabulary terms
-   correlate with high-rated outcomes, with sample counts. A "prefer learned
-   terms" toggle biases future prompt composition toward them.
-5. **Settings** — image provider (Kie / Higgsfield), model id override, key
-   presence (presence only — never display a key value), the optional OpenRouter
-   text model for the Brief tab, theme, and paths. Higgsfield needs two
-   credentials, so it shows two presence badges.
+The rail is grouped by what a section is *for*, and named with a plain noun.
+Every section that builds something opens on a **Build** tab (or **Compose**
+for Images itself) and, where it has one, a **Library** tab of examples; every
+section carries a one-line "what this is for" header. Learn one and you know
+them all.
+
+1. **Images** — `ImagesView`, a thin container. *Compose*: the character spec
+   form (subject, wardrobe, setting, action, mood, shot, aspect, overrides,
+   seed); the composed prompt and a live 8-layer realism score update as the
+   user types; a preview pane with a 1–5 star rating and "Set as reference".
+   *Variants*: sample N prompts (consecutive seeds, or N angles at one seed),
+   generate concurrently, pick a winner — the real iteration loop.
+2. **Look** — `LookView`, a container. Tabs: *Lighting*, *Composition*,
+   *Camera*, *Color*, *Posing*, *Style* (24 named looks). Each builds one
+   phrase and its "Apply to Compose" writes it into the Images spec (Lighting
+   → lighting override, Composition → composition combo, Camera → shot text,
+   Color → colour override, Posing → Action field, Style →
+   `overrides["style"]`). None of these owns domain logic — each calls a
+   `tools/build_*.py`.
+3. **Videos** — the Kling 3.0 motion toolkit (40 camera movements, a 6-field
+   template, image-to-video) plus a film-term *Glossary*.
+4. **Personas** — `InfluencerStudioView`. A saved persona roster
+   (name/gender/age/style/hair/eye/details) composed into one Subject
+   sentence. *Roster* (CRUD) + *Build*.
+5. **Ads** — the five-beat UGC advert: *Brief*, *Storyboard*, *Variants*,
+   *Checklist*, *Publishing*.
+6. **Cats** — a cat story in scenes (or working-cat one-take gags): *Story*,
+   *Scenes*, *Prompts*, *Custom Prompt* (the one place a prompt is ingested,
+   not composed), *CapCut*.
+7. **Sound** — ElevenLabs: the 100 example prompts (*Library*), *Build* one
+   and score it, the three-layer *Scenes* sheet for the open Cats story, and
+   *Voices* (TTS + cloning).
+8. **Assistant** — `AssistantView`, a container. *Chat*: the running
+   conversation with the in-app expert (feeds the spec and all six Look
+   sections in one Apply). *Prompt tools*: one-shot helpers (idea → spec,
+   upgrade a prompt, critique an image, reverse-engineer a photo).
+9. **Activity** — `ActivityView`, a container. *History*: every logged
+   generation as a table; select two rows to diff their prompts. *What works*:
+   per layer, which vocabulary correlates with high ratings; a "prefer learned
+   terms" toggle biases composition.
+10. **Settings** — image provider (Kie / Higgsfield), model override, key
+    presence (presence only — never a key value), the optional OpenRouter text
+    model, sound/voice key, theme, paths.
+
+**Container pattern**: `ImagesView`, `LookView`, `AssistantView` and
+`ActivityView` are thin — each builds its child views, exposes them as
+attributes, and `MainWindow` reaches in (`self.lighting_view =
+self.look_view.lighting`). `NAV_ITEMS` (`ui/main_window.py`) is the single
+source for the rail, the stack order and the `Ctrl+N` shortcuts;
+`SUBVIEW_ROUTES` there lets `go_to("lighting")` / `go_to("history")` keep
+working as routes into a container tab.
 
 ### Character consistency
 

@@ -40,30 +40,29 @@ ROOT = Path(__file__).resolve().parent.parent
 SECTIONS_KEY = "sections"
 SECTION_NAMES = ("lighting", "composition", "color", "posing", "camera_angle")
 
-# One line each - the nav rail's own map. tools/ never imports the GUI layer,
-# so this is kept here rather than read from ui/main_window.py; if a section
-# is added to NAV_ITEMS there, add its line here too.
+# One line each - the nav rail's own map, labels matching NAV_ITEMS. tools/
+# never imports the GUI layer, so this is kept here rather than read from
+# ui/main_window.py; if a section is added to NAV_ITEMS there, add its line
+# here too (tests/test_advisor.py asserts every label appears in the brief).
 NAV_MAP = [
-    ("Images", "Compose a still: the character spec form, live prompt, generate."),
-    ("Lighting", "8 portrait light directions, hard/soft quality, 10 sources, 8 named "
-                 "setups, 7 lighting-realism techniques."),
-    ("Composition", "7 framing geometries (rule of thirds, phi grid, diagonals, triangle, "
-                     "golden ratio, golden spiral, harmonic armature) plus opt-in techniques "
-                     "(negative space, lead room, depth layering, atmosphere, ...)."),
-    ("Color Grading", "12 named colour moods and 10 film-look references, plus opt-in "
-                       "colour techniques (accent echo, warm/cool contrast)."),
-    ("Posing", "21 named poses by shot type (portrait/editorial/headshot/group/candid), "
-               "plus posing-realism techniques."),
-    ("Camera Angle", "Vertical position, side and shot size - three independent, freely "
-                      "combinable axes."),
+    ("Images", "Compose a still (the character spec form, live prompt, generate) and "
+               "Variants (sample several, pick a winner)."),
+    ("Look", "The prompt-tuning toolkits as tabs - Lighting (8 directions, quality, 10 "
+             "sources, named setups + techniques), Composition (7 framing geometries + "
+             "techniques), Camera (vertical/side/size axes), Color (12 moods, 10 film "
+             "looks + techniques), Posing (21 poses by shot type + techniques), Style "
+             "(24 named looks). Each builds a phrase you Apply into the Images prompt."),
     ("Videos", "The Kling 3.0 motion toolkit - 40 camera movements, image-to-video."),
+    ("Personas", "A saved persona roster (name/gender/age/style/hair/eye/details) "
+                 "composed into one Subject description."),
     ("Ads", "The five-beat UGC advert structure."),
     ("Cats", "A cat story in scenes, or working-cat one-take gags."),
-    ("Sound", "ElevenLabs sound-effect prompts, three layers per scene."),
-    ("Brief", "One-shot AI helpers: idea -> spec, upgrade a prompt, critique an image, "
-              "analyze any photo."),
-    ("History", "Every generated prompt, its rating, and what worked."),
-    ("Insights", "What the ratings say about which vocabulary performs."),
+    ("Sound", "ElevenLabs sound-effect prompts (three layers per scene), TTS, voice cloning."),
+    ("Assistant", "Chat (a running conversation with the in-app expert) and Prompt tools "
+                  "(one-shot helpers: idea -> spec, upgrade a prompt, critique an image, "
+                  "reverse-engineer a photo)."),
+    ("Activity", "History (every generated prompt, its rating, what worked) and What "
+                 "works (which vocabulary the ratings favour)."),
     ("Settings", "Provider, model and key status."),
 ]
 

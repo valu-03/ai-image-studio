@@ -186,7 +186,7 @@ full_payload = {
     },
 }
 mock_api.STATE["reply"] = "Filled everything in.\n```spec\n" + json.dumps(full_payload) + "\n```"
-win.stack.setCurrentIndex(list(win.nav_buttons).index("advisor"))
+win.go_to("advisor")
 av.input.setText("a tired nurse finishing a night shift")
 av.send()
 pump(until=settled)

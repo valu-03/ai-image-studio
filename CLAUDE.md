@@ -1138,34 +1138,50 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
 The spec form is tabbed Purpose / Subject / Scene / Identity / More; Scene holds Setting,
 Shot, Lighting, Colour and Composition.
 
-The GUI is organised by category: **Images** (Compose + Variants), **Lighting** (named
-portrait setups, or direction + quality + source composed independently, plus opt-in realism
-techniques - Apply to Compose writes straight into Compose's own lighting override),
-**Composition** (the same seven framing geometries Compose's own combo already offers,
-browsable, plus opt-in realism techniques - negative space, lead room, depth layering,
-atmosphere, ... - stacked on top; Apply to Compose writes the result in as custom framing
-text), **Color Grading** (12 named moods and 10 film-look references from the course's own
-cheat sheet, plus opt-in techniques; Apply to Compose writes into a new colour override -
-`spec["overrides"]` already worked generically for any layer name), **Posing**
-(named poses across portrait/editorial/headshot/group/candid, plus opt-in posing-realism
-techniques; Apply to Compose writes the result into the Subject tab's Action field - posing
-is descriptive spec content, not one of the 8 gated realism layers), **Camera Angle**
-(vertical position + side + shot size, three independent axes, any subset composed together;
-Apply to Compose writes the result as typed custom shot text - a pure angle phrase with no
-camera vocabulary can honestly score the camera check 0/8, same as any other typed shot),
-**Influencer Studio** (a saved roster of personas - name, gender, age range, any number of
-style tags, hair/eye colour, free-text details, up to 8 mood-reference images - composed
-into one Subject description; Apply to Compose writes into the Subject field wholesale, and
-reference images stay a local mood board, never wired into identity lock), **Videos**
-(the Kling camera-movement toolkit and the film glossary — builds the prompt and, since Phase 3,
-can generate the real clip too), **Ads** (the five-beat UGC advert: brief, storyboard, hook A/B,
-checklist, publishing), **Cats** (a story in scenes plus its CapCut edit sheet, and a Custom Prompt tab for a
-hand-written shot instead), **Sound**
-(the 100 ElevenLabs prompts, three layers per scene, and - with a real key - actual generated
-sound effects, text-to-speech and voice cloning; Ads and Cats can voice their own copy/scenes
-the same way), **Brief** (the text-model helpers, one-shot), **Advisor** (a running
-conversation with the in-app expert on the whole studio - see below),
-then History, Insights and Settings.
+**The rail is ten plain-noun sections, grouped by what a section is for** (restructured
+from a flat 16 - `pyqt6_system_prompt.md` has the authoritative list). `NAV_ITEMS` in
+`ui/main_window.py` is the single source for the rail, the stack order and the `Ctrl+N`
+shortcuts (invariant: nav-button order == stack order == NAV_ITEMS order). Every
+build-something section opens on a **Build** tab (Images keeps "Compose"), carries a
+one-line "what this is for" header, and where it has one, a **Library** tab of examples.
+
+1. **Images** (`ImagesView`, thin container) - Compose + Variants.
+2. **Look** (`LookView`, container) - the six prompt-tuning toolkits as tabs: **Lighting**
+   (named setups, or direction + quality + source, + realism techniques → lighting
+   override), **Composition** (the seven framing geometries + techniques → composition
+   combo as custom text), **Camera** (vertical + side + size axes → shot field as custom
+   text; a pure angle can honestly score the camera check 0/8), **Color** (12 moods + 10
+   film looks + techniques → colour override), **Posing** (poses by shot type + techniques
+   → Action field, not a gated layer), **Style** (24 named looks from the course's Style
+   Reference Library → `overrides["style"]`, which `build_prompt.free_overrides()` folds
+   into the free trailing segment; stylised looks warn that they fight the realism
+   vocabulary). Each is Library + Build and calls a `tools/build_*.py`.
+3. **Videos** - the Kling motion toolkit + the film glossary; builds the prompt and can
+   generate the real clip.
+4. **Personas** (`InfluencerStudioView`) - a saved roster of personas composed into one
+   Subject sentence; Apply writes the Subject field wholesale, reference images stay a
+   local mood board.
+5. **Ads** - the five-beat UGC advert (brief, storyboard, hook A/B, checklist, publishing).
+6. **Cats** - a story in scenes + CapCut sheet, plus a Custom Prompt tab (the one place a
+   prompt is ingested, not composed).
+7. **Sound** - the 100 ElevenLabs prompts, three layers per scene, TTS and voice cloning.
+8. **Assistant** (`AssistantView`, container) - **Chat** (the running conversation with the
+   in-app expert; one Apply feeds the spec and all six Look sections) + **Prompt tools**
+   (the one-shot helpers: idea → spec, upgrade, critique, reverse-engineer a photo).
+9. **Activity** (`ActivityView`, container) - **History** + **What works** (the
+   term-to-rating payoff; a "prefer learned terms" toggle biases composition).
+10. **Settings** - provider / model / key presence / theme / paths.
+
+**Container mechanics**: `LookView`/`AssistantView`/`ActivityView` copy `ImagesView` -
+build the children, expose them (`self.lighting = LightingView(...)`), and `MainWindow`
+reaches in (`self.lighting_view = self.look_view.lighting`), so every `apply_*_phrase`,
+`ADVISOR_SECTION_SETTERS` wire and `win.<x>_view` reference is unchanged. `SUBVIEW_ROUTES`
+in `main_window.py` makes `go_to("lighting")` / `go_to("history")` / the
+`SpecEditor.open_*_requested` signals resolve to a container + tab index. `on_nav_clicked`
+is a generic `refresh`/`reload`/`refresh_key_state` dispatch now, not a 16-way if/elif.
+`tests/test_layout.py`'s `tab_paths()` recurses so the nested toolkit Library/Build tabs
+and Assistant's nested Brief tabs are still layout-tested. Second rail map to keep in
+sync: `tools/advisor.py` `NAV_MAP` (labels == rail labels; `test_advisor.py` checks it).
 
 This doc previously said clip generation and UGC ads/consistent characters were "not built
 yet" - that had gone stale against the code; all of it ships. Genuinely not built (later

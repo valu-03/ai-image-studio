@@ -62,7 +62,10 @@ ICONS = {
     "app": (ICON_DIR / "app.svg", ICON_DIR / "app-active.svg"),
     # Navigation-rail categories
     "images": (ICON_DIR / "images.svg", ICON_DIR / "images-active.svg"),
+    "look": (ICON_DIR / "look.svg", ICON_DIR / "look-active.svg"),
     "videos": (ICON_DIR / "videos.svg", ICON_DIR / "videos-active.svg"),
+    "assistant": (ICON_DIR / "assistant.svg", ICON_DIR / "assistant-active.svg"),
+    "activity": (ICON_DIR / "activity.svg", ICON_DIR / "activity-active.svg"),
     "brief": (ICON_DIR / "brief.svg", ICON_DIR / "brief-active.svg"),
     "advisor": (ICON_DIR / "advisor.svg", ICON_DIR / "advisor-active.svg"),
     "ads": (ICON_DIR / "ads.svg", ICON_DIR / "ads-active.svg"),

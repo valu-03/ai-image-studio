@@ -260,12 +260,19 @@ def unwrapped(root):
     return out
 
 
-def sub_tabs(view):
-    """Every sub-tab of a section view, or [None] when it has none."""
+def tab_paths(view):
+    """Every reachable (nested) tab combination as a list of (QTabWidget,
+    index) steps. `[[]]` when the view has no tabs. Recurses one level deeper
+    so Look -> Lighting -> [Library, Build] and Assistant -> Prompt tools ->
+    Brief's five tabs are all walked, not just the outer bar."""
     tabs = getattr(view, "tabs", None)
-    if isinstance(tabs, QTabWidget):
-        return list(range(tabs.count()))
-    return [None]
+    if not isinstance(tabs, QTabWidget):
+        return [[]]
+    paths = []
+    for i in range(tabs.count()):
+        for sub in tab_paths(tabs.widget(i)):
+            paths.append([(tabs, i)] + sub)
+    return paths
 
 
 # --------------------------------------------------------------------------- #
@@ -303,9 +310,9 @@ for theme_name in ("dark", "light"):
         for key, label in NAV_ITEMS:
             win.go_to(key)
             view = win.views[key]
-            for tab_index in sub_tabs(view):
-                if tab_index is not None:
-                    view.tabs.setCurrentIndex(tab_index)
+            for path in tab_paths(view):
+                for tw, idx in path:
+                    tw.setCurrentIndex(idx)
                 app.processEvents()
 
                 for parent, a, b in layout_overlaps(view):

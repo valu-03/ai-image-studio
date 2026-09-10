@@ -36,19 +36,13 @@ import refine_image as ri  # noqa: E402
 
 from . import assets, tokens as T  # noqa: E402
 from .views import (  # noqa: E402
+    ActivityView,
     AdsView,
-    AdvisorView,
-    BriefView,
-    CameraAngleView,
+    AssistantView,
     CatsView,
-    ColorGradingView,
-    CompositionView,
-    HistoryView,
     ImagesView,
     InfluencerStudioView,
-    InsightsView,
-    LightingView,
-    PosingView,
+    LookView,
     SettingsView,
     SoundView,
     VideosView,
@@ -72,26 +66,39 @@ from .workers import (  # noqa: E402
 # test must not be able to reach the live data at all.
 SETTINGS_APP = os.environ.get("AIVS_SETTINGS_APP", "Studio")
 
-# The rail is organised by category: what you are making, then what you learn
-# from what you made, then configuration.
+# The rail is organised by category: what you are making, then how it looks,
+# then the other things you make, then help, then what you learn, then config.
+# Ten sections; the tuning toolkits live inside "look", the two model helpers
+# inside "assistant", history+insights inside "activity".
 NAV_ITEMS = [
     ("images", "Images"),
-    ("lighting", "Lighting"),
-    ("composition", "Composition"),
-    ("color", "Color Grading"),
-    ("posing", "Posing"),
-    ("camera_angle", "Camera Angle"),
-    ("influencer_studio", "Influencer Studio"),
+    ("look", "Look"),
     ("videos", "Videos"),
+    ("influencer_studio", "Personas"),
     ("ads", "Ads"),
     ("cats", "Cats"),
     ("sound", "Sound"),
-    ("brief", "Brief"),
-    ("advisor", "Advisor"),
-    ("history", "History"),
-    ("insights", "Insights"),
+    ("assistant", "Assistant"),
+    ("activity", "Activity"),
     ("settings", "Settings"),
 ]
+
+# Keys that are no longer their own rail entry but still work as go_to()
+# targets: (container nav key, tab index inside that container). Every
+# existing go_to("lighting") / go_to("history") / SpecEditor.open_*_requested
+# / apply_*_phrase caller keeps working unchanged through this.
+SUBVIEW_ROUTES = {
+    "lighting": ("look", 0),
+    "composition": ("look", 1),
+    "camera_angle": ("look", 2),
+    "color": ("look", 3),
+    "posing": ("look", 4),
+    "style": ("look", 5),
+    "advisor": ("assistant", 0),
+    "brief": ("assistant", 1),
+    "history": ("activity", 0),
+    "insights": ("activity", 1),
+}
 
 # tools/advisor.py's own SECTION_NAMES -> the SpecEditor setter each one's
 # composed phrase belongs in. Every setter here already exists and is already
@@ -260,38 +267,42 @@ class MainWindow(QMainWindow):
         # Compose and Variants keep their own identities; Images just groups them.
         self.compose_view = self.images_view.compose
         self.variants_view = self.images_view.variants
+
+        # Look groups the five tuning toolkits; MainWindow still talks to each
+        # one by name, so every apply_*_phrase / ADVISOR_SECTION_SETTERS wire
+        # is unchanged.
+        self.look_view = LookView(self.theme.palette)
+        self.lighting_view = self.look_view.lighting
+        self.composition_view = self.look_view.composition
+        self.camera_angle_view = self.look_view.camera
+        self.color_view = self.look_view.color
+        self.posing_view = self.look_view.posing
+
+        self.assistant_view = AssistantView(self.bank)
+        self.advisor_view = self.assistant_view.advisor
+        self.brief_view = self.assistant_view.brief
+
+        self.activity_view = ActivityView(self.theme.palette)
+        self.history_view = self.activity_view.history
+        self.insights_view = self.activity_view.insights
+
         self.videos_view = VideosView(self.theme.palette)
         self.ads_view = AdsView(self.bank, self.theme.palette)
         self.cats_view = CatsView(self.bank, self.theme.palette)
         self.sound_view = SoundView(self.theme.palette)
-        self.lighting_view = LightingView(self.theme.palette)
-        self.composition_view = CompositionView(self.theme.palette)
-        self.color_view = ColorGradingView(self.theme.palette)
-        self.posing_view = PosingView(self.theme.palette)
-        self.camera_angle_view = CameraAngleView(self.theme.palette)
         self.influencer_studio_view = InfluencerStudioView(self.theme.palette)
-        self.brief_view = BriefView(self.bank)
-        self.advisor_view = AdvisorView(self.bank)
-        self.history_view = HistoryView(self.theme.palette)
-        self.insights_view = InsightsView(self.theme.palette)
         self.settings_view = SettingsView()
 
         self.views = {
             "images": self.images_view,
-            "lighting": self.lighting_view,
-            "composition": self.composition_view,
-            "color": self.color_view,
-            "posing": self.posing_view,
-            "camera_angle": self.camera_angle_view,
-            "influencer_studio": self.influencer_studio_view,
+            "look": self.look_view,
             "videos": self.videos_view,
+            "influencer_studio": self.influencer_studio_view,
             "ads": self.ads_view,
             "cats": self.cats_view,
             "sound": self.sound_view,
-            "brief": self.brief_view,
-            "advisor": self.advisor_view,
-            "history": self.history_view,
-            "insights": self.insights_view,
+            "assistant": self.assistant_view,
+            "activity": self.activity_view,
             "settings": self.settings_view,
         }
         for key, _ in NAV_ITEMS:
@@ -304,9 +315,12 @@ class MainWindow(QMainWindow):
         # Generated from NAV_ITEMS rather than listed again: the hardcoded copy
         # silently drifted out of step every time a section was added. `k=key`
         # binds per iteration - a bare closure would capture the last key.
+        # Ctrl+1..9 then Ctrl+0 for the tenth - QKeySequence cannot parse a
+        # multi-digit token ("Ctrl+10" is a dead shortcut), and the rail is ten
+        # sections now.
         shortcuts = [
-            (label, "Ctrl+{}".format(index + 1), lambda k=key: self.go_to(k))
-            for index, (key, label) in enumerate(NAV_ITEMS)
+            (label, "Ctrl+{}".format((index + 1) % 10), lambda k=key: self.go_to(k))
+            for index, (key, label) in enumerate(NAV_ITEMS[:10])
         ] + [
             ("Focus search", "Ctrl+F", self.search.setFocus),
             ("Copy prompt", "Ctrl+Shift+C", self.compose_view.copy_prompt),
@@ -445,6 +459,14 @@ class MainWindow(QMainWindow):
         return spec, detailed, weights
 
     def go_to(self, key):
+        route = SUBVIEW_ROUTES.get(key)
+        if route:
+            container_key, tab_index = route
+            self.go_to(container_key)
+            container = self.views[container_key]
+            if tab_index < container.tabs.count():
+                container.tabs.setCurrentIndex(tab_index)
+            return
         button = self.nav_buttons.get(key)
         if button:
             button.setChecked(True)
@@ -475,36 +497,14 @@ class MainWindow(QMainWindow):
         key, label = NAV_ITEMS[index]
         self.stack.setCurrentIndex(index)
         self.view_title.setText(label)
-        if key == "history":
-            self.history_view.reload()
-        elif key == "insights":
-            self.insights_view.reload()
-        elif key == "settings":
-            self.settings_view.refresh_key_state()
-        elif key == "brief":
-            self.brief_view.refresh_context()
-        elif key == "advisor":
-            self.advisor_view.refresh()
-        elif key == "videos":
-            self.videos_view.refresh()
-        elif key == "ads":
-            self.ads_view.refresh()
-        elif key == "cats":
-            self.cats_view.refresh()
-        elif key == "sound":
-            self.sound_view.refresh()
-        elif key == "lighting":
-            self.lighting_view.refresh()
-        elif key == "composition":
-            self.composition_view.refresh()
-        elif key == "posing":
-            self.posing_view.refresh()
-        elif key == "color":
-            self.color_view.refresh()
-        elif key == "camera_angle":
-            self.camera_angle_view.refresh()
-        elif key == "influencer_studio":
-            self.influencer_studio_view.refresh()
+        view = self.views[key]
+        # Every section that needs work on show exposes exactly one of these;
+        # the containers (Look / Assistant / Activity) forward to their visible
+        # child. Settings is the only leaf with a differently-named hook.
+        for hook in ("refresh", "reload", "refresh_key_state"):
+            if hasattr(view, hook):
+                getattr(view, hook)()
+                break
 
     def on_search(self, text):
         self.compose_view.set_filter(text)

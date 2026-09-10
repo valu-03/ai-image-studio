@@ -106,10 +106,11 @@ check("images selected by default", win.nav_buttons["images"].isChecked())
 check("top bar has search", win.search is not None)
 check("nav icons load", not win.nav_buttons["images"].icon().isNull())
 win.go_to("insights")
-check("nav switches stack",
-      win.stack.currentIndex() == list(win.nav_buttons).index("insights"),
+check("nav switches stack (insights routes into Activity)",
+      win.stack.currentIndex() == list(win.nav_buttons).index("activity")
+      and win.activity_view.tabs.currentWidget() is win.insights_view,
       str(win.stack.currentIndex()))
-check("title follows nav", win.view_title.text() == "Insights", win.view_title.text())
+check("title follows nav", win.view_title.text() == "Activity", win.view_title.text())
 win.go_to("images")
 
 print("--- palette (spec 2) ---")

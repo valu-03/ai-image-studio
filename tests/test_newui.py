@@ -74,13 +74,17 @@ def pump(seconds, until):
 
 
 print("--- categories in the rail ---")
-check("images/videos/brief present",
-      all(k in win.nav_buttons for k in ("images", "videos", "brief")))
+check("images/videos/assistant present",
+      all(k in win.nav_buttons for k in ("images", "videos", "assistant")))
 check("images icon", not win.nav_buttons["images"].icon().isNull())
 check("videos icon", not win.nav_buttons["videos"].icon().isNull())
-check("brief icon", not win.nav_buttons["brief"].icon().isNull())
+check("assistant icon", not win.nav_buttons["assistant"].icon().isNull())
 check("images groups compose+variants", win.images_view.tabs.count() == 2)
 check("compose is images tab 0", win.images_view.tabs.tabText(0) == "Compose")
+check("brief routes to the Assistant section's Prompt tools tab",
+      (win.go_to("brief") or True)
+      and win.stack.currentIndex() == list(win.nav_buttons).index("assistant")
+      and win.assistant_view.tabs.currentWidget() is win.brief_view)
 win.go_to("videos")
 check("videos view reachable",
       win.stack.currentIndex() == list(win.nav_buttons).index("videos"))
