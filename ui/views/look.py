@@ -20,8 +20,9 @@ from .color_grading import ColorGradingView
 from .composition import CompositionView
 from .lighting import LightingView
 from .posing import PosingView
+from .style import StyleView
 
-_TABS = ("Lighting", "Composition", "Camera", "Color", "Posing")
+_TABS = ("Lighting", "Composition", "Camera", "Color", "Posing", "Style")
 
 
 class LookView(QWidget):
@@ -36,8 +37,9 @@ class LookView(QWidget):
         self.camera = CameraAngleView(palette)
         self.color = ColorGradingView(palette)
         self.posing = PosingView(palette)
+        self.style = StyleView(palette)
         self._children = (self.lighting, self.composition, self.camera,
-                          self.color, self.posing)
+                          self.color, self.posing, self.style)
 
         self.tabs = QTabWidget()
         for child, label in zip(self._children, _TABS):
@@ -67,6 +69,9 @@ class LookView(QWidget):
 
     def show_posing(self):
         self.tabs.setCurrentIndex(4)
+
+    def show_style(self):
+        self.tabs.setCurrentIndex(5)
 
     def refresh(self):
         current = self.tabs.currentWidget()

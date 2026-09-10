@@ -97,6 +97,7 @@ class SpecEditor(QWidget):
         super().__init__(parent)
         self.bank = bank
         self._reference = ""
+        self._style_override = ""
 
         self._build_fields()
         self._build_tabs()
@@ -515,6 +516,15 @@ class SpecEditor(QWidget):
         """
         self.shot.setCurrentText((phrase or "").strip())
 
+    def set_style_override(self, phrase):
+        """Load a composed phrase from the Style section. There is no visible
+        Style combo - it rides in spec["overrides"]["style"] (see spec()),
+        which build_prompt.free_overrides() appends to the free trailing
+        segment. Replaces, like every other set_*_override. `changed` is
+        emitted so the prompt preview and score update."""
+        self._style_override = (phrase or "").strip()
+        self.changed.emit()
+
     # -- data in / out ------------------------------------------------------ #
     def filled_keys(self):
         """The spec keys the user has actually put something into.
@@ -583,6 +593,12 @@ class SpecEditor(QWidget):
             overrides["lighting"] = [lighting, "realistic shadows"]
         if colour:
             overrides["colour"] = [colour]
+        # "style" is not one of the eight realism layers and has no visible
+        # combo - it rides in overrides and build_prompt.free_overrides()
+        # appends it to the free trailing segment. Same non-widget-field
+        # mechanism `_reference` uses.
+        if getattr(self, "_style_override", ""):
+            overrides["style"] = [self._style_override]
         if overrides:
             spec["overrides"] = overrides
 
@@ -599,6 +615,11 @@ class SpecEditor(QWidget):
             widget.blockSignals(True)
 
         self._reference = spec.get("reference", "") or ""
+        _ov = spec.get("overrides") or {}
+        _style = _ov.get("style")
+        self._style_override = (
+            _style[0] if isinstance(_style, (list, tuple)) and _style
+            else (_style or "") if isinstance(_style, str) else "")
         self.subject.setPlainText(spec.get("subject", ""))
         self.wardrobe.setText(spec.get("wardrobe", ""))
         self.setting.setText(spec.get("setting", ""))

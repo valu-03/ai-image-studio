@@ -41,6 +41,7 @@ ORDER = [
     "test_autofill.py",
     "test_autofill_gui.py",
     "test_advisor_gui.py",
+    "test_style_gui.py",
     "test_library.py",
     "test_influencer_studio_gui.py",
     "test_ads.py",

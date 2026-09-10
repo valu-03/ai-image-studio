@@ -41,13 +41,14 @@ from .look import LookView
 from .posing import PosingView
 from .settings import SettingsView
 from .sound import SoundView
+from .style import StyleView
 from .variants import VariantsView
 from .videos import VideosView
 
 __all__ = [
     "ImagesView", "ComposeView", "VariantsView", "LookView", "VideosView", "AdsView",
     "CatsView", "SoundView", "LightingView", "CompositionView", "ColorGradingView",
-    "PosingView", "CameraAngleView", "InfluencerStudioView", "AssistantView",
-    "BriefView", "AdvisorView", "ActivityView", "HistoryView", "InsightsView",
-    "SettingsView",
+    "PosingView", "CameraAngleView", "StyleView", "InfluencerStudioView",
+    "AssistantView", "BriefView", "AdvisorView", "ActivityView", "HistoryView",
+    "InsightsView", "SettingsView",
 ]

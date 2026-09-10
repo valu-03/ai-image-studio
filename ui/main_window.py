@@ -277,6 +277,7 @@ class MainWindow(QMainWindow):
         self.camera_angle_view = self.look_view.camera
         self.color_view = self.look_view.color
         self.posing_view = self.look_view.posing
+        self.style_view = self.look_view.style
 
         self.assistant_view = AssistantView(self.bank)
         self.advisor_view = self.assistant_view.advisor
@@ -380,6 +381,7 @@ class MainWindow(QMainWindow):
         self.posing_view.posing_applied.connect(self.apply_posing_phrase)
         self.color_view.color_applied.connect(self.apply_color_phrase)
         self.camera_angle_view.angle_applied.connect(self.apply_camera_angle_phrase)
+        self.style_view.style_applied.connect(self.apply_style_phrase)
         self.influencer_studio_view.persona_applied.connect(self.apply_persona_phrase)
         # The sound sheet is generated from whatever story is open in Cats, so
         # the two stay in step without either knowing about the other.
@@ -538,6 +540,7 @@ class MainWindow(QMainWindow):
         self.posing_view.set_palette_tokens(self.theme.palette)
         self.color_view.set_palette_tokens(self.theme.palette)
         self.camera_angle_view.set_palette_tokens(self.theme.palette)
+        self.style_view.set_palette_tokens(self.theme.palette)
         self.influencer_studio_view.set_palette_tokens(self.theme.palette)
         self.insights_view.set_palette_tokens(self.theme.palette)
         self.statusBar().showMessage("{} theme".format(name.capitalize()))
@@ -575,6 +578,13 @@ class MainWindow(QMainWindow):
         """Camera Angle's "Apply to Compose" - identical shape to
         apply_lighting_phrase(), landing in the Shot field as custom text."""
         self.compose_view.editor.set_shot_override(phrase)
+        self.go_to("images")
+        self.images_view.show_compose()
+
+    def apply_style_phrase(self, phrase):
+        """Style's "Apply to Compose" - identical shape to
+        apply_lighting_phrase(), landing in the (widget-less) style override."""
+        self.compose_view.editor.set_style_override(phrase)
         self.go_to("images")
         self.images_view.show_compose()
 
