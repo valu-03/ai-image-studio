@@ -80,9 +80,15 @@ def _one_attempt(bank, spec, provider, model, base, dry_run, should_cancel,
     present, _, banned, _, _ = rl.lint(prompt.lower(), bank)
     score = len(present)
     passed = score == 8 and not banned
+    # The spec stores the identity-lock image under the singular "reference"
+    # key (spec_editor.set_reference, build_ad, build_story, variants all use
+    # it); "references" was never a spec key, so this used to always send an
+    # empty list and every refined regeneration invented a new face while the
+    # prompt still claimed "the exact same person as in the reference image".
+    references = [spec["reference"]] if spec.get("reference") else []
     path, error = gi.generate(
         provider=provider, prompt=prompt, out_name=out_name,
-        references=spec.get("references") or [], model=model, base=base,
+        references=references, model=model, base=base,
         dry_run=dry_run, should_cancel=should_cancel, on_stage=on_stage, spec=spec,
     )
     return prompt, selected, score, passed, path, error

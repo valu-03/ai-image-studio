@@ -48,6 +48,10 @@ class VariantsView(QWidget):
         self.cards = {}
         self.entries = {}
         self.prompts = {}
+        # index -> history entry_id frozen at submit time, so a result that
+        # lands after a Cancel + rebuild is still logged to the row it belongs
+        # to rather than the row that index now points at (or dropped silently).
+        self._inflight_entries = {}
         self.selected = None
         self.setup_ui()
 
@@ -265,6 +269,7 @@ class VariantsView(QWidget):
             out_name = "variant-{}-{}.png".format(tag, self.entries[index][-6:])
             jobs.append((index, prompt, out_name, references))
             card.set_status("accent", "generating…")
+        self._inflight_entries = dict(self.entries)
         self.generate_requested.emit(jobs)
 
     # -- batch feedback ---------------------------------------------------- #
@@ -282,19 +287,27 @@ class VariantsView(QWidget):
         self.progress.setValue(completed)
 
     def on_item_finished(self, index, path):
+        # Always log the generation to the row it was submitted against - the
+        # image exists on disk and is real evidence for Insights/History even
+        # if its grid cell is gone.
+        entry_id = self._inflight_entries.get(index)
+        if entry_id:
+            hist.rate(entry_id, None, image=str(path))
         card = self.cards.get(index)
-        if card is None:
+        if card is None or self.entries.get(index) != entry_id:
+            self.status.emit(
+                "A cancelled variant finished after the grid was rebuilt — "
+                "saved to History, not shown here.")
             return
         card.set_image(path)
         card.set_status("success", "ready")
         card.image_path = path
-        entry_id = self.entries.get(index)
-        if entry_id:
-            hist.rate(entry_id, None, image=str(path))
 
     def on_item_failed(self, index, reason):
         card = self.cards.get(index)
-        if card is None:
+        if card is None or self.entries.get(index) != self._inflight_entries.get(index):
+            self.status.emit("A cancelled variant failed after the grid was rebuilt: "
+                             + reason[:120])
             return
         card.set_status("danger", "failed")
         card.preview.setText("failed")

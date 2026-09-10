@@ -899,8 +899,14 @@ class MainWindow(QMainWindow):
         return answer == QMessageBox.StandardButton.Ok
 
     def cancel_generation(self):
+        # Drop the rest of a locked sequence first, or on_batch_finished would
+        # read a still-populated sequence_rest and submit phase 2 instead of
+        # cleaning up. WorkerPool.cancel() now drives batch_finished, which
+        # runs the full reset (badge, busy state, _batch).
+        if self._batch is not None:
+            self._batch.sequence_rest = []
         self.pool.cancel()
-        self.statusBar().showMessage("Cancelling — running requests finish, queued ones drop")
+        self.statusBar().showMessage("Cancelled — running requests finish, queued ones drop")
 
     def _batch_size(self):
         """The whole sequence, not just the phase currently in flight."""

@@ -461,8 +461,10 @@ class WorkerPool(QObject):
         self.pool = QThreadPool(self)
         self.pool.setMaxThreadCount(max_concurrency)
         self._tasks = []
+        self._done_tasks = set()
         self._total = 0
         self._completed = 0
+        self._finished_emitted = False
 
     @property
     def busy(self):
@@ -478,13 +480,16 @@ class WorkerPool(QObject):
         this only tracks progress and start/finish of the batch as a whole.
         """
         self._tasks = list(tasks)
+        self._done_tasks = set()
         self._total = len(self._tasks)
         self._completed = 0
+        self._finished_emitted = False
         if not self._tasks:
+            self._finished_emitted = True
             self.batch_finished.emit()
             return
         for task in self._tasks:
-            task.signals.done.connect(self._on_done)
+            task.signals.done.connect(lambda _index, t=task: self._task_done(t))
         self.batch_started.emit(self._total)
         for task in self._tasks:
             self.pool.start(task)
@@ -495,11 +500,22 @@ class WorkerPool(QObject):
             if cancel:
                 cancel()
         self.pool.clear()   # drops anything not yet started
+        # clear() removes queued runnables that will now never emit `done`, so
+        # without this the completed count never reaches the total, `busy`
+        # stays True forever and every later generation is refused until the
+        # app restarts. Mark every unfinished task done now; a late `done` from
+        # a task that was already running is deduped by `_done_tasks`.
+        for task in list(self._tasks):
+            self._task_done(task)
 
-    def _on_done(self, _index):
+    def _task_done(self, task):
+        if task in self._done_tasks:
+            return
+        self._done_tasks.add(task)
         self._completed += 1
         self.progress.emit(self._completed, self._total)
-        if self._completed >= self._total:
+        if self._completed >= self._total and not self._finished_emitted:
+            self._finished_emitted = True
             self.batch_finished.emit()
 
 

@@ -205,6 +205,26 @@ check("no mock request was ever sent for round 0",
       mock_api.STATE["last"] is None, str(mock_api.STATE["last"]))
 
 print()
+print("=== the identity reference on the spec reaches every regeneration ===")
+reset()
+_REF = Path(tempfile.gettempdir()) / "aivs-refine-reference.png"
+_REF.write_bytes(b"\x89PNG\r\n\x1a\n" + b"fake reference bytes")
+locked = dict(SPEC, reference=str(_REF), lock_identity=True)
+# max_retries=1 with a persistently-flagged layer forces round 1 to regenerate.
+result = ri.refine(bank, locked, provider="kie", base=BASE, max_retries=1,
+                   ask=fake(crit(failing=["texture"])))
+check("ok", result["ok"], result.get("error", ""))
+check("a regeneration actually happened", len(result["attempts"]) == 2)
+check("the reference was uploaded then sent as image_input (not dropped)",
+      mock_api.STATE["last"] is not None
+      and "image_input" in _json.dumps(mock_api.STATE["last"]["body"].get("input", {})),
+      _json.dumps(mock_api.STATE["last"]))
+try:
+    _REF.unlink()
+except OSError:
+    pass
+
+print()
 if fails:
     print("FAILED: {}".format(", ".join(fails)))
 else:
