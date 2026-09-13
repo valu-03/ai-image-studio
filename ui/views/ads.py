@@ -12,12 +12,14 @@ broken and least easily seen in a list of text.
 """
 
 import sys
+from datetime import datetime
 from pathlib import Path
 
 from PyQt6.QtCore import QSize, Qt, QThreadPool, pyqtSignal
 from PyQt6.QtGui import QColor, QIcon, QPainter
 from PyQt6.QtWidgets import (
     QComboBox,
+    QFileDialog,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -39,14 +41,16 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 import ad_lint as al  # noqa: E402
 import build_ad as ba  # noqa: E402
+import build_prompt as bp  # noqa: E402
 import elevenlabs_voices as voices_tool  # noqa: E402
 import generate_image as gi  # noqa: E402  (key-presence check only)
 import generate_sound as gsnd  # noqa: E402  (KEY_VAR, WHERE - shared ElevenLabs constants)
 import realism_lint as rl  # noqa: E402
+import render_video as rv  # noqa: E402
 
 from .. import assets, tokens as T  # noqa: E402
 from ..widgets import AiSuggestionBadge, Badge, Card, GateTree, MutedLabel, TitleLabel  # noqa: E402
-from ..workers import LlmTask, SpeechTask, VoiceListTask  # noqa: E402
+from ..workers import LlmTask, RenderTask, SpeechTask, VoiceListTask  # noqa: E402
 
 
 class Timeline(QWidget):
@@ -126,6 +130,7 @@ class AdsView(QWidget):
     """Emits `generate_requested` with (jobs, provider_note) for the controller."""
 
     generate_requested = pyqtSignal(list)
+    video_requested = pyqtSignal(list, dict)
     status = pyqtSignal(str)
 
     def __init__(self, bank, palette=None, parent=None):
@@ -136,8 +141,11 @@ class AdsView(QWidget):
         self.shots = []
         self.copy = {}
         self.images = {}            # shot index -> generated file
+        self.videos = {}            # shot index -> generated clip
+        self.voiceovers = {}        # shot index -> generated voiceover audio
         self.status_by_shot = {}
         self.context = None                 # set by the controller: () -> spec dict
+        self.product_reference_path = None  # optional product photo, alongside the locked presenter
         self.pool = QThreadPool(self)
         self.pool.setMaxThreadCount(1)
         self._voiceover_queue = []
@@ -152,6 +160,7 @@ class AdsView(QWidget):
         self.tabs = QTabWidget()
         self.tabs.addTab(self._build_brief_tab(), "Brief")
         self.tabs.addTab(self._build_storyboard_tab(), "Storyboard")
+        self.tabs.addTab(self._build_video_tab(), "Video")
         self.tabs.addTab(self._build_variants_tab(), "Variants")
         self.tabs.addTab(self._build_checklist_tab(), "Checklist")
         self.tabs.addTab(self._build_publishing_tab(), "Publishing")
@@ -203,6 +212,22 @@ class AdsView(QWidget):
             "pain: ...\nrelatable: ...\nshift: ...\nsolution: ...\nproof: ...")
         self.script.textChanged.connect(self.on_script_edited)
 
+        # PRODUCT PHOTO. Optional, and separate from the presenter reference
+        # generate_sequence() already locks beats 2-5 to: the community
+        # material's own technique is to attach a character reference for
+        # identity AND a product reference for exact packaging/label/logo, at
+        # the same time. Beat 1 has no lock to add this to yet (nothing is
+        # generated when it runs), so this only ever reaches beats 2-5 - see
+        # main_window.py::_submit_sequence_rest().
+        self.product_reference_label = MutedLabel("Product photo: none")
+        self.product_reference_badge = Badge("-", "neutral")
+        choose_product_button = QPushButton("Choose product photo...")
+        choose_product_button.setProperty("class", "ghost")
+        choose_product_button.clicked.connect(self.choose_product_reference)
+        clear_product_button = QPushButton("Clear")
+        clear_product_button.setProperty("class", "ghost")
+        clear_product_button.clicked.connect(self.clear_product_reference)
+
         form = Card()
         form.body.addWidget(TitleLabel("Who, where and what feeling"))
         for label, widget in [("Product", self.product), ("Audience", self.audience),
@@ -218,6 +243,23 @@ class AdsView(QWidget):
             row.addWidget(widget, 1)
             form.body.addLayout(row)
         form.body.addWidget(self.platform_note)
+
+        form.body.addWidget(MutedLabel(
+            "Optional: a product photo, carried alongside the locked presenter from beat 2 "
+            "onward so exact packaging/label/logo stays consistent too."))
+        # Same split as Videos' own still picker: the label can shrink, the
+        # buttons cannot - one row each.
+        product_reference_row = QHBoxLayout()
+        product_reference_row.setSpacing(T.SPACE["sm"])
+        product_reference_row.addWidget(self.product_reference_badge)
+        product_reference_row.addWidget(self.product_reference_label, 1)
+        form.body.addLayout(product_reference_row)
+        product_reference_button_row = QHBoxLayout()
+        product_reference_button_row.setSpacing(T.SPACE["sm"])
+        product_reference_button_row.addWidget(choose_product_button)
+        product_reference_button_row.addWidget(clear_product_button)
+        product_reference_button_row.addStretch(1)
+        form.body.addLayout(product_reference_button_row)
 
         draft_row = QHBoxLayout()
         draft_row.addWidget(self.draft_button)
@@ -352,6 +394,52 @@ class AdsView(QWidget):
         layout.setSpacing(T.COLUMN_GAP)
         layout.addWidget(board, 1)
         layout.addWidget(gate)
+        return page
+
+    def _build_video_tab(self):
+        """A separate tab, not another row on Storyboard's cards - those are
+        already at their exact minimum-window height (see the comment above
+        actions_row on the Storyboard tab). A fresh tab has its own room."""
+        self.video_button = QPushButton("Generate Videos")
+        self.video_button.setProperty("class", "primary")
+        self.video_button.setIcon(assets.icon("videos"))
+        self.video_button.setIconSize(assets.ICON_SIZE)
+        self.video_button.setToolTip(
+            "One Kling 3.0 clip per shot, from that shot's still image and its "
+            "camera-move prompt. Needs every shot's image generated first.")
+        self.video_button.clicked.connect(self.request_generate_videos)
+
+        self.render_button = QPushButton("Render Video")
+        self.render_button.setProperty("class", "ghost")
+        self.render_button.setIcon(assets.icon("videos"))
+        self.render_button.setIconSize(assets.ICON_SIZE)
+        self.render_button.setToolTip(
+            "Concatenate every shot's clip (plus its voiceover, if any) into "
+            "one exported .mp4. Needs every shot's clip generated first.")
+        self.render_button.clicked.connect(self.request_render)
+
+        self.video_status = MutedLabel("")
+
+        row = QHBoxLayout()
+        row.setSpacing(T.SPACE["sm"])
+        row.addWidget(self.video_button)
+        row.addWidget(self.render_button)
+        row.addStretch(1)
+
+        card = Card()
+        card.body.addWidget(TitleLabel("Video assembly"))
+        card.body.addWidget(MutedLabel(
+            "One Kling clip per shot, animated from that shot's still and its "
+            "own camera move - then concatenate every clip, with its "
+            "voiceover mixed in where one exists, into one exported .mp4."))
+        card.body.addLayout(row)
+        card.body.addWidget(self.video_status)
+        card.body.addStretch(1)
+
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(card)
         return page
 
     def _build_variants_tab(self):
@@ -628,8 +716,8 @@ class AdsView(QWidget):
             self.status.emit("Already generating voiceover")
             return
 
-        queue = [(shot["copy"], "ad-{}-{}-voice.mp3".format(shot["n"], shot["key"]), voice_id)
-                for shot in self.shots if shot.get("copy")]
+        queue = [(i, shot["copy"], "ad-{}-{}-voice.mp3".format(shot["n"], shot["key"]), voice_id)
+                for i, shot in enumerate(self.shots) if shot.get("copy")]
         if not queue:
             self.status.emit("No beat has a copy line yet - write or draft one first.")
             return
@@ -646,15 +734,17 @@ class AdsView(QWidget):
                 self._voiceover_done, self._voiceover_total))
             self.voiceover_button.setEnabled(True)
             return
-        text, out_name, voice_id = self._voiceover_queue.pop(0)
+        index, text, out_name, voice_id = self._voiceover_queue.pop(0)
         self.status.emit("Generating voiceover {} of {}: {}".format(
             self._voiceover_done + 1, self._voiceover_total, out_name))
         task = SpeechTask(text, voice_id=voice_id, out_name=out_name)
-        task.signals.finished.connect(self._on_voiceover_item_done)
+        task.signals.finished.connect(
+            lambda path, i=index: self._on_voiceover_item_done(i, path))
         task.signals.failed.connect(self._on_voiceover_item_failed)
         self.pool.start(task)
 
-    def _on_voiceover_item_done(self, _path):
+    def _on_voiceover_item_done(self, index, path):
+        self.voiceovers[index] = str(path)
         self._voiceover_done += 1
         self._advance_voiceover_queue()
 
@@ -700,6 +790,23 @@ class AdsView(QWidget):
         self.draft_badge.set_status("danger", "failed")
         self.status.emit(reason[:160])
 
+    def choose_product_reference(self):
+        start = str(assets.IMAGES_DIR if assets.IMAGES_DIR.exists() else ROOT)
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Choose the product photo", start, "Images (*.png *.jpg *.jpeg *.webp)"
+        )
+        if path:
+            self.product_reference_path = path
+            self.product_reference_label.setText("Product photo: {}".format(Path(path).name))
+            self.product_reference_badge.set_status("success", "attached")
+            self.status.emit("Product photo set to {}".format(Path(path).name))
+
+    def clear_product_reference(self):
+        self.product_reference_path = None
+        self.product_reference_label.setText("Product photo: none")
+        self.product_reference_badge.set_status("neutral", "-")
+        self.status.emit("Product photo cleared")
+
     def request_generate(self):
         """Hand the controller one job per beat, in order."""
         if not self.shots:
@@ -709,7 +816,7 @@ class AdsView(QWidget):
         self.status_by_shot = {}
         jobs = [{"index": i, "prompt": shot["prompt"], "beat": shot["key"],
                  "out_name": "ad-{}-{}.png".format(shot["n"], shot["key"]),
-                 "spec": shot["spec"]}
+                 "spec": shot["spec"], "product_reference": self.product_reference_path}
                 for i, shot in enumerate(self.shots)]
         for index in range(len(jobs)):
             self._set_shot_status(index, "queued…")
@@ -742,6 +849,78 @@ class AdsView(QWidget):
 
     def on_item_failed(self, index, reason):
         self._set_shot_status(index, "failed")
+        self.status.emit(reason[:160])
+
+    # -- video ---------------------------------------------------------------- #
+    def request_generate_videos(self):
+        """One Kling clip per shot, from that shot's still and its own
+        camera-move prompt - the same image-to-video pattern Cats uses."""
+        if not self.shots:
+            self.status.emit("Build the storyboard first")
+            return
+        missing = [s["n"] for i, s in enumerate(self.shots) if not self.images.get(i)]
+        if missing:
+            self.status.emit(
+                "Generate the stills first - shots {} have no image, and a clip "
+                "without one invents a different presenter.".format(
+                    ", ".join(str(n) for n in missing[:6])))
+            return
+        jobs = [{"index": i, "prompt": shot["motion_prompt"] or shot["prompt"],
+                 "image": self.images.get(i), "duration": shot["duration"],
+                 "out_name": "ad-{}-{}.mp4".format(shot["n"], shot["key"])}
+                for i, shot in enumerate(self.shots)]
+        aspect = (self.shots[0]["spec"].get("aspect") if self.shots else None) or "9:16"
+        self.video_requested.emit(jobs, {"mode": "std", "sound": False, "aspect_ratio": aspect})
+
+    def on_video_finished(self, index, path):
+        self.videos[index] = str(path)
+        self._set_shot_status(index, "clip ready")
+
+    def on_video_failed(self, index, reason):
+        self._set_shot_status(index, "clip failed")
+        self.status.emit(reason[:160])
+
+    # -- render --------------------------------------------------------------- #
+    def request_render(self):
+        """Concatenate every shot's clip (plus its voiceover, if any) into one
+        exported .mp4 - the in-app alternative to editing the clips by hand."""
+        if not self.shots:
+            self.status.emit("Nothing to render yet")
+            return
+        missing = [s["n"] for i, s in enumerate(self.shots) if not self.videos.get(i)]
+        if missing:
+            self.status.emit(
+                "Generate the clips first - shots {} have no video.".format(
+                    ", ".join(str(n) for n in missing[:6])))
+            return
+        scenes_payload = [
+            {"clip_path": self.videos[i], "voice_path": self.voiceovers.get(i),
+             "duration": shot["duration"]}
+            for i, shot in enumerate(self.shots)
+        ]
+        aspect = (self.shots[0]["spec"].get("aspect") if self.shots else None) or "9:16"
+        slug = bp.slugify(self.product.text().strip() or "ad")
+        stamp = datetime.now().strftime("%Y%m%d-%H%M")
+        out_path = rv.OUT_DIR / "{}-{}.mp4".format(slug, stamp)
+
+        self.render_button.setEnabled(False)
+        self.video_status.setText("Rendering...")
+        task = RenderTask(scenes_payload, out_path, aspect_ratio=aspect)
+        task.signals.stage.connect(self._on_render_stage)
+        task.signals.finished.connect(self._on_render_finished)
+        task.signals.failed.connect(self._on_render_failed)
+        task.signals.done.connect(lambda: self.render_button.setEnabled(True))
+        self.pool.start(task)
+
+    def _on_render_stage(self, message):
+        self.video_status.setText(message)
+
+    def _on_render_finished(self, path):
+        self.video_status.setText("Saved: {}".format(path))
+        self.status.emit("Video rendered")
+
+    def _on_render_failed(self, reason):
+        self.video_status.setText(reason[:200])
         self.status.emit(reason[:160])
 
     def _set_shot_status(self, index, text):

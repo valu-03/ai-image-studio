@@ -37,6 +37,13 @@ the product block, the ad is late.
 tried and why it failed. "Women 25–40" is a demographic; "women who have already bought three
 shampoos that made it worse" is an audience.
 
+**Optional — a product photo.** Attach one alongside the presenter's own locked identity, and
+it rides along too, from beat 2 on (beat 1 has nothing generated yet to lock to). This is the
+same split the AI Video Bootcamp Skool's avatar-ad prompt craft teaches for Seedance — a
+character reference for identity, a separate product reference for exact packaging, colour,
+label and logo — applied here through this app's own existing multi-reference generation
+(Kie/Nano-Banana-Pro), not anything Seedance-specific.
+
 ## Step 2 — Format and placement
 
 Pick the platform. It sets the aspect ratio, the length, the hook window and the pacing, and it
@@ -87,7 +94,8 @@ part worth testing first: everything after it is only seen by people the hook al
 ## Step 7 — Generate, at speed
 
 **Generate all five shots.** Beat 1 creates the presenter; beats 2–5 lock to that face through
-the reference machinery, so it is one person across the ad rather than five strangers.
+the reference machinery, so it is one person across the ad rather than five strangers. If a
+product photo was attached in Step 1, those same four beats carry it too, alongside the face.
 
 **This needs Kie.** Higgsfield's Soul endpoint takes no reference image, so the app refuses the
 batch there rather than quietly producing five different people.

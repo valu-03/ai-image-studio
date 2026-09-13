@@ -1,0 +1,43 @@
+{
+  "source": "Community reference material - face-shape categories (perfectcorp.com's face-shape guide) and a curated subset of a facial-description word list (kathysteinemann.com). Not from the AI Video Bootcamp course.",
+  "version": 1,
+  "note": "Browse-only reference vocabulary, the same role tools/glossary.json plays for cinematography terms - there is no build_face_glossary.py and nothing here feeds compose_persona() or any other builder. persona_bank.json deliberately excludes any face-shape/body-shape/attractiveness control (see its own note, tools/README.md, ui/views/influencer_studio.py's docstring and workflows/build-an-influencer.md) - a face or build is prose in Influencer Studio's free-text Additional Details field, never a structured pick. This file exists to make that free-text field easier to write well: browse it and copy a phrase in, the same way the Videos tab's Glossary is read for context rather than acted on by the app. Curated on purpose - excludes judgmental/demeaning adjectives, animal-based comparisons and simile lists from the source material, keeping only structural and photographic description.",
+  "categories": {
+    "face_shapes": "Face Shape",
+    "facial_structure": "Facial Structure",
+    "skin_and_texture": "Skin & Texture Realism"
+  },
+  "terms": [
+    {"term": "Oval face", "category": "face_shapes", "definition": "Forehead slightly wider than a softly curved jawline; the face reads longer than it is wide, an egg-shaped proportion."},
+    {"term": "Round face", "category": "face_shapes", "definition": "Width and length are nearly equal, with full cheeks and a softly rounded jawline."},
+    {"term": "Square face", "category": "face_shapes", "definition": "A strong, angular jawline with the forehead, cheekbones and jaw all roughly the same width."},
+    {"term": "Rectangle (oblong) face", "category": "face_shapes", "definition": "Noticeably longer than it is wide, with a square or straight jawline."},
+    {"term": "Heart-shaped face", "category": "face_shapes", "definition": "A broad forehead and wide cheekbones narrowing down to a delicate, slender chin."},
+    {"term": "Diamond face", "category": "face_shapes", "definition": "Cheekbones are the widest and most prominent point, with a narrower forehead and jawline."},
+    {"term": "Triangle face", "category": "face_shapes", "definition": "The jawline is the widest part of the face, narrowing toward a comparatively narrower forehead."},
+
+    {"term": "defined jawline", "category": "facial_structure", "definition": "A jaw with a clear, visible edge rather than a soft transition into the neck."},
+    {"term": "soft jawline", "category": "facial_structure", "definition": "A gently rounded jaw with no sharp edge or angle."},
+    {"term": "high cheekbones", "category": "facial_structure", "definition": "Cheekbones set noticeably high and prominent on the face."},
+    {"term": "softly rounded cheeks", "category": "facial_structure", "definition": "Cheeks with a gentle, filled-out curve rather than a hollowed or angular line."},
+    {"term": "angular bone structure", "category": "facial_structure", "definition": "Visible, sharply defined planes across the cheeks, jaw and brow."},
+    {"term": "fine-boned features", "category": "facial_structure", "definition": "Delicate, narrow bone structure throughout the face."},
+    {"term": "sculpted features", "category": "facial_structure", "definition": "Strongly defined, well-proportioned bone structure with clear highlights and shadow along the planes of the face."},
+    {"term": "broad forehead", "category": "facial_structure", "definition": "A forehead that is wide relative to the rest of the face."},
+    {"term": "narrow forehead", "category": "facial_structure", "definition": "A forehead that is comparatively slim relative to the rest of the face."},
+    {"term": "strong brow", "category": "facial_structure", "definition": "A pronounced, well-defined brow ridge."},
+    {"term": "button nose", "category": "facial_structure", "definition": "A small, softly rounded nose."},
+    {"term": "aquiline nose", "category": "facial_structure", "definition": "A nose with a gentle curve or bridge, sloping down from the brow."},
+    {"term": "full lips", "category": "facial_structure", "definition": "Lips with noticeable volume, top and bottom roughly balanced."},
+    {"term": "almond-shaped eyes", "category": "facial_structure", "definition": "Eyes with a tapered, pointed corner at both inner and outer edges."},
+    {"term": "deep-set eyes", "category": "facial_structure", "definition": "Eyes set further back beneath the brow bone, with a more pronounced eyelid crease."},
+    {"term": "wide-set eyes", "category": "facial_structure", "definition": "Eyes spaced further apart than average relative to the width of the face."},
+
+    {"term": "visible pores", "category": "skin_and_texture", "definition": "Naturally visible skin pores rather than a smoothed, airbrushed surface - reinforces the app's existing realism-layer language."},
+    {"term": "faint freckles", "category": "skin_and_texture", "definition": "Light, scattered freckling across the nose and cheeks."},
+    {"term": "fine lines", "category": "skin_and_texture", "definition": "Subtle, natural creasing around the eyes or mouth, not retouched away."},
+    {"term": "natural facial asymmetry", "category": "skin_and_texture", "definition": "A slight, realistic imbalance between the two sides of the face rather than perfect mirror symmetry."},
+    {"term": "peach fuzz", "category": "skin_and_texture", "definition": "Fine, barely-visible facial hair catching the light, especially along the jaw and upper lip."},
+    {"term": "natural skin sheen", "category": "skin_and_texture", "definition": "A realistic light oil sheen on the forehead, nose and cheekbones rather than uniformly matte skin."}
+  ]
+}

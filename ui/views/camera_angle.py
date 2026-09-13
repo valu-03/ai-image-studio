@@ -3,8 +3,15 @@ three independent axes the Camera Language lesson teaches as foundational,
 each composable on its own or combined with the others.
 
   Library   the six verticals, six sides, and eight sizes, browsable
-  Compose   three independent combos, live composed phrase, apply the
-            result to Compose
+  Compose   three independent, editable combos (pick one or type your own),
+            live composed phrase, apply the result to Compose
+
+Each axis combo is editable, like Lighting's own direction/quality/source
+pickers - a bank entry is a tested starting point, not a closed world; type
+your own vertical/side/size and it is used exactly as typed. The separate
+custom field below the three combos is a full override: typed text there
+replaces the whole composed phrase, not just one axis. See
+build_camera_angle.py's own docstring for both.
 
 Nothing here replaces Compose's own Shot field (ui/spec_editor.py); Apply to
 Compose writes the composed phrase in as typed custom shot text, replacing
@@ -92,20 +99,32 @@ class CameraAngleView(QWidget):
         return self._wrap(card)
 
     def _build_compose_tab(self):
-        self.vertical_combo = QComboBox()
+        # Editable, like Lighting's own direction/quality/source combos: the
+        # bank's entries are tested starting points, not a closed world - type
+        # your own vertical/side/size and it is used exactly as typed rather
+        # than rejected as a typo. See build_camera_angle.py's docstring.
+        self.vertical_combo = QComboBox(editable=True)
+        self.vertical_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.vertical_combo.addItem("(none)", "")
         for key, cfg in bca.verticals(self.bank).items():
             self.vertical_combo.addItem(cfg["label"], key)
-        self.side_combo = QComboBox()
+        self.side_combo = QComboBox(editable=True)
+        self.side_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.side_combo.addItem("(none)", "")
         for key, cfg in bca.sides(self.bank).items():
             self.side_combo.addItem(cfg["label"], key)
-        self.size_combo = QComboBox()
+        self.size_combo = QComboBox(editable=True)
+        self.size_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.size_combo.addItem("(none)", "")
         for key, cfg in bca.sizes(self.bank).items():
             self.size_combo.addItem(cfg["label"], key)
+        self.vertical_combo.setToolTip("Pick a vertical, or type your own.")
+        self.side_combo.setToolTip("Pick a side, or type your own.")
+        self.size_combo.setToolTip("Pick a size, or type your own.")
         for combo in (self.vertical_combo, self.side_combo, self.size_combo):
-            combo.currentIndexChanged.connect(self.rebuild_compose)
+            # Editable combos must watch text, not index - typed text never
+            # moves the index. Same rule Lighting's own combos follow.
+            combo.currentTextChanged.connect(self.rebuild_compose)
 
         axes_row = QGridLayout()
         axes_row.setHorizontalSpacing(T.COLUMN_GAP)
@@ -119,7 +138,8 @@ class CameraAngleView(QWidget):
 
         self.custom_field = QLineEdit()
         self.custom_field.setPlaceholderText(
-            "or type your own, e.g. \"shot from a drone, looking straight down\" - beats the axes above")
+            "or replace the whole phrase, e.g. \"shot from a drone, looking straight down\" "
+            "- beats the axes above entirely")
         self.custom_field.textChanged.connect(self.rebuild_compose)
 
         self.composed = QLabel("")
@@ -140,7 +160,9 @@ class CameraAngleView(QWidget):
 
         form = Card()
         form.body.addWidget(TitleLabel("Build a camera-angle phrase"))
-        form.body.addWidget(MutedLabel("Combine any of the three axes, or type your own below."))
+        form.body.addWidget(MutedLabel(
+            "Combine any of the three axes - pick one, or type directly into it - or "
+            "override the whole phrase below."))
         form.body.addLayout(axes_row)
         form.body.addWidget(self.custom_field)
 
@@ -212,13 +234,26 @@ class CameraAngleView(QWidget):
             combo.setCurrentIndex(index)
         self.tabs.setCurrentIndex(1)
 
+    @staticmethod
+    def _resolved(combo):
+        """The current value of an editable combo - the underlying bank key
+        if the typed/picked text names a listed item, else the raw typed
+        text as-is. Mirrors ui/views/lighting.py's own `_resolved()` helper -
+        see its docstring for why this reads `currentText()`, never
+        `currentData()`/`currentIndex()`."""
+        text = combo.currentText().strip()
+        if not text or text == "(none)":
+            return ""
+        index = combo.findText(text, Qt.MatchFlag.MatchFixedString)
+        return combo.itemData(index) if index >= 0 else text
+
     # -- compose -------------------------------------------------------------#
     def rebuild_compose(self):
         if not hasattr(self, "composed"):
             return
-        vertical = self.vertical_combo.currentData() or None
-        side = self.side_combo.currentData() or None
-        size = self.size_combo.currentData() or None
+        vertical = self._resolved(self.vertical_combo) or None
+        side = self._resolved(self.side_combo) or None
+        size = self._resolved(self.size_combo) or None
         custom = self.custom_field.text().strip()
 
         try:

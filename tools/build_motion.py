@@ -163,6 +163,11 @@ def subject_clause(spec):
 DEFAULT_NEGATIVES = ["no warped face", "no floating limbs", "no distorted hands",
                     "no text artifacts", "no blurry edges", "no extra fingers"]
 DEFAULT_STYLE_PRESETS = ["shot on a DSLR with an 85mm lens, natural color grading"]
+DEFAULT_AVATAR_GUARD = ["no identity drift between cuts", "no plastic skin, no beauty filter",
+                        "no overacting, exaggerated expressions or repetitive gestures",
+                        "no frozen avatar pauses",
+                        "no gimbal-smooth or dolly-smooth camera moves - keep it handheld",
+                        "no generated captions, UI or subtitles"]
 
 
 def negative_tail(bank):
@@ -174,6 +179,17 @@ def negative_tail(bank):
     negatives live in prompt_bank.json rather than in realism_lint.py.
     """
     return ", ".join(bank.get("negatives") or DEFAULT_NEGATIVES)
+
+
+def avatar_guard_tail(bank):
+    """An OPT-IN extra guard, on top of negative_tail(), for a clip that puts
+    an avatar through multiple cuts (e.g. Kling's own Auto multi-shot) or
+    carries dialogue - failure modes negative_tail()'s per-frame artifact list
+    does not cover: the character looking like someone else after a cut, or a
+    performance that reads as staged rather than natural. Community-sourced
+    (Seedance avatar-ad prompt craft, see motion_bank.json's own `source`
+    field) - never appended unless asked for, unlike negative_tail()."""
+    return ", ".join(bank.get("avatar_guard") or DEFAULT_AVATAR_GUARD)
 
 
 def style_preset(bank, seed=0):
@@ -189,8 +205,14 @@ def style_preset(bank, seed=0):
     return presets[int(seed) % len(presets)]
 
 
-def compose(bank, key, spec, detail=None):
-    """Spec + movement -> (prompt, parts). The camera lead is ALWAYS first."""
+def compose(bank, key, spec, detail=None, avatar_guard=False):
+    """Spec + movement -> (prompt, parts). The camera lead is ALWAYS first.
+
+    `avatar_guard=True` appends avatar_guard_tail(bank) as one more segment,
+    on top of the standing negative_tail(bank) - opt-in, off by default, for
+    an avatar clip going through multiple cuts (e.g. Auto multi-shot) or
+    carrying dialogue. See avatar_guard_tail()'s own docstring for why.
+    """
     movement = bank["movements"][key]
     requires = requirements_for(bank, key)
     setting = str(spec.get("setting", "")).strip()
@@ -220,6 +242,8 @@ def compose(bank, key, spec, detail=None):
     # movement itself so the same movement always gets the same preset.
     segments.append(style_preset(bank, seed=sum(ord(c) for c in key)) + ", natural motion")
     segments.append(negative_tail(bank))
+    if avatar_guard:
+        segments.append(avatar_guard_tail(bank))
 
     prompt = ", ".join(s for s in segments if s)
     parts = {
@@ -232,7 +256,8 @@ def compose(bank, key, spec, detail=None):
     return prompt, parts
 
 
-def assemble_template(bank, shot_type, subject, action, camera_movement, style):
+def assemble_template(bank, shot_type, subject, action, camera_movement, style,
+                      avatar_guard=False):
     """[SHOT TYPE] + [SUBJECT] + [ACTION] + [STYLE] + [CAMERA MOVEMENT] -> one
     prompt - the hands-on template, as an alternative to compose()'s own
     bank-driven assembly.
@@ -245,7 +270,8 @@ def assemble_template(bank, shot_type, subject, action, camera_movement, style):
     the two are the same "who, doing what" pairing either way. Always closes
     with negative_tail(bank) - the same standing artifact guard compose()
     appends, so a hand-edited prompt is no less protected than an auto-composed
-    one.
+    one. `avatar_guard=True` appends avatar_guard_tail(bank) too - opt-in, off
+    by default, same as compose()'s own `avatar_guard` param.
     """
     segments = [
         str(camera_movement or "").strip(),
@@ -254,6 +280,8 @@ def assemble_template(bank, shot_type, subject, action, camera_movement, style):
         str(style or "").strip(),
         negative_tail(bank),
     ]
+    if avatar_guard:
+        segments.append(avatar_guard_tail(bank))
     return ", ".join(s for s in segments if s)
 
 
@@ -282,6 +310,9 @@ def main(argv=None):
     p.add_argument("--setting", help="where it happens")
     p.add_argument("--action", help="what they are doing")
     p.add_argument("--detail", help="override the movement's motion detail")
+    p.add_argument("--avatar-guard", action="store_true",
+                   help="append the opt-in avatar/multi-cut guard (identity drift, "
+                        "overacting, frozen pauses, ...) - see avatar_guard_tail()")
     p.add_argument("--list", action="store_true", help="list every movement")
     p.add_argument("--no-write", action="store_true", help="print only")
     args = p.parse_args(argv if argv is not None else sys.argv[1:])
@@ -322,7 +353,7 @@ def main(argv=None):
     if not spec.get("subject") and not spec.get("setting"):
         sys.exit("Give --spec, or at least --subject / --setting.")
 
-    prompt, _ = compose(bank, args.movement, spec, args.detail)
+    prompt, _ = compose(bank, args.movement, spec, args.detail, avatar_guard=args.avatar_guard)
     print(prompt)
 
     for note in hint_conflicts(bank, args.movement, spec):

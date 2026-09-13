@@ -1,5 +1,11 @@
-"""tools/style_bank.json + build_style.py - the Style section's 24 named
-looks from the course's Style Reference Library.
+"""tools/style_bank.json + build_style.py - the Style section's 27 named
+looks: 24 from the course's Style Reference Library (14 photoreal, 10
+stylised), plus 2 app-original photoreal additions (`iphone-ugc-realism`,
+`on-camera-flash-candid`) sourced from community UGC/avatar prompt-bank
+material, not the course PDF, plus 1 more photoreal addition
+(`universal-realism-lock`) sourced from a DIFFERENT official course lesson
+("Removing the 'AI' Look") - each addition says so via its own `source`
+field.
 
 Two groups with two different contracts:
   photoreal - must NOT trip a banned term, and applied through
@@ -44,7 +50,7 @@ def score(phrase):
 
 
 print("=== the bank is well-formed ===")
-check("24 styles total", len(bstyle.all_styles(bank)) == 24, str(len(bstyle.all_styles(bank))))
+check("27 styles total", len(bstyle.all_styles(bank)) == 27, str(len(bstyle.all_styles(bank))))
 check("both groups are non-empty",
       bool(bstyle.photoreal(bank)) and bool(bstyle.stylised(bank)))
 for key, cfg in bstyle.all_styles(bank).items():

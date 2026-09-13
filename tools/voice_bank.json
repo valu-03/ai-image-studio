@@ -1,0 +1,88 @@
+{
+  "source": "AI Video Bootcamp's 'Consistent Character Voices' lesson - the sixteen named vocal-delivery templates it lists (each written around an [accent] slot) for keeping a character's spoken voice/dialogue delivery identical across separate video generations. The course's own core rule: define the voice once with specific traits, then copy the exact same description into every prompt for that character - even a small wording change shifts the tone the model produces.",
+  "version": 1,
+  "note": "A voice blueprint is not one of realism_lint.py's 8 gated photorealism layers and is not folded into Compose's Subject field the way a persona's visual traits are - it is a standalone, copyable block of text meant to be pasted into whatever prompt or dialogue text actually needs the character to speak (this app has no per-line dialogue field of its own). `styles` are templates with one `{accent}` slot each, filled by compose_voice(); `custom` typed text always wins entirely, same precedence as every other builder in this project.",
+
+  "styles": {
+    "conversational": {
+      "label": "Conversational",
+      "phrase_template": "speaks with a subtle {accent}, natural mid-tempo pacing, friendly and relaxed tone. briefly pauses before key words as if thinking. sentences taper off slightly rather than ending sharply.",
+      "when": "An easygoing, natural-sounding narrator or presenter voice - the safe default."
+    },
+    "confident": {
+      "label": "Confident",
+      "phrase_template": "light {accent}, steady deliberate delivery, calm authority in the voice. controlled pacing with clear pauses between statements. never rushed, every phrase lands with intention.",
+      "when": "A presenter who needs to sound sure of themselves without being aggressive."
+    },
+    "energetic": {
+      "label": "Energetic",
+      "phrase_template": "subtle {accent}, fast lively rhythm, enthusiasm rises when emphasizing a point. delivery feels animated and expressive, like someone excitedly sharing a story.",
+      "when": "Hype UGC, unboxings, anything that needs to feel excited rather than calm."
+    },
+    "casual": {
+      "label": "Casual",
+      "phrase_template": "light {accent}, loose conversational pace. sounds like talking with a close friend. occasionally breaks sentences, uses natural filler sounds like 'um' or 'like'. tone is relaxed and informal.",
+      "when": "Everyday UGC and vlog-style talking that shouldn't sound scripted."
+    },
+    "storytelling": {
+      "label": "Storytelling",
+      "phrase_template": "light {accent}, expressive storytelling cadence. pacing varies naturally - slower during description, faster during exciting moments. voice carries curiosity and subtle emotional shifts.",
+      "when": "A narrator walking through a story or a sequence of scenes."
+    },
+    "calm-thoughtful": {
+      "label": "Calm / Thoughtful",
+      "phrase_template": "subtle {accent}, slower reflective pace. soft tone with gentle pauses between ideas. sounds like someone carefully choosing their words while explaining something meaningful.",
+      "when": "Reflective narration, wellness content, anything that shouldn't feel rushed."
+    },
+    "persuasive": {
+      "label": "Persuasive",
+      "phrase_template": "light {accent}, confident persuasive rhythm. slightly emphasises important words, small pauses before key statements. tone feels convincing and composed.",
+      "when": "Sales-adjacent copy or a call to action that needs to land without shouting."
+    },
+    "professional": {
+      "label": "Professional",
+      "phrase_template": "subtle {accent}, clean controlled delivery, medium pace. clear pronunciation with slight pauses between sentences. tone feels polished and articulate.",
+      "when": "Corporate, explainer or B2B-style presenting."
+    },
+    "dramatic": {
+      "label": "Dramatic",
+      "phrase_template": "light {accent}, deliberate cinematic pacing. longer pauses for tension, emphasis on emotional words. voice carries weight and seriousness.",
+      "when": "Trailer-style narration or a scene that needs real weight behind it."
+    },
+    "curious-analytical": {
+      "label": "Curious / Analytical",
+      "phrase_template": "subtle {accent}, thoughtful pace with slight hesitation before ideas. tone sounds inquisitive, as if exploring the topic while speaking.",
+      "when": "A reviewer or explainer thinking out loud rather than reciting a script."
+    },
+    "friendly-warm": {
+      "label": "Friendly / Warm",
+      "phrase_template": "light {accent}, gentle rhythm, soft welcoming tone. speech flows smoothly with small pauses that feel natural and reassuring.",
+      "when": "A welcoming host voice - onboarding, tutorials, anything that should feel kind."
+    },
+    "sarcastic-playful": {
+      "label": "Sarcastic / Playful",
+      "phrase_template": "subtle {accent}, relaxed tempo with slight vocal smirks in the delivery. emphasis shifts unpredictably to highlight humor or irony.",
+      "when": "Comedic or deadpan content that leans on tone as much as the words."
+    },
+    "authority-leader": {
+      "label": "Authority / Leader",
+      "phrase_template": "light {accent}, controlled confident cadence. speaks slowly enough to command attention. strong emphasis on decisive words.",
+      "when": "A leader/expert figure whose voice needs to carry weight in the room."
+    },
+    "reflective-emotional": {
+      "label": "Reflective / Emotional",
+      "phrase_template": "subtle {accent}, slower pacing with pauses that feel introspective. voice softens during emotional phrases, almost like thinking out loud.",
+      "when": "A personal, emotional beat - a confession, a memory, a quiet moment."
+    },
+    "conversational-story-mode": {
+      "label": "Conversational Story Mode",
+      "phrase_template": "light {accent}, casual narrative rhythm. sounds like someone explaining an experience to a friend. sentences occasionally restart mid thought.",
+      "when": "A 'storytime' style clip told like an unscripted personal anecdote."
+    },
+    "fast-social-media-style": {
+      "label": "Fast Social Media Style",
+      "phrase_template": "subtle {accent}, quick modern pacing, energetic delivery. short bursts of speech with strong emphasis on key words.",
+      "when": "Short-form hooks and fast-cut social content where every second counts."
+    }
+  }
+}

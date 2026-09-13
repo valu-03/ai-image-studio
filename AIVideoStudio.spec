@@ -60,10 +60,10 @@ datas = [
     (".env.example", "."),
 ]
 binaries = []
-# tools/ is unanalysed (see the header comment above), so a stdlib module
-# imported ONLY from inside tools/ - never from anything ui/ or gui.py
-# itself imports - is invisible to PyInstaller's static analysis and is
-# silently left out of the frozen build. `uuid` is exactly that case:
+# tools/ is unanalysed (see the header comment above), so a stdlib module (or
+# third-party package) imported ONLY from inside tools/ - never from anything
+# ui/ or gui.py itself imports - is invisible to PyInstaller's static analysis
+# and is silently left out of the frozen build. `uuid` is exactly that case:
 # tools/generate_sound.py's multipart boundary is the only place in this
 # project that imports it. Found by actually launching the built .exe, not
 # by reading the spec - it raised ModuleNotFoundError on the very first
@@ -71,7 +71,14 @@ binaries = []
 # The other stdlib modules the new ElevenLabs tools use (json, mimetypes,
 # urllib.*, datetime, argparse, pathlib) were already proven safe by the
 # existing tools that also use them (generate_image.py, generate_video.py).
-hiddenimports = ["uuid"]
+# `imageio_ffmpeg` is the same trap: only tools/render_video.py imports it.
+# Unlike `uuid`, this one needs no manual `binaries` entry alongside it -
+# imageio_ffmpeg ships its own PyInstaller hook, which only runs once this
+# hiddenimports entry makes PyInstaller aware the package is used at all, and
+# that hook bundles the real ffmpeg.exe at its normal package-relative path
+# (imageio_ffmpeg/binaries/ffmpeg-*.exe) on its own - confirmed by inspecting
+# a real build's dist/ folder, not assumed from the package's docs.
+hiddenimports = ["uuid", "imageio_ffmpeg"]
 
 # The app renders every icon from SVG at runtime (QIcon(str(svg_path)) in
 # ui/assets.py), which depends on Qt's SVG icon-engine plugin. Rather than

@@ -40,6 +40,111 @@ ROOT = Path(__file__).resolve().parent.parent
 SECTIONS_KEY = "sections"
 SECTION_NAMES = ("lighting", "composition", "color", "posing", "camera_angle")
 
+# Optional, per-turn persona overlays for the Chat tab's "Ask as..." picker -
+# a curated subset of the AI Video Bootcamp "AI Chat Cheat Sheet" 's 20 named
+# role-play chat templates, narrowed to the ones actually relevant to an
+# avatar/video generation tool (the rest - Brand Strategist, Landing Page
+# Expert, Email Marketing Expert, Business Consultant, Personal Brand Coach,
+# Offer Strategist, Sales Page Critic, Customer Research Expert, Product
+# Description Writer - are general small-business/marketing coaching, outside
+# this app's scope). Each overlay ADDS to advisor_brief()'s system prompt for
+# one turn only - it never replaces the core rules (bank-only vocabulary, the
+# gate decides, ask before guessing), the same way `image_path` and
+# `context_prompt` are already scoped to a single turn rather than the whole
+# conversation.
+PERSONAS = {
+    "idea-generator": {
+        "label": "Idea Generator",
+        "when": "Stuck for a concept.",
+        "overlay": (
+            "For this turn, lead with breadth: offer 3-5 clearly different "
+            "concept directions (different angle, mood or setting), each one "
+            "sentence, before narrowing to any one spec - let the user pick "
+            "first."
+        ),
+    },
+    "creative-director": {
+        "label": "Creative Director",
+        "when": "A rough idea needs to be stronger, not just described.",
+        "overlay": (
+            "For this turn, be direct about what's weak, predictable or "
+            "generic in the idea as described, then propose one sharper, "
+            "more specific version of it before building a spec."
+        ),
+    },
+    "hook-writer": {
+        "label": "Scroll-Stopping Hook Writer",
+        "when": "Need a stronger opening line for a caption, ad or video.",
+        "overlay": (
+            "For this turn, focus on the opening: offer 3-5 concrete hook-"
+            "line options for whatever this is captioning or advertising, "
+            "before anything else."
+        ),
+    },
+    "ugc-scriptwriter": {
+        "label": "UGC Scriptwriter",
+        "when": "A natural, believable short-form ad script.",
+        "overlay": (
+            "For this turn, write like the line a real person would "
+            "actually say on camera - casual, specific, never a paid-actor "
+            "or corporate-ad tone. Avoid generic influencer phrases like "
+            "\"game changer,\" \"you need this,\" \"I'm obsessed,\" or "
+            "\"this changed my life\" unless they genuinely fit what the "
+            "user described. Never invent a transformation, result or "
+            "claim - medical, financial or otherwise - the user did not "
+            "actually describe. This complements Ads' own five-beat "
+            "structure, so keep any script short-form."
+        ),
+    },
+    "script-doctor": {
+        "label": "Script Doctor",
+        "when": "A script or caption feels boring or robotic.",
+        "overlay": (
+            "For this turn, name specifically what sounds robotic, generic "
+            "or cringe in what the user pasted, then rewrite it tighter - "
+            "cut filler, keep the meaning."
+        ),
+    },
+    "brutally-honest-reviewer": {
+        "label": "Brutally Honest Reviewer",
+        "when": "Real feedback instead of praise.",
+        "overlay": (
+            "For this turn, lead with what's weak or generic before saying "
+            "what works - candid, not encouraging by default, the way a "
+            "tough but fair mentor would review this."
+        ),
+    },
+}
+
+# The AI Chat Cheat Sheet's "follow-up commands" - short, reusable phrases
+# meant to be sent as the next chat turn to push a first draft further rather
+# than accepting it. (label, phrase): `label` is short enough for a button,
+# `phrase` is the full text actually sent as the chat turn - the same split
+# every bank entry here already makes between a short `label` and the fuller
+# text it stands for. Exposed as a plain list (not a bank - this is
+# conversational text, not vocabulary the realism gate needs to know about),
+# so the Chat tab can render `label` as a one-click quick reply; clicking one
+# just sends `phrase` as an ordinary user turn through chat() below, no new
+# plumbing needed.
+FOLLOW_UPS = [
+    ("Specific", "Make this more specific."),
+    ("Realistic", "Make this more realistic."),
+    ("Original", "Make this less generic."),
+    ("Hook", "Make the hook stronger."),
+    ("Simplify", "Simplify this - it feels too busy."),
+]
+
+
+def persona_overlay(persona):
+    """The extra system-prompt text for `persona`, or "" for None/unknown -
+    unknown is silently ignored rather than raising, the same tolerance
+    `_picked()` already gives an invalid bank key elsewhere in this file."""
+    cfg = PERSONAS.get(persona)
+    if not cfg:
+        return ""
+    return "\n\nFOR THIS TURN ONLY, ALSO ASK AS: {} - {}".format(cfg["label"], cfg["overlay"])
+
+
 # One line each - the nav rail's own map, labels matching NAV_ITEMS. tools/
 # never imports the GUI layer, so this is kept here rather than read from
 # ui/main_window.py; if a section is added to NAV_ITEMS there, add its line
@@ -503,7 +608,7 @@ def _context_note(bank, prompt):
     return "[app context, not typed by the user - {}]".format(bits)
 
 
-def chat(bank, history, message, image_path=None, context_prompt=None, ask=None):
+def chat(bank, history, message, image_path=None, context_prompt=None, persona=None, ask=None):
     """One turn of the advisor conversation.
 
     Returns {"ok": True, "reply": str, "suggestion": dict_or_None,
@@ -525,6 +630,10 @@ def chat(bank, history, message, image_path=None, context_prompt=None, ask=None)
     (the GUI) still appends its own plain `message`, not this decorated
     version, to its own history - the note is per-turn context, not something
     the user said.
+
+    `persona` (optional) is a PERSONAS key - a one-turn overlay on top of
+    advisor_brief()'s system prompt (see persona_overlay()), scoped to this
+    turn only, exactly like `image_path` and `context_prompt` above.
     """
     ask = ask or ask_llm.ask
     message = (message or "").strip()
@@ -535,8 +644,9 @@ def chat(bank, history, message, image_path=None, context_prompt=None, ask=None)
     full_message = (note + "\n\n" + message) if note else message
 
     images = [image_path] if image_path else ()
+    system = advisor_brief(bank) + persona_overlay(persona)
     text, error = ask(
-        full_message, system=advisor_brief(bank), images=images, history=list(history or ()))
+        full_message, system=system, images=images, history=list(history or ()))
     if error:
         return {"ok": False, "error": error}
 
@@ -568,6 +678,8 @@ def main(argv=None):
     p_chat.add_argument("--context-prompt-file",
                         help="path to the current composed prompt, real-scored and folded "
                              "into this turn")
+    p_chat.add_argument("--persona", choices=sorted(PERSONAS),
+                        help="a one-turn persona overlay (see PERSONAS)")
     p_chat.add_argument("--dry-run", action="store_true",
                         help="describe the request without sending it or needing a key")
 
@@ -590,7 +702,7 @@ def main(argv=None):
     if args.dry_run:
         url, body, headers = ask_llm.build_request(
             ask_llm.DEFAULT_BASE, ask_llm.DEFAULT_MODEL, "DRY-RUN", args.message,
-            advisor_brief(bank), [], history=history)
+            advisor_brief(bank) + persona_overlay(args.persona), [], history=history)
         redacted = {k: ("<redacted>" if k == "Authorization" else v) for k, v in headers.items()}
         print("POST {}".format(url))
         print("headers: {}".format(json.dumps(redacted)))
@@ -608,7 +720,7 @@ def main(argv=None):
         context_prompt = path.read_text(encoding="utf-8").strip()
 
     result = chat(bank, history, args.message, image_path=args.image,
-                  context_prompt=context_prompt)
+                  context_prompt=context_prompt, persona=args.persona)
     if not result["ok"]:
         print(result["error"], file=sys.stderr)
         return 3

@@ -7,6 +7,7 @@ from pathlib import Path
 from PyQt6.QtCore import Qt, QThreadPool, QTimer, pyqtSignal
 from PyQt6.QtGui import QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QGridLayout,
     QHBoxLayout,
@@ -21,6 +22,7 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QSplitter,
+    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -28,6 +30,7 @@ from PyQt6.QtWidgets import (
 ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
+import ask_llm as al  # noqa: E402
 import build_prompt as bp  # noqa: E402
 import generate_image as gi  # noqa: E402
 import history as hist  # noqa: E402
@@ -38,7 +41,7 @@ from ..lint_panel import LintPanel  # noqa: E402
 from ..spec_editor import SpecEditor  # noqa: E402
 from ..widgets import (  # noqa: E402
     AiSuggestionBadge, Card, ImagePreview, MutedLabel, StarRating, TitleLabel)
-from ..workers import LlmTask  # noqa: E402
+from ..workers import CoherenceTask, LlmTask, VisionQcTask  # noqa: E402
 
 
 class ComposeView(QWidget):
@@ -203,6 +206,61 @@ class ComposeView(QWidget):
         lint_card.body.setSpacing(T.SPACE["sm"])
         lint_card.body.addWidget(TitleLabel("Realism check"))
         lint_card.body.addWidget(self.lint, 1)
+
+        # Two more, OPTIONAL checks - Vision QC (the returned IMAGE against
+        # the spec) and Coherence (a semantic read of the PROMPT TEXT,
+        # catching keyword salad realism_lint's regex gate can't). Both are
+        # advisory: AND, not OR - neither can override a realism_lint
+        # failure, and failing either never blocks Generate. Sharing one
+        # tabbed area rather than three simultaneously-visible full panels:
+        # three stacked LintPanels crushed the realism panel itself below its
+        # own minimum at the app's minimum window size. Realism check stays
+        # always visible above, since it is the mandatory gate; these two are
+        # supplementary, so only one needs to be on screen at a time.
+        self.vision_qc_checkbox = QCheckBox("Run after generating")
+        self.vision_qc_checkbox.setToolTip(
+            "Asks a vision-capable text model to check the returned image "
+            "against this spec - lighting, composition, wardrobe, and (with a "
+            "reference set) whether the character still looks like the same "
+            "one. Uses {}, same as Brief - optional everywhere.".format(al.KEY_VAR))
+        if not gi.env_value(al.KEY_VAR):
+            self.vision_qc_checkbox.setEnabled(False)
+            self.vision_qc_checkbox.setToolTip(
+                "No {} set in .env - get one at {} to use this.".format(
+                    al.KEY_VAR, al.KEY_URL))
+        self.vision_lint = LintPanel({})
+        vision_tab = QWidget()
+        vision_tab_layout = QVBoxLayout(vision_tab)
+        vision_tab_layout.setContentsMargins(0, 0, 0, 0)
+        vision_tab_layout.setSpacing(T.SPACE["xs"])
+        vision_tab_layout.addWidget(self.vision_qc_checkbox)
+        vision_tab_layout.addWidget(self.vision_lint, 1)
+
+        self.coherence_button = QPushButton("Check coherence")
+        self.coherence_button.setProperty("class", "ghost")
+        self.coherence_button.setToolTip(
+            "Asks a text model whether this prompt reads as one coherent "
+            "scene, not a list of trigger words stitched together - "
+            "realism_lint checks structure, this checks sense. Uses {}, "
+            "same as Brief.".format(al.KEY_VAR))
+        if not gi.env_value(al.KEY_VAR):
+            self.coherence_button.setEnabled(False)
+            self.coherence_button.setToolTip(
+                "No {} set in .env - get one at {} to use this.".format(
+                    al.KEY_VAR, al.KEY_URL))
+        self.coherence_button.clicked.connect(self.request_coherence_check)
+        self.coherence_lint = LintPanel({})
+        coherence_tab = QWidget()
+        coherence_tab_layout = QVBoxLayout(coherence_tab)
+        coherence_tab_layout.setContentsMargins(0, 0, 0, 0)
+        coherence_tab_layout.setSpacing(T.SPACE["xs"])
+        coherence_tab_layout.addWidget(self.coherence_button)
+        coherence_tab_layout.addWidget(self.coherence_lint, 1)
+
+        secondary_checks = QTabWidget()
+        secondary_checks.addTab(vision_tab, "Vision QC")
+        secondary_checks.addTab(coherence_tab, "Coherence")
+        lint_card.body.addWidget(secondary_checks, 1)
 
         middle = QSplitter(Qt.Orientation.Vertical)
         middle.addWidget(prompt_card)
@@ -968,8 +1026,51 @@ class ComposeView(QWidget):
             if self.entry_id:
                 hist.rate(self.entry_id, None, image=str(path))
             self.status.emit("Saved {}".format(Path(path).name))
+            self._maybe_run_vision_qc(path)
         else:
             self.status.emit("Could not display {}".format(path))
+
+    def _maybe_run_vision_qc(self, path):
+        """Opt-in, and never blocks or fails the generation it is checking -
+        a missing key, a network error or a malformed reply all just leave
+        the panel empty, the same as if the checkbox had been off."""
+        if not self.vision_qc_checkbox.isChecked():
+            return
+        task = VisionQcTask(str(path), self.editor.spec(),
+                            reference_path=self.editor.reference())
+        task.signals.finished.connect(self._on_vision_qc_finished)
+        task.signals.failed.connect(self._on_vision_qc_failed)
+        self.pool.start(task)
+
+    def _on_vision_qc_finished(self, checks, score, total):
+        self.vision_lint.show_checks(checks)
+        if self.entry_id:
+            hist.record_vision_qc(self.entry_id, {
+                "score": score, "total": total, "checks": checks})
+
+    def _on_vision_qc_failed(self, reason):
+        self.status.emit("Vision QC unavailable: {}".format(reason[:160]))
+
+    def request_coherence_check(self):
+        prompt = self.prompt_text()
+        if not prompt.strip():
+            self.status.emit("Nothing to check yet - build a prompt first")
+            return
+        self.coherence_button.setEnabled(False)
+        task = CoherenceTask(prompt)
+        task.signals.finished.connect(self._on_coherence_finished)
+        task.signals.failed.connect(self._on_coherence_failed)
+        task.signals.done.connect(self._on_coherence_done)
+        self.pool.start(task)
+
+    def _on_coherence_done(self):
+        self.coherence_button.setEnabled(bool(gi.env_value(al.KEY_VAR)))
+
+    def _on_coherence_finished(self, checks, score, total):
+        self.coherence_lint.show_checks(checks)
+
+    def _on_coherence_failed(self, reason):
+        self.status.emit("Coherence check unavailable: {}".format(reason[:160]))
 
     def apply_rating(self, value):
         if not self.entry_id:

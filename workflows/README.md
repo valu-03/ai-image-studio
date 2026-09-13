@@ -8,6 +8,7 @@ it's worth a workflow file.
 
 | Workflow | Does | Status |
 |---|---|---|
+| [ai-creator-workflow.md](ai-creator-workflow.md) | The whole pipeline in order — Idea → Chat → Image → Refine → Video → Edit & Post — and where each stage already lives in this app | **ready** |
 | [create-realistic-avatar.md](create-realistic-avatar.md) | Idea → linted Nano Banana Pro prompt → avatar that reads as a real photo | **ready** |
 | [consistent-character.md](consistent-character.md) | Lock one avatar's face across angles, outfits and locations via a reference image (Phase 5) | **ready** |
 | [write-a-brief.md](write-a-brief.md) | The six-part prompt framework (lesson 1), and how `tools/brief.py` applies it — including why every model reply is validated | **ready** |

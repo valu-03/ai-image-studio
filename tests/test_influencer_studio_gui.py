@@ -89,6 +89,8 @@ def fill_zoe(view):
     view.hair_buttons["blonde"].setChecked(True)
     view.eye_buttons["blue"].setChecked(True)
     view.details_field.setPlainText("a small nose stud")
+    view.voice_field.setPlainText(
+        "light Australian accent, relaxed and confident, medium pace, bit of vocal rasp.")
 
 
 app = QApplication(sys.argv)
@@ -127,6 +129,8 @@ check("saved dict carries every structured field", saved.get("name") == "Zoe"
       str(saved))
 check("no reference_images key holds anything (none were added)",
       saved.get("reference_images") == [], str(saved.get("reference_images")))
+check("voice blueprint text is saved too",
+      saved.get("voice", "").startswith("light Australian accent"), str(saved.get("voice")))
 
 print()
 print("--- New (blank) actually clears the exclusive chip groups ---")
@@ -143,6 +147,8 @@ check("no eye chip stays checked", view._picked_single(view.eye_buttons) is None
       view._picked_single(view.eye_buttons))
 check("no style chips stay checked", view._picked_style_tags() == [],
       str(view._picked_style_tags()))
+check("voice blueprint cleared too", view.voice_field.toPlainText() == "",
+      repr(view.voice_field.toPlainText()))
 check("a blank form shows the empty hint, not a green 'a person.'",
       "Describe the persona" in view.composed.text()
       and not view.apply_button.isEnabled(), view.composed.text())
@@ -167,8 +173,34 @@ check("eye chip restored", view._picked_single(view.eye_buttons) == "blue",
       view._picked_single(view.eye_buttons))
 check("details restored", view.details_field.toPlainText() == "a small nose stud",
       repr(view.details_field.toPlainText()))
+check("voice blueprint restored",
+      view.voice_field.toPlainText().startswith("light Australian accent"),
+      repr(view.voice_field.toPlainText()))
 check("composed text matches what was saved", view.composed.text() == composed,
       view.composed.text())
+
+print()
+print("--- Voice tab: generator composes a starting point, doesn't auto-apply ---")
+view.new_persona()
+app.processEvents()
+check("voice field starts empty on a new persona", view.voice_field.toPlainText() == "")
+index = view.voice_style_combo.findData("confident")
+check("'confident' is a real style in the picker", index >= 0)
+view.voice_style_combo.setCurrentIndex(index)
+view.voice_accent_field.setText("Irish accent")
+app.processEvents()
+check("the live preview fills the accent into the template",
+      "Irish accent" in view.voice_preview.text(), view.voice_preview.text())
+check("picking a style alone does not touch the persisted field yet",
+      view.voice_field.toPlainText() == "", repr(view.voice_field.toPlainText()))
+view._use_voice_preview()
+app.processEvents()
+check("'Use this blueprint' sets the persisted field to the preview",
+      view.voice_field.toPlainText() == view.voice_preview.text(), view.voice_field.toPlainText())
+view.voice_field.setPlainText("hand-typed voice notes, no style picked")
+app.processEvents()
+check("the field stays freely editable after using a generated starting point",
+      view.voice_field.toPlainText() == "hand-typed voice notes, no style picked")
 
 print()
 print("--- Reference images: cap at 8, thumbnails track the list, remove works ---")

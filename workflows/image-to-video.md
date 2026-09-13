@@ -111,6 +111,37 @@ The image is already in the history log. Note the movement key in the entry so y
 which moves work for which shots — the same feedback idea as the image side, applied to
 motion.
 
+## Optional — Auto multi-shot
+
+**Source:** AI Video Bootcamp's Kling 3.0 update lesson.
+
+Kling 3.0 can vary its own camera angles/cuts within one generation instead of holding a
+single continuous shot. Videos → Generate has a **"multi-shot (auto)"** checkbox next to
+audio for this — toggle it on and Kling decides the cuts itself; there is no extra cost
+multiplier for it. This is Kling's *Auto* multi-shot only. Kling's separate *Custom* mode
+(choosing exactly when each cut happens and writing a different prompt per cut) is not
+implemented here — if you need that level of control, build the sequence in Kling's own
+interface directly.
+
+## Optional — the Contrast Trick, after you export
+
+**Source:** AI Video Bootcamp's "Removing the 'AI' Look" / "Contrast Trick" lessons.
+
+Raw AI video often reads as fake for reasons no prompt fixes: punchy contrast, over-clean
+saturation, and a camera that's too stable to feel handheld. For UGC-style or social clips,
+the course's fix is a short pass in CapCut on the *exported* clip, not the prompt — this app
+does no video post-processing itself, so this step happens after Step 7, outside the app:
+
+1. Add an adjustment layer/filter over the clip.
+2. Lower contrast until it stops reading as a render.
+3. Reduce saturation slightly — just enough to take the digital edge off, not grey it out.
+4. Lift highlights a touch if the image feels dense.
+5. Add a shake effect, then turn it down until it's barely noticeable — visible shake reads
+   as an effect, not as a handheld camera.
+
+This is a finishing pass for clips that need to feel native to social, not something every
+clip needs.
+
 ## What is not here
 
 Editing and sound (Phase 4) — the glossary tab defines the terms (L cut, J cut, match cut,

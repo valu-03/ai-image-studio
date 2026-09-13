@@ -190,7 +190,7 @@ def _resolve(model=None, base=None):
 
 
 def generate(prompt="", out_name=None, image=None, duration=5, aspect_ratio=None,
-             mode=None, sound=None, model=None, base=None, dry_run=False,
+             mode=None, sound=None, multi_shots=None, model=None, base=None, dry_run=False,
              should_cancel=None, on_stage=None):
     """Prompt -> saved .mp4 path. Returns (path, error, credits_used).
 
@@ -216,7 +216,7 @@ def generate(prompt="", out_name=None, image=None, duration=5, aspect_ratio=None
             image_urls.append(gi.upload_kie_reference(key, image, upload_base))
         url, body, headers, dropped = build_submit(
             base, model, key or "DRY-RUN", prompt, image_urls, duration,
-            aspect_ratio, mode, sound)
+            aspect_ratio, mode, sound, multi_shots)
     except (FileNotFoundError, RuntimeError) as exc:
         return None, gi.GenerationError(str(exc), 3), None
     if dropped:
@@ -283,6 +283,9 @@ def main(argv=None):
     parser.add_argument("--aspect", choices=ASPECTS, default=DEFAULTS["aspect_ratio"])
     parser.add_argument("--mode", choices=MODES, default=DEFAULTS["mode"])
     parser.add_argument("--sound", action="store_true", help="native audio (about 2x price)")
+    parser.add_argument("--multi-shots", action="store_true",
+                        help="let Kling automatically vary camera angles/cuts within the clip "
+                             "(Auto multi-shot; per-cut custom prompting is not supported here)")
     parser.add_argument("--out", help="output filename inside temp/outputs/videos/")
     parser.add_argument("--model", help="override the model id for this call")
     parser.add_argument("--dry-run", action="store_true", help="print the request, send nothing")
@@ -321,7 +324,7 @@ def main(argv=None):
         url, body, _headers, dropped = build_submit(
             _base, model, "DRY-RUN", prompt,
             ["https://example.invalid/first-frame.png"] if args.image else [],
-            args.duration, args.aspect, args.mode, args.sound)
+            args.duration, args.aspect, args.mode, args.sound, args.multi_shots)
         print("POST {}".format(url))
         print(json.dumps(body, indent=2))
         if dropped:
@@ -330,7 +333,8 @@ def main(argv=None):
 
     path, error, used = generate(
         prompt=prompt, out_name=args.out, image=args.image, duration=args.duration,
-        aspect_ratio=args.aspect, mode=args.mode, sound=args.sound, model=args.model,
+        aspect_ratio=args.aspect, mode=args.mode, sound=args.sound,
+        multi_shots=args.multi_shots, model=args.model,
         on_stage=lambda message: print(message, file=sys.stderr))
     if error:
         print(str(error), file=sys.stderr)

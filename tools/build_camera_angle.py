@@ -13,10 +13,18 @@ perfectly valid real combination), so there's no conflicts check here, and
 no --technique either - the three axes fully describe camera position on
 their own.
 
+--vertical/--side/--size each accept EITHER a bank key (see --list) OR your
+own literal text - the bank's entries are tested starting points, not a
+closed world, the same rule build_lighting.py's own deep path (and
+ui/spec_editor.py's editable combos) already follow. A value that matches a
+bank key uses that entry's phrase; anything else is used exactly as typed,
+never rejected as a typo.
+
 `--custom` always wins entirely if given, same precedence as everywhere
-else in this project. Otherwise composes whichever subset of --vertical/
---side/--size you give (comma-joined) - give at least one, or nothing
-resolves and CameraAngleError is raised.
+else in this project - it replaces the whole composed phrase, not just one
+axis. Otherwise composes whichever subset of --vertical/--side/--size you
+give (comma-joined) - give at least one, or nothing resolves and
+CameraAngleError is raised.
 
 The result is meant to be typed straight into Compose's own Shot field as
 custom text (ui/spec_editor.py's shot combo), replacing the camera slot -
@@ -57,13 +65,23 @@ def sizes(bank):
 
 
 class CameraAngleError(ValueError):
-    """An unknown key was asked for, or nothing at all resolved to a phrase."""
+    """Nothing at all resolved to a phrase."""
+
+
+def _resolve(table, value):
+    """The bank entry's phrase if `value` names one, else `value` itself as
+    literal text - each axis is a suggestion, not a closed world, so an
+    unrecognised value is used exactly as typed rather than rejected as a
+    typo. Mirrors build_lighting.py's own `_resolve()`."""
+    cfg = table.get(value)
+    return cfg["phrase"] if cfg else value
 
 
 def compose_camera_angle(bank, vertical=None, side=None, size=None, custom=None):
     """(phrase, warnings). `warnings` is always [] - the three axes never
-    contradict each other, so there's nothing to warn about. Raises
-    CameraAngleError for an unknown key, or if nothing at all is given.
+    contradict each other, so there's nothing to warn about. vertical/side/
+    size each accept a bank key or free text (see _resolve). Raises
+    CameraAngleError only if nothing at all is given.
     """
     custom = (custom or "").strip()
     if custom:
@@ -71,20 +89,11 @@ def compose_camera_angle(bank, vertical=None, side=None, size=None, custom=None)
 
     parts = []
     if vertical:
-        cfg = verticals(bank).get(vertical)
-        if not cfg:
-            raise CameraAngleError("Unknown vertical '{}'. See --list.".format(vertical))
-        parts.append(cfg["phrase"])
+        parts.append(_resolve(verticals(bank), vertical))
     if side:
-        cfg = sides(bank).get(side)
-        if not cfg:
-            raise CameraAngleError("Unknown side '{}'. See --list.".format(side))
-        parts.append(cfg["phrase"])
+        parts.append(_resolve(sides(bank), side))
     if size:
-        cfg = sizes(bank).get(size)
-        if not cfg:
-            raise CameraAngleError("Unknown size '{}'. See --list.".format(size))
-        parts.append(cfg["phrase"])
+        parts.append(_resolve(sizes(bank), size))
 
     if not parts:
         raise CameraAngleError(
@@ -100,9 +109,14 @@ def parse_args(argv):
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
-    p.add_argument("--vertical", help="e.g. low-angle, high-angle, worms-eye (see --list)")
-    p.add_argument("--side", help="e.g. profile, three-quarter, over-the-shoulder (see --list)")
-    p.add_argument("--size", help="e.g. close-up, wide, medium (see --list)")
+    p.add_argument("--vertical",
+                    help="a bank key (e.g. low-angle, high-angle, worms-eye - see --list) "
+                         "or your own text")
+    p.add_argument("--side",
+                    help="a bank key (e.g. profile, three-quarter, over-the-shoulder - see "
+                         "--list) or your own text")
+    p.add_argument("--size",
+                    help="a bank key (e.g. close-up, wide, medium - see --list) or your own text")
     p.add_argument("--custom", help="typed camera-angle text - beats everything else")
     p.add_argument("--list", action="store_true", help="print every option and exit")
     return p.parse_args(argv)

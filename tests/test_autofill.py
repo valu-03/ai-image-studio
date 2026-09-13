@@ -114,8 +114,23 @@ check("the disagreement is reported, not fixed", any("typed your own" in n for n
       str(notes))
 
 print()
-print("=== THE BANK, v8 ===")
-check("version bumped", bank["version"] == 8, str(bank["version"]))
+print("=== THE BANK, v10 ===")
+check("version bumped", bank["version"] == 10, str(bank["version"]))
+for term in ("cinematic masterpiece", "hyper-detailed", "ultra-glossy", "award-winning",
+             "perfect lighting", "cinematic lighting"):
+    check("'{}' is a soft warn, not a hard ban".format(term),
+          term in bank["warn"] and term not in bank["banned"])
+for term in ("beauty filter", "glamour retouching"):
+    check("'{}' is a hard ban".format(term), term in bank["banned"])
+base_prompt, _, base_score, base_banned = score(BASE)
+_, _, _, base_warn, _ = rl.lint(base_prompt.lower(), bank)
+check("a clean, ordinary prompt still scores 8/8, no bans and trips none of them",
+      base_score == 8 and not base_banned and not base_warn,
+      "{}/8 banned={} warn={}".format(base_score, base_banned, base_warn))
+_, _, got_selfie, banned_selfie = score(dict(BASE, shot="selfie"))
+check("the selfie preset's own 'no beauty filter' phrase does not self-trip the new ban "
+      "(it's a negation, which realism_lint.py's is_negated() already excludes)",
+      got_selfie == 8 and not banned_selfie, "{}/8 banned={}".format(got_selfie, banned_selfie))
 for cam in ["shot on an ARRI Alexa", "shot on a Sony Venice 2", "shot on a RED V-Raptor",
             "shot on a Hasselblad medium format camera"]:
     check("'{}' is in the camera layer".format(cam), cam in bank["layers"]["camera"]["terms"])

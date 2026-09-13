@@ -79,7 +79,7 @@ def _send(url, data, hdrs, method="POST"):
     """
     request = urllib.request.Request(url, data=data, headers=hdrs, method=method)
     try:
-        with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
+        with gi.open_with_retry(request, TIMEOUT, url) as response:
             content_type = response.headers.get("Content-Type", "")
             raw = response.read(MAX_AUDIO_BYTES + 1)
             status = response.status
@@ -95,7 +95,7 @@ def _send(url, data, hdrs, method="POST"):
 def get_json(url, hdrs):
     request = urllib.request.Request(url, headers=hdrs, method="GET")
     try:
-        with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
+        with gi.open_with_retry(request, TIMEOUT, url) as response:
             raw = response.read().decode("utf-8", errors="replace")
             status = response.status
     except urllib.error.HTTPError as exc:

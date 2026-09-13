@@ -18,12 +18,15 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 import advisor as advisor_tool  # noqa: E402
 import brief as brief_tool  # noqa: E402
+import coherence_lint as cl  # noqa: E402
 import elevenlabs_voices as voices_tool  # noqa: E402
 import generate_image as gi  # noqa: E402  (path set above)
 import generate_sound as gsnd  # noqa: E402
 import generate_speech as gspeech  # noqa: E402
 import generate_video as gv  # noqa: E402
 import refine_image as refine_tool  # noqa: E402
+import render_video as rv  # noqa: E402
+import vision_lint as vl  # noqa: E402
 
 MAX_CONCURRENCY = 3
 
@@ -376,7 +379,7 @@ class VideoTask(QRunnable):
     """
 
     def __init__(self, index, prompt, image=None, duration=5, aspect_ratio=None,
-                 mode=None, sound=None, out_name=None, model=None):
+                 mode=None, sound=None, multi_shots=None, out_name=None, model=None):
         super().__init__()
         self.index = index
         self.prompt = prompt
@@ -385,6 +388,7 @@ class VideoTask(QRunnable):
         self.aspect_ratio = aspect_ratio
         self.mode = mode
         self.sound = sound
+        self.multi_shots = multi_shots
         self.out_name = out_name
         self.model = model
         self.signals = VideoSignals()
@@ -400,7 +404,8 @@ class VideoTask(QRunnable):
             path, error, used = gv.generate(
                 prompt=self.prompt, out_name=self.out_name, image=self.image,
                 duration=self.duration, aspect_ratio=self.aspect_ratio,
-                mode=self.mode, sound=self.sound, model=self.model,
+                mode=self.mode, sound=self.sound, multi_shots=self.multi_shots,
+                model=self.model,
                 should_cancel=lambda: self._cancelled,
                 on_stage=lambda message: self.signals.stage.emit(index, message),
             )
@@ -414,6 +419,127 @@ class VideoTask(QRunnable):
             self.signals.failed.emit(index, "{}: {}".format(type(exc).__name__, exc))
         finally:
             self.signals.done.emit(index)
+
+
+class RenderSignals(QObject):
+    """Signals for one render job. No index - a render is one job per story,
+    never batched, unlike stills/clips."""
+
+    stage = pyqtSignal(str)
+    finished = pyqtSignal(str)   # output path
+    failed = pyqtSignal(str)
+    done = pyqtSignal()
+
+
+class RenderTask(QRunnable):
+    """Scenes -> one .mp4, off the UI thread.
+
+    Everything about how ffmpeg is spoken to lives in render_video.render();
+    this only moves the call off the main loop, the same as VideoTask does for
+    generate_video.generate().
+    """
+
+    def __init__(self, scenes, out_path, aspect_ratio=None):
+        super().__init__()
+        self.scenes = scenes
+        self.out_path = out_path
+        self.aspect_ratio = aspect_ratio
+        self.signals = RenderSignals()
+        self._cancelled = False
+
+    def cancel(self):
+        self._cancelled = True
+
+    def run(self):
+        try:
+            path, error = rv.render(
+                self.scenes, self.out_path, aspect_ratio=self.aspect_ratio,
+                should_cancel=lambda: self._cancelled,
+                on_stage=lambda message: self.signals.stage.emit(message),
+            )
+            if self._cancelled:
+                return
+            if error:
+                self.signals.failed.emit(str(error))
+                return
+            self.signals.finished.emit(str(path))
+        except Exception as exc:  # a worker must never take the app down
+            self.signals.failed.emit("{}: {}".format(type(exc).__name__, exc))
+        finally:
+            self.signals.done.emit()
+
+
+class VisionQcSignals(QObject):
+    """Signals for one post-generation vision QC check. No index - one image,
+    checked once, right after it is shown."""
+
+    finished = pyqtSignal(object, int, int)   # checks list, score, total
+    failed = pyqtSignal(str)
+    done = pyqtSignal()
+
+
+class VisionQcTask(QRunnable):
+    """One generated image -> a vision-model check against its spec, off the
+    UI thread. Everything about how the model is asked and its reply
+    whitelisted lives in vision_lint.check(); this only moves the call off the
+    main loop, the same as every other task in this file."""
+
+    def __init__(self, image_path, spec, reference_path=None, model=None):
+        super().__init__()
+        self.image_path = image_path
+        self.spec = spec
+        self.reference_path = reference_path
+        self.model = model
+        self.signals = VisionQcSignals()
+
+    def run(self):
+        try:
+            checks, score, total, error = vl.check(
+                self.image_path, self.spec, reference_path=self.reference_path,
+                model=self.model)
+            if error:
+                self.signals.failed.emit(str(error))
+                return
+            self.signals.finished.emit(checks, score, total)
+        except Exception as exc:  # a worker must never take the app down
+            self.signals.failed.emit("{}: {}".format(type(exc).__name__, exc))
+        finally:
+            self.signals.done.emit()
+
+
+class CoherenceSignals(QObject):
+    """Signals for one semantic coherence check. One prompt, checked once,
+    on demand - not on every keystroke like the deterministic gate."""
+
+    finished = pyqtSignal(object, int, int)   # checks list, score, total
+    failed = pyqtSignal(str)
+    done = pyqtSignal()
+
+
+class CoherenceTask(QRunnable):
+    """One prompt -> a semantic coherence check, off the UI thread.
+
+    Everything about how the model is asked and its reply whitelisted lives
+    in coherence_lint.check(); this only moves the call off the main loop,
+    the same as VisionQcTask does for vision_lint.check()."""
+
+    def __init__(self, text, model=None):
+        super().__init__()
+        self.text = text
+        self.model = model
+        self.signals = CoherenceSignals()
+
+    def run(self):
+        try:
+            checks, score, total, error = cl.check(self.text, model=self.model)
+            if error:
+                self.signals.failed.emit(str(error))
+                return
+            self.signals.finished.emit(checks, score, total)
+        except Exception as exc:  # a worker must never take the app down
+            self.signals.failed.emit("{}: {}".format(type(exc).__name__, exc))
+        finally:
+            self.signals.done.emit()
 
 
 class CreditsSignals(QObject):

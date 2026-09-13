@@ -1,4 +1,5 @@
 """The Kling motion toolkit: the bank, the two PDF rules, and the gate."""
+import subprocess
 import sys
 from pathlib import Path
 
@@ -188,6 +189,55 @@ check("negatives is a real, non-empty bank list",
       str(bank.get("negatives")))
 check("a bank with no negatives key falls back rather than crashing",
       bm.negative_tail({}) == ", ".join(bm.DEFAULT_NEGATIVES))
+
+print()
+print("=== the opt-in avatar/multi-cut guard ===")
+check("avatar_guard is a real, non-empty bank list, separate from negatives",
+      isinstance(bank.get("avatar_guard"), list) and len(bank["avatar_guard"]) >= 4,
+      str(bank.get("avatar_guard")))
+check("a bank with no avatar_guard key falls back rather than crashing",
+      bm.avatar_guard_tail({}) == ", ".join(bm.DEFAULT_AVATAR_GUARD))
+
+off = bm.compose(bank, "orbit-360", {"subject": "a woman"})[0]
+on = bm.compose(bank, "orbit-360", {"subject": "a woman"}, avatar_guard=True)[0]
+check("avatar_guard defaults to off - compose() carries none of its terms",
+      not any(term in off for term in bank["avatar_guard"]), off[-160:])
+check("avatar_guard=True appends every one of its terms",
+      all(term in on for term in bank["avatar_guard"]), on[-220:])
+check("it comes AFTER the standing negative guard, not instead of it",
+      on.index(bm.negative_tail(bank)) < on.index(bm.avatar_guard_tail(bank)), on[-220:])
+check("it does not disturb the standing negative guard itself",
+      all(term in on for term in bank["negatives"]), on[-220:])
+
+template_off = bm.assemble_template(
+    bank, "close-up", "a woman", "talking", "camera pushes in", "natural light")
+template_on = bm.assemble_template(
+    bank, "close-up", "a woman", "talking", "camera pushes in", "natural light",
+    avatar_guard=True)
+check("assemble_template() also defaults to off",
+      not any(term in template_off for term in bank["avatar_guard"]), template_off[-160:])
+check("assemble_template(avatar_guard=True) appends every term",
+      all(term in template_on for term in bank["avatar_guard"]), template_on[-220:])
+
+checks, _ = ml.lint(on, bank, "orbit-360", {"subject": "a woman"})
+by_name = {n: ok for n, ok, _ in checks}
+check("motion_lint still passes a prompt carrying the extra guard - it's untouched by this",
+      by_name["Negative guard present"])
+
+TOOL = ROOT / "tools" / "build_motion.py"
+p = subprocess.run(
+    [sys.executable, str(TOOL), "--movement", "orbit-360", "--subject", "a woman",
+     "--no-write", "--avatar-guard"],
+    capture_output=True, text=True, cwd=str(ROOT))
+check("--avatar-guard exits 0", p.returncode == 0, p.stderr[:160])
+check("--avatar-guard reaches the printed prompt",
+      all(term in p.stdout for term in bank["avatar_guard"]), p.stdout[-220:])
+
+p = subprocess.run(
+    [sys.executable, str(TOOL), "--movement", "orbit-360", "--subject", "a woman", "--no-write"],
+    capture_output=True, text=True, cwd=str(ROOT))
+check("without the flag, none of the avatar-guard terms print",
+      not any(term in p.stdout for term in bank["avatar_guard"]), p.stdout[-160:])
 
 print()
 print("=== RULE 7: the negative guard is now checked, not just appended ===")

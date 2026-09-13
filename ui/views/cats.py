@@ -15,6 +15,7 @@ and a second panel restating it would be a second copy to go stale.
 """
 
 import sys
+from datetime import datetime
 from pathlib import Path
 
 from PyQt6.QtCore import QSize, Qt, QThreadPool, pyqtSignal
@@ -44,6 +45,7 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
 import build_motion as bm  # noqa: E402
+import build_prompt as bp  # noqa: E402
 import build_sound as bsd  # noqa: E402
 import build_story as bs  # noqa: E402
 import generate_image as gi  # noqa: E402  (key-presence check only)
@@ -51,12 +53,13 @@ import generate_sound as gsnd  # noqa: E402  (KEY_VAR, WHERE - shared ElevenLabs
 import generate_speech as gspeech  # noqa: E402
 import generate_video as gv  # noqa: E402
 import history as hist  # noqa: E402
+import render_video as rv  # noqa: E402
 import sound_lint as sl  # noqa: E402
 import story_lint as stl  # noqa: E402
 
 from .. import assets, tokens as T  # noqa: E402
 from ..widgets import AiSuggestionBadge, Badge, Card, GateTree, MutedLabel, TitleLabel  # noqa: E402
-from ..workers import LlmTask, SpeechTask  # noqa: E402
+from ..workers import LlmTask, RenderTask, SoundTask, SpeechTask  # noqa: E402
 from .cats_custom import CustomPromptTab  # noqa: E402
 
 # Every field any format asks for. The parser accepts them all and each format
@@ -184,6 +187,8 @@ class CatsView(QWidget):
         self.passing = False
         self.images = {}            # scene index -> generated still
         self.videos = {}            # scene index -> generated clip
+        self.voiceovers = {}        # scene index -> generated voiceover audio
+        self.sfx = {}               # scene index -> {layer: generated audio path}
         self.entries = {}           # scene index -> history entry id
         self.status_by_scene = {}
         # scene index -> {shot_type, subject, action, style, camera_movement,
@@ -720,6 +725,26 @@ class CatsView(QWidget):
         self._motion_widgets[index] = {"preview": preview, "audio_badge": audio_badge}
         self._update_audio_badge(index, fields.get("audio_cues", ""))
 
+        # Real ElevenLabs sound effects, one button per layer - the ambience/
+        # key/accent text already computed for the CapCut sheet, generated for
+        # real rather than left as a prompt someone pastes into ElevenLabs by
+        # hand. Each button's tooltip carries the actual cue text and its
+        # sound_lint score, so "Generate" is never a mystery click.
+        sfx_row = QHBoxLayout()
+        sfx_row.addWidget(MutedLabel("Sound"))
+        for entry in self._scene_sound_layers(index):
+            button = QPushButton(entry["label"])
+            button.setProperty("class", "ghost")
+            button.setToolTip('"{}"  ({}/{})'.format(
+                entry["text"], entry["score"], entry["total"]))
+            button.clicked.connect(
+                lambda _=False, i=index, lk=entry["layer"]: self.generate_scene_sfx(i, lk))
+            sfx_row.addWidget(button)
+        card.body.addLayout(sfx_row)
+        sfx_status = MutedLabel("")
+        card.body.addWidget(sfx_status)
+        self._motion_widgets[index]["sfx_status"] = sfx_status
+
         # Real spoken narration - story format only. `trade`'s whole point is
         # one locked-off take with no words at all (story_lint drops the
         # `words` check for it entirely), so this row does not exist for it,
@@ -809,6 +834,7 @@ class CatsView(QWidget):
         self.pool.start(task)
 
     def _on_scene_voiceover_done(self, index, path):
+        self.voiceovers[index] = str(path)
         status = self._motion_widgets.get(index, {}).get("voice_status")
         if status:
             status.setText("Saved: {}".format(path))
@@ -818,6 +844,55 @@ class CatsView(QWidget):
         status = self._motion_widgets.get(index, {}).get("voice_status")
         if status:
             status.setText(reason)
+
+    def _sound_subject(self):
+        return (self.scenes[0]["spec"].get("subject") if self.scenes else None) or "the cat"
+
+    def _scene_sound_layers(self, index):
+        """The same three-layer sheet refresh_sheet() prints for CapCut, for
+        just this one scene - the single source both the button tooltips and
+        the actual generation call read from, so they can never disagree."""
+        if not (0 <= index < len(self.scenes)):
+            return []
+        scene = self.scenes[index]
+        spec = scene.get("spec", {})
+        return bsd.scene_sound(
+            self.sound_bank,
+            setting=spec.get("setting") or scene.get("setting", ""),
+            subject=self._sound_subject(),
+            doing=spec.get("action") or scene.get("action", ""),
+            seed=index, key_override=self._audio_cue_overrides().get(index))
+
+    def generate_scene_sfx(self, index, layer):
+        if not gi.env_value(gsnd.KEY_VAR):
+            self.status.emit(
+                "No {} set in .env - get one at {}".format(gsnd.KEY_VAR, gsnd.WHERE))
+            return
+        entry = next((e for e in self._scene_sound_layers(index) if e["layer"] == layer), None)
+        status = self._motion_widgets.get(index, {}).get("sfx_status")
+        if not entry:
+            return
+        if status:
+            status.setText("Generating {}...".format(entry["label"]))
+        slug = "cats-{}-{}".format(self.scenes[index]["n"], layer) \
+            if 0 <= index < len(self.scenes) else "cats-{}-{}".format(index, layer)
+        task = SoundTask(entry["text"], out_name="{}.mp3".format(slug))
+        task.signals.finished.connect(
+            lambda path, i=index, lk=layer: self._on_scene_sfx_done(i, lk, path))
+        task.signals.failed.connect(lambda reason, i=index: self._on_scene_sfx_failed(i, reason))
+        self.pool.start(task)
+
+    def _on_scene_sfx_done(self, index, layer, path):
+        self.sfx.setdefault(index, {})[layer] = str(path)
+        status = self._motion_widgets.get(index, {}).get("sfx_status")
+        if status:
+            status.setText("Saved {}: {}".format(layer, path))
+        self.status.emit("{} sound generated".format(layer.title()))
+
+    def _on_scene_sfx_failed(self, index, reason):
+        status = self._motion_widgets.get(index, {}).get("sfx_status")
+        if status:
+            status.setText(reason[:200])
 
     def _audio_cue_overrides(self):
         """{scene index: cue text} for every scene with a non-blank cue -
@@ -876,6 +951,12 @@ class CatsView(QWidget):
         copy_sheet.setIconSize(assets.ICON_SIZE)
         copy_sheet.clicked.connect(self.copy_sheet)
 
+        self.render_button = QPushButton("Render Video")
+        self.render_button.setIcon(assets.icon("videos"))
+        self.render_button.setIconSize(assets.ICON_SIZE)
+        self.render_button.clicked.connect(self.request_render)
+        self.render_status = MutedLabel("")
+
         # Labels in a scroll area rather than a two-column tree. Nine steps of
         # prose in a tree read "Import all of them at once and lay them e" -
         # a tree row is one line tall and clips, whatever setWordWrap says.
@@ -911,6 +992,13 @@ class CatsView(QWidget):
             "Built from this story: which clip, which seconds of it to keep, the "
             "caption, the three sound layers and the cut into the next scene."))
         sheet_card.body.addWidget(self.sheet_box, 1)
+        # A second row rather than crowding the title row above: at the
+        # minimum window width there is no room left there for a second
+        # button without eliding both its and "Copy the sheet"'s text.
+        render_row = QHBoxLayout()
+        render_row.addWidget(self.render_button)
+        render_row.addWidget(self.render_status, 1)
+        sheet_card.body.addLayout(render_row)
         sheet_card.setMinimumWidth(380)
 
         steps_card = Card()
@@ -1168,8 +1256,7 @@ class CatsView(QWidget):
         # right for a single-cat story, but the sheet said "the cat shovelling
         # cement" over a two-cat scene. The real subject is on every scene's
         # own spec, so use it rather than the placeholder.
-        subject = (self.scenes[0]["spec"].get("subject") if self.scenes else None) or "the cat"
-        sheets = bsd.story_sound(self.sound_bank, self.scenes, subject=subject,
+        sheets = bsd.story_sound(self.sound_bank, self.scenes, subject=self._sound_subject(),
                                  key_overrides=self._audio_cue_overrides())
         self.sheet_box.setPlainText(
             bs.edit_sheet_text(self.story_bank, self.scenes, sheets))
@@ -1305,6 +1392,52 @@ class CatsView(QWidget):
 
     def on_video_failed(self, index, reason):
         self._set_scene_status(index, "clip failed")
+        self.status.emit(reason[:160])
+
+    # -- render --------------------------------------------------------------- #
+    def request_render(self):
+        """Concatenate every scene's clip (plus its voiceover and any
+        generated SFX layers) into one exported .mp4 - the in-app alternative
+        to the manual CapCut pass."""
+        if not self.scenes:
+            self.status.emit("Nothing to render yet")
+            return
+        missing = [s["n"] for i, s in enumerate(self.scenes) if not self.videos.get(i)]
+        if missing:
+            self.status.emit(
+                "Generate the clips first - scenes {} have no video.".format(
+                    ", ".join(str(n) for n in missing[:6])))
+            return
+        scenes_payload = [
+            {"clip_path": self.videos[i], "voice_path": self.voiceovers.get(i),
+             "sfx_paths": list(self.sfx.get(i, {}).values()),
+             "duration": scene["clip_seconds"]}
+            for i, scene in enumerate(self.scenes)
+        ]
+        aspect = (self.scenes[0]["spec"].get("aspect") if self.scenes else None) or "9:16"
+        slug = bp.slugify(self.base_spec().get("slug")
+                          or self.base_spec().get("subject", "cat"))
+        stamp = datetime.now().strftime("%Y%m%d-%H%M")
+        out_path = rv.OUT_DIR / "{}-{}.mp4".format(slug, stamp)
+
+        self.render_button.setEnabled(False)
+        self.render_status.setText("Rendering...")
+        task = RenderTask(scenes_payload, out_path, aspect_ratio=aspect)
+        task.signals.stage.connect(self._on_render_stage)
+        task.signals.finished.connect(self._on_render_finished)
+        task.signals.failed.connect(self._on_render_failed)
+        task.signals.done.connect(lambda: self.render_button.setEnabled(True))
+        self.pool.start(task)
+
+    def _on_render_stage(self, message):
+        self.render_status.setText(message)
+
+    def _on_render_finished(self, path):
+        self.render_status.setText("Saved: {}".format(path))
+        self.status.emit("Video rendered")
+
+    def _on_render_failed(self, reason):
+        self.render_status.setText(reason[:200])
         self.status.emit(reason[:160])
 
     # -- batch feedback ------------------------------------------------------ #

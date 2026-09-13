@@ -358,6 +358,20 @@ def movement_for(bank, beat_key, occurrence, fmt=None):
     return options[(occurrence - 1) % len(options)]
 
 
+def shot_for(bank, beat_key, occurrence, fmt=None):
+    """Cycle a repeated beat through its shot options, the same reason
+    movement_for cycles movements - a beat that recurs (escalation, most
+    often) should not frame the identical shot every time it does. Falls
+    back to the beat's single `shot` string for a beat with no `shots` list
+    (i.e. every beat that never repeats), so this changes nothing for them.
+    """
+    cfg = beats(bank, fmt).get(beat_key, {})
+    options = cfg.get("shots") or ([cfg["shot"]] if cfg.get("shot") else [])
+    if not options:
+        return ""
+    return options[(occurrence - 1) % len(options)]
+
+
 # --------------------------------------------------------------------------- #
 # Scenes
 # --------------------------------------------------------------------------- #
@@ -407,7 +421,7 @@ def scene_spec(bank, beat_key, occurrence, base_spec, style, reference=None,
     """The character spec for one scene's still."""
     beat = beats(bank, fmt).get(beat_key, {})
     spec = dict(base_spec)
-    spec["shot"] = base_spec.get("shot") or beat.get("shot")
+    spec["shot"] = base_spec.get("shot") or shot_for(bank, beat_key, occurrence, fmt)
     if bank.get("aspect") and not spec.get("aspect"):
         spec["aspect"] = bank["aspect"]
     spec["slug"] = "{}-{}{}".format(

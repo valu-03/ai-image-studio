@@ -1,6 +1,6 @@
 {
   "source": "AI Video Bootcamp - Phase 2 ARCHITECT - Lesson 20: Creating More Realistic Avatars",
-  "version": 8,
+  "version": 10,
   "default_model": "Nano Banana Pro",
   "layers": {
     "core": {
@@ -190,13 +190,21 @@
     "unreal engine",
     "digital painting",
     "concept art",
-    "airbrushed"
+    "airbrushed",
+    "beauty filter",
+    "glamour retouching"
   ],
   "warn": [
     "8k",
     "4k",
     "masterpiece",
-    "trending on artstation"
+    "trending on artstation",
+    "cinematic masterpiece",
+    "hyper-detailed",
+    "ultra-glossy",
+    "award-winning",
+    "perfect lighting",
+    "cinematic lighting"
   ],
   "purposes": {
     "youtube-ad": {

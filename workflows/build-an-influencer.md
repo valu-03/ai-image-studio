@@ -46,6 +46,12 @@ in this app describes who someone specifically is, or how a shot is technically 
 slider tuned toward an idealised standard. If a persona needs a specific face or build, that is
 prose in Additional Details, same as everywhere else.
 
+Struggling to find the words for a face? The **Face Reference** tab is a searchable, read-only
+word list (face shapes, facial-structure terms, skin-texture realism cues — `tools/
+face_glossary.json`, community reference material, not the course) for exactly that. Double-click
+a term, or select one and press "Insert into Details", to drop it into the field above — it never
+becomes a pick or a slider, just faster prose.
+
 ## Step 2 — Read the Result panel before doing anything with it
 
 The composed sentence is shown immediately, live, as you fill the form in — the same "give me
@@ -67,7 +73,20 @@ persona in words. **They are never sent anywhere** — not to the model, not int
 own Identity tab (`consistent-character.md`) — a deliberately separate mechanism, so a mood
 board can never accidentally become a face-clone.
 
-## Step 5 — Apply to Compose, then continue as normal
+## Step 5 — Give them a voice too, if they'll ever speak on camera
+
+The **Voice** tab defines a reusable voice blueprint - accent, tone, pacing, personality -
+saved and reloaded with the persona exactly like Additional Details. This is app tooling built
+around a real course lesson ("Consistent Character Voices"): its own rule is to define a
+character's voice ONCE with specific traits and paste that EXACT text into every prompt where
+they need to speak, because even a small wording change shifts the tone a model produces.
+`tools/voice_bank.json`/`build_voice.py` supply 16 named starting-point styles (Conversational,
+Confident, Energetic, ...) each filled with an accent you type - or skip the picker and just
+type your own. There is no per-line dialogue field anywhere in this app to wire it into
+automatically, so **Copy** and paste the result into whatever prompt needs this character to
+speak.
+
+## Step 6 — Apply to Compose, then continue as normal
 
 **Apply to Compose** writes the composed sentence into Compose's Subject field (replacing
 whatever was there, the same "typed text wins outright" rule every other section's Apply

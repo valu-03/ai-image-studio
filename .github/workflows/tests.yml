@@ -1,0 +1,47 @@
+name: Tests
+
+# Runs every suite tests/run_all.py knows about - no test framework, no real
+# API calls (every provider is mocked, see tests/mock_api.py/mock_elevenlabs.py),
+# Qt runs offscreen so nothing needs a display. See tests/run_all.py's own
+# docstring for what "every suite" means.
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      # PyQt6's "offscreen" platform plugin still dynamically links several
+      # X11/EGL/DBus shared libraries at import time even though it never
+      # opens a real display - a bare ubuntu-latest runner is missing all of
+      # them, and the failure mode is an import-time crash, not a graceful
+      # fallback. Found by actually running this on a fresh runner, the same
+      # way AIVideoStudio.spec's own header describes finding its `uuid`
+      # hidden-import gap - not by reading PyQt6's docs.
+      - name: Install Qt's offscreen platform runtime dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libegl1 libopengl0 libxkbcommon0 libxkbcommon-x11-0 \
+            libdbus-1-3 libnss3 libxcomposite1 libxdamage1 libxrandr2 \
+            libxtst6 libxi6 libxrender1 libfontconfig1
+          # Renamed libasound2 -> libasound2t64 in Ubuntu 24.04's time_t
+          # transition; try the current runner's name first so this does not
+          # silently stop installing anything the day ubuntu-latest moves on.
+          sudo apt-get install -y --no-install-recommends libasound2t64 \
+            || sudo apt-get install -y --no-install-recommends libasound2
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run every suite
+        run: python tests/run_all.py

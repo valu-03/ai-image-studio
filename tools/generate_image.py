@@ -37,6 +37,7 @@ import base64
 import json
 import mimetypes
 import os
+import random
 import re
 import sys
 import time
@@ -162,10 +163,39 @@ def describe_api_error(payload, raw):
     return (raw or "")[:400]
 
 
+# A transport-level failure (URLError - DNS, timeout, connection reset: no
+# response ever arrived) is retried with backoff; an HTTPError - even a
+# 5xx - is not, and never was: the server received and possibly acted on the
+# request, and blindly retrying a POST that may have already started a paid
+# job risks starting it twice. This distinction is why open_with_retry()
+# exists as its own function rather than a loop inside every caller: get it
+# right once, here, and every transport (this module's own _send/download,
+# generate_sound.py's separate _send/get_json) shares the same judgment call.
+RETRY_ATTEMPTS = 3
+RETRY_BASE_DELAY = 1.0
+
+
+def open_with_retry(request, timeout, url, attempts=RETRY_ATTEMPTS, sleep=time.sleep):
+    """urllib.request.urlopen(), retried only on a genuine transport failure.
+
+    `sleep` is injectable, the same seam poll() already uses, so a test can
+    exercise every retry without a real wait.
+    """
+    for attempt in range(1, attempts + 1):
+        try:
+            return urllib.request.urlopen(request, timeout=timeout)
+        except urllib.error.HTTPError:
+            raise   # a real response arrived - never retried here
+        except urllib.error.URLError:
+            if attempt == attempts:
+                raise
+            sleep(RETRY_BASE_DELAY * (2 ** (attempt - 1)) + random.uniform(0, 0.5))
+
+
 def _send(request, url):
     request.add_header("User-Agent", USER_AGENT)
     try:
-        with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
+        with open_with_retry(request, TIMEOUT, url) as response:
             raw = response.read().decode("utf-8", errors="replace")
             status = response.status
     except urllib.error.HTTPError as exc:
@@ -202,7 +232,7 @@ def download(url):
     """
     request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT}, method="GET")
     try:
-        with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
+        with open_with_retry(request, TIMEOUT, url) as response:
             mime = (response.headers.get("Content-Type") or "").split(";")[0].strip()
             data = response.read(MAX_IMAGE_BYTES + 1)
     except urllib.error.HTTPError as exc:
@@ -298,12 +328,27 @@ def _find_url(payload):
     return None
 
 
-def credits(provider=DEFAULT_PROVIDER, base=None):
+# A balance check is read-only and idempotent - unlike a generation call,
+# nothing is wrong with answering the third refresh in a minute out of a
+# cache rather than the network. The TTL is short (seconds, not minutes)
+# specifically so a key added mid-session or a balance that just changed is
+# never stale for long - this is here to stop redundant GETs on repeated UI
+# refreshes, not to be a real balance tracker.
+CREDITS_CACHE_TTL = 20
+_credits_cache = {}   # provider -> (monotonic_time, credits, error)
+
+
+def credits(provider=DEFAULT_PROVIDER, base=None, use_cache=True):
     """Credits left on the account. Returns (credits, error); one is always None.
 
     No key is not an error - it is "unknown". The badge says so rather than
     showing a red state for an account that simply has not been set up.
     """
+    if use_cache:
+        cached = _credits_cache.get(provider)
+        if cached and time.monotonic() - cached[0] < CREDITS_CACHE_TTL:
+            return cached[1], cached[2]
+
     cfg = PROVIDERS.get(provider, {})
     if provider != "kie":
         return None, "{} does not publish a balance".format(cfg.get("label", provider))
@@ -317,14 +362,23 @@ def credits(provider=DEFAULT_PROVIDER, base=None):
         # No network is "unknown", not a failure worth a red badge.
         return None, str(exc)
     if status != 200 or not isinstance(payload, dict):
-        return None, describe_api_error(payload, raw)
+        result = None, describe_api_error(payload, raw)
+        if use_cache:
+            _credits_cache[provider] = (time.monotonic(),) + result
+        return result
     value = payload.get("data")
     if isinstance(value, dict):
         value = value.get("credit", value.get("credits"))
     try:
-        return int(value), None
+        result = int(value), None
+        if use_cache:
+            _credits_cache[provider] = (time.monotonic(),) + result
+        return result
     except (TypeError, ValueError):
-        return None, describe_api_error(payload, raw)
+        result = None, describe_api_error(payload, raw)
+        if use_cache:
+            _credits_cache[provider] = (time.monotonic(),) + result
+        return result
 
 
 # Nano Banana Pro's documented input enums. Sending something outside these is

@@ -229,10 +229,10 @@ check("a view per nav item", win.stack.count() == len(NAV_ITEMS))
 win.go_to("ads")
 check("reachable", win.stack.currentIndex() == list(win.nav_buttons).index("ads"))
 check("title follows", win.view_title.text() == "Ads", win.view_title.text())
-check("five sub-tabs", av.tabs.count() == 5, str(av.tabs.count()))
-check("tab names", [av.tabs.tabText(i) for i in range(5)]
-      == ["Brief", "Storyboard", "Variants", "Checklist", "Publishing"],
-      str([av.tabs.tabText(i) for i in range(5)]))
+check("six sub-tabs", av.tabs.count() == 6, str(av.tabs.count()))
+check("tab names", [av.tabs.tabText(i) for i in range(6)]
+      == ["Brief", "Storyboard", "Video", "Variants", "Checklist", "Publishing"],
+      str([av.tabs.tabText(i) for i in range(6)]))
 
 print("--- the storyboard reflects the brief ---")
 av.platform.setCurrentIndex(av.platform.findData("tiktok"))
@@ -346,6 +346,93 @@ check("the request carries the aspect the shot asked for",
 check("and the account's resolution and format",
       options[0].get("resolution") and options[0].get("output_format"),
       str(options[0]))
+
+print()
+print("=== a product photo rides alongside the locked presenter, from beat 2 on ===")
+submitted = []
+av.product_reference_path = "temp/resources/images/product.png"
+av.request_generate()
+app.processEvents()
+check("only the first shot goes out alone, same as without a product photo",
+      len(submitted) == 1 and len(submitted[0]) == 1, str([len(b) for b in submitted]))
+check("beat 1 still carries no reference at all - nothing is locked to yet",
+      submitted[0][0][3] == [], str(submitted[0][0][3]))
+
+win.on_item_finished(0, "temp/outputs/images/ad-1-pain.png")
+win.on_batch_finished()
+app.processEvents()
+check("then the rest follow, same batching as before",
+      len(submitted) == 2 and len(submitted[1]) == 4, str([len(b) for b in submitted]))
+check("every one of them carries BOTH the presenter lock and the product photo, in order",
+      all(job[3] == ["temp/outputs/images/ad-1-pain.png", "temp/resources/images/product.png"]
+          for job in submitted[1]),
+      str(submitted[1][0][3]))
+
+av.product_reference_path = None
+submitted = []
+av.request_generate()
+app.processEvents()
+win.on_item_finished(0, "temp/outputs/images/ad-1-pain.png")
+win.on_batch_finished()
+app.processEvents()
+check("clearing it goes back to exactly the presenter-only reference list",
+      all(job[3] == ["temp/outputs/images/ad-1-pain.png"] for job in submitted[1]),
+      str(submitted[1][0][3]))
+
+print()
+print("=== VIDEO: one Kling clip per shot, then a rendered .mp4 ===")
+# request_generate_videos() emits a signal MainWindow itself is really wired
+# to (video_requested -> generate_videos -> video_pool.submit) - exactly like
+# the stills submission above, that real pool must be stubbed out before
+# triggering it, or it spawns real background QThreadPool workers against
+# fake file paths that the test never waits on, racing interpreter shutdown.
+win.video_pool.submit = lambda jobs, **kw: None
+video_jobs = []
+status_messages = []
+av.video_requested.connect(lambda jobs, options: video_jobs.append((jobs, options)))
+av.status.connect(status_messages.append)
+
+av.images = {}
+av.request_generate_videos()
+check("no images yet refuses rather than inventing a different presenter",
+      not video_jobs, str(video_jobs))
+
+av.images = {i: "temp/outputs/images/ad-{}-{}.png".format(s["n"], s["key"])
+            for i, s in enumerate(av.shots)}
+av.request_generate_videos()
+check("one job per shot once every image exists",
+      len(video_jobs) == 1 and len(video_jobs[-1][0]) == len(av.shots),
+      str(len(video_jobs[-1][0]) if video_jobs else 0))
+jobs, options = video_jobs[-1]
+check("every job carries its own image and duration",
+      all(job["image"] == av.images[job["index"]]
+          and job["duration"] == av.shots[job["index"]]["duration"] for job in jobs))
+check("the video request carries the shot's own platform aspect, not a global default",
+      options.get("aspect_ratio") == av.shots[0]["spec"].get("aspect"), str(options))
+
+av.on_video_finished(0, "temp/outputs/videos/ad-1-pain.mp4")
+check("a finished clip is recorded under its shot",
+      av.videos[0] == "temp/outputs/videos/ad-1-pain.mp4", str(av.videos))
+av.on_video_failed(1, "ffmpeg failed")
+check("a failed clip does not touch what already succeeded",
+      1 not in av.videos and av.videos[0] == "temp/outputs/videos/ad-1-pain.mp4",
+      str(av.videos))
+
+av.videos = {}
+status_messages.clear()
+av.request_render()
+check("render refuses without clips",
+      status_messages and "Generate the clips first" in status_messages[-1],
+      str(status_messages))
+
+av._on_render_finished("temp/outputs/render/product-20260101-0000.mp4")
+check("a finished render is shown", "Saved" in av.video_status.text(), av.video_status.text())
+av._on_render_failed("ffmpeg failed concatenating: ...")
+check("a failed render is shown without crashing", "ffmpeg failed" in av.video_status.text(),
+      av.video_status.text())
+av._on_render_stage("Mixing audio 2/5...")
+check("a stage update reaches the status label",
+      av.video_status.text() == "Mixing audio 2/5...", av.video_status.text())
 
 print()
 if fails:

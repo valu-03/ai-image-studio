@@ -1,7 +1,7 @@
 {
-  "source": "AI Video Bootcamp Phase 3 'Style Reference Library' (AVB_Style_Reference_Library_clean.pdf) - 24 visual styles, each with the look, when to reach for it, and an example prompt. The course's own rule: add the style keywords at the END of the prompt, after the scene description, never lead with them.",
-  "version": 1,
-  "note": "Two groups. `photoreal` styles are compatible with the 8/8 realism gate - they describe a real camera/film/lighting look. `stylised` styles deliberately are NOT photographic (anime, oil painting, watercolour); applying one drops the realism score on purpose, the same way tools/story_bank.json's animated look does, and the Style section warns before it is applied. `keywords` is the phrase that gets appended (spec['overrides']['style'], folded into the free extra segment by build_prompt.free_overrides). `custom` typed text always beats a picked style.",
+  "source": "AI Video Bootcamp Phase 3 'Style Reference Library' (AVB_Style_Reference_Library_clean.pdf) - 24 visual styles, each with the look, when to reach for it, and an example prompt. The course's own rule: add the style keywords at the END of the prompt, after the scene description, never lead with them. Version 2 added 2 `photoreal` entries (`iphone-ugc-realism`, `on-camera-flash-candid`) sourced from community UGC/avatar prompt-bank material, not the course PDF - each says so via its own `source` field. Version 3 adds 1 more `photoreal` entry, `universal-realism-lock`, sourced from a DIFFERENT official course lesson (\"Removing the 'AI' Look\", not the Style Reference Library PDF) - its `source` field says so.",
+  "version": 3,
+  "note": "Two groups. `photoreal` styles are compatible with the 8/8 realism gate - they describe a real camera/film/lighting look. `stylised` styles deliberately are NOT photographic (anime, oil painting, watercolour); applying one drops the realism score on purpose, the same way tools/story_bank.json's animated look does, and the Style section warns before it is applied. `keywords` is the phrase that gets appended (spec['overrides']['style'], folded into the free extra segment by build_prompt.free_overrides). `custom` typed text always beats a picked style. `photoreal` now holds the course's original 14, 2 community-sourced additions, and 1 more addition from a different course lesson (each addition says which via its own `source` field) - 27 styles total, still 10 `stylised`.",
 
   "photoreal": {
     "35mm-film": {
@@ -101,6 +101,30 @@
       "look": "Two images blended into one - usually a portrait merged with nature.",
       "when": "Creative portraits, symbolic storytelling, artistic social content.",
       "example": "A woman's silhouette filled with a mountain forest landscape, double exposure effect, moody and atmospheric"
+    },
+    "iphone-ugc-realism": {
+      "label": "iPhone / UGC realism",
+      "keywords": "shot on a smartphone rear camera, natural available light, visible skin pores and micro-texture, no beauty filter, slight phone-camera softness, authentic unfiltered UGC style",
+      "look": "Natural phone-camera imperfections, visible skin texture, no filter, candid unposed framing.",
+      "when": "UGC ads, influencer content, anything that needs to read as user-generated rather than a produced shoot.",
+      "example": "A woman holding an iced coffee in a parked car, glancing at her phone, shot on a smartphone rear camera, natural available light",
+      "source": "Community reference material (candid smartphone/UGC prompt patterns), not the course PDF."
+    },
+    "on-camera-flash-candid": {
+      "label": "On-camera flash candid",
+      "keywords": "raw on-camera flash photography, blown highlights, deep hard shadows, slight motion blur, unpolished paparazzi-style candid",
+      "look": "Harsh direct flash, blown highlights, hard shadows, spontaneous unplanned energy.",
+      "when": "Nightlife, candid street or party moments, deliberately raw non-cinematic realism.",
+      "example": "Two friends laughing outside a gas station at night, caught off guard, raw on-camera flash photography, blown highlights",
+      "source": "Community reference material (paparazzi-style flash-photography prompt patterns), not the course PDF."
+    },
+    "universal-realism-lock": {
+      "label": "Universal realism lock",
+      "keywords": "authentic everyday photorealism, muted true-to-life colours, low contrast, believable exposure, imperfect composition, natural body language, no glamour retouching, no cinematic colour grading, no hyper-polished AI look",
+      "look": "Deliberately unglamorous and ungraded - flat true-to-life colour, low contrast, ordinary framing, nothing about it reads as art-directed.",
+      "when": "Any photoreal generation where the risk is looking too polished or too 'cinematic' rather than not realistic enough - a general-purpose fix for the fake AI look, not tied to one camera or setting the way iPhone/UGC realism is.",
+      "example": "A man reading a letter at his kitchen table on an ordinary afternoon, authentic everyday photorealism, muted true-to-life colours, low contrast, believable exposure",
+      "source": "AI Video Bootcamp's \"Removing the 'AI' Look\" lesson - its own \"Universal Realism\" prompt add-on, condensed. Unlike the two community-sourced entries above, this one IS from an official course lesson."
     }
   },
 

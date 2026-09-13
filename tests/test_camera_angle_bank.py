@@ -70,25 +70,23 @@ check("custom text wins over any picked axis",
 check("no warnings", not warnings, str(warnings))
 
 print()
+print("=== each axis also accepts free text, not just bank keys ===")
+phrase, warnings = bca.compose_camera_angle(bank, vertical="shot from a drone, looking straight down")
+check("an unrecognised vertical is used literally, not rejected",
+      phrase == "shot from a drone, looking straight down", phrase)
+check("no warnings for a wholly custom axis", not warnings, str(warnings))
+
+phrase, warnings = bca.compose_camera_angle(
+    bank, side="peering around a doorframe", size="filling the whole frame")
+check("custom side + custom size both pass through literally",
+      "doorframe" in phrase and "filling the whole frame" in phrase, phrase)
+
+phrase, _ = bca.compose_camera_angle(bank, vertical="low-angle", side="peering around a doorframe")
+check("a real bank key still resolves to its phrase alongside custom text",
+      "low-angle" in phrase.lower() and "doorframe" in phrase, phrase)
+
+print()
 print("=== bad input is refused, not silently ignored ===")
-try:
-    bca.compose_camera_angle(bank, vertical="not-a-real-vertical")
-    check("an unknown vertical raises", False)
-except bca.CameraAngleError:
-    check("an unknown vertical raises", True)
-
-try:
-    bca.compose_camera_angle(bank, side="not-a-real-side")
-    check("an unknown side raises", False)
-except bca.CameraAngleError:
-    check("an unknown side raises", True)
-
-try:
-    bca.compose_camera_angle(bank, size="not-a-real-size")
-    check("an unknown size raises", False)
-except bca.CameraAngleError:
-    check("an unknown size raises", True)
-
 try:
     bca.compose_camera_angle(bank)
     check("giving nothing at all raises", False)
@@ -128,8 +126,9 @@ check("all three flags exit 0", p.returncode == 0, p.stderr[:160])
 check("all three phrases print", "low-angle" in p.stdout and "profile" in p.stdout
       and "close-up" in p.stdout, p.stdout[:200])
 
-p = run(["--vertical", "not-a-real-vertical"])
-check("an unknown --vertical exits non-zero", p.returncode != 0)
+p = run(["--vertical", "shot from a drone, looking straight down"])
+check("free-text --vertical exits 0 and is used literally", p.returncode == 0
+      and "shot from a drone, looking straight down" in p.stdout, p.stdout[:200])
 
 p = run([])
 check("no arguments at all exits non-zero", p.returncode != 0)

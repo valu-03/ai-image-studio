@@ -144,6 +144,18 @@ class VideosView(QWidget):
                               ("Camera movement", self.camera_movement_field)):
             template_form.addRow(label, widget)
 
+        # Opt-in, off by default (build_motion.avatar_guard_tail()'s own
+        # docstring covers why this is separate from the standing negative
+        # guard below) - lives beside the prompt fields it actually changes,
+        # not the Generate card's job-parameter options further down.
+        self.avatar_guard = QCheckBox("avatar/multi-cut guard")
+        self.avatar_guard.setToolTip(
+            "Append an extra guard for an avatar going through multiple cuts "
+            "or carrying dialogue (identity drift, overacting, frozen pauses, "
+            "gimbal-smooth camera moves, ...) - pairs well with \"multi-shot "
+            "(auto)\" below.")
+        self.avatar_guard.stateChanged.connect(self.refresh)
+
         self.prompt_view = QPlainTextEdit()
         self.prompt_view.setReadOnly(True)
         self.prompt_view.setProperty("class", "mono")
@@ -164,6 +176,7 @@ class VideosView(QWidget):
         form_holder_layout.setContentsMargins(0, 0, 0, 0)
         form_holder_layout.setSpacing(T.SPACE["sm"])
         form_holder_layout.addLayout(template_form)
+        form_holder_layout.addWidget(self.avatar_guard)
         form_holder_layout.addWidget(self.prompt_view)
         form_scroll = QScrollArea()
         form_scroll.setWidgetResizable(True)
@@ -297,6 +310,17 @@ class VideosView(QWidget):
             "section makes effects in ElevenLabs instead.")
         self.sound.stateChanged.connect(self.update_cost_note)
 
+        # Kling 3.0's Auto multi-shot: it decides the camera-angle changes/cuts
+        # itself within the one clip - no separate per-cut prompting UI here,
+        # that's Kling's own Custom mode and is not implemented. No separate
+        # cost multiplier exists for this in pricing.json (the course notes it
+        # carries no surcharge beyond the clip's own per-second price), so it
+        # doesn't need to be in update_cost_note()'s inputs.
+        self.multi_shot = QCheckBox("multi-shot (auto)")
+        self.multi_shot.setToolTip(
+            "Let Kling automatically vary camera angles/cuts within this one clip, "
+            "instead of a single continuous shot.")
+
         self.generate_button = QPushButton("Generate the clip")
         self.generate_button.setProperty("class", "primary")
         self.generate_button.setIcon(assets.icon("videos"))
@@ -316,6 +340,14 @@ class VideosView(QWidget):
         options.addWidget(self.mode)
         options.addWidget(self.sound)
         options.addStretch(1)
+
+        # Its own row, not squeezed into `options` above - that row is already
+        # documented as tight at the floor window width (four controls at
+        # their own minimums barely fit), so a fifth would risk the same
+        # button-elision failure test_layout.py exists to catch.
+        multi_shot_row = QHBoxLayout()
+        multi_shot_row.addWidget(self.multi_shot)
+        multi_shot_row.addStretch(1)
 
         generate_row = QHBoxLayout()
         generate_row.addWidget(self.generate_button)
@@ -341,6 +373,7 @@ class VideosView(QWidget):
         below_title_layout.addLayout(still_row)
         below_title_layout.addLayout(still_button_row)
         below_title_layout.addLayout(options)
+        below_title_layout.addLayout(multi_shot_row)
         below_title_layout.addLayout(generate_row)
         below_title_layout.addWidget(self.cost_note)
 
@@ -531,7 +564,8 @@ class VideosView(QWidget):
         self.prompt = bm.assemble_template(
             self.bank,
             self.shot_type.text(), self.subject_field.text(), self.action_field.text(),
-            self.camera_movement_field.text(), self.style_field.text())
+            self.camera_movement_field.text(), self.style_field.text(),
+            avatar_guard=self.avatar_guard.isChecked())
         self.prompt_view.setPlainText(self.prompt)
 
         cue = self.audio_cues_field.text().strip()
@@ -599,7 +633,8 @@ class VideosView(QWidget):
         return {"duration": int(self.duration.value()),
                 "aspect_ratio": self.aspect.currentData() or gv.DEFAULTS["aspect_ratio"],
                 "mode": self.mode.currentData() or "std",
-                "sound": self.sound.isChecked()}
+                "sound": self.sound.isChecked(),
+                "multi_shots": self.multi_shot.isChecked()}
 
     def update_cost_note(self):
         """What this one clip would cost, before the button is pressed."""

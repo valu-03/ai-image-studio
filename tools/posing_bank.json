@@ -1,6 +1,6 @@
 {
-  "source": "Standard posing vocabulary taught across portrait/editorial photography courses (weight shift, S-curve, forced perspective, triangle grouping, catch-in-motion candids) - not one course's material specifically, the same broad-vocabulary approach prompt_bank.json's own core/camera/lens layers already take.",
-  "version": 1,
+  "source": "Standard posing vocabulary taught across portrait/editorial photography courses (weight shift, S-curve, forced perspective, triangle grouping, catch-in-motion candids) - not one course's material specifically, the same broad-vocabulary approach prompt_bank.json's own core/camera/lens layers already take. The `demeanor` category (added in version 2) generalises posture-adjective vocabulary (upright, relaxed, rigid, slouched, submissive/confident) from general posture-description reference material - also not the course.",
+  "version": 2,
   "note": "Posing is descriptive spec content, like wardrobe/setting/mood - it is NOT one of realism_lint.py's 8 gated photorealism layers, so nothing here needs a DETECT keyword. A pose (picked or typed) is the recommended base; `techniques` stack on top, additive and opt-in. None of it is individually required - a lone technique stack or a single free-text phrase composes on its own, only a wholly empty request is refused. No conflicts list: one pose is picked at a time and no technique fights a pose or another technique.",
 
   "poses": {
@@ -92,6 +92,38 @@
         "label": "Natural reaction",
         "phrase": "a natural laugh or reaction caught in the moment",
         "note": "Genuine reaction beats a directed expression for anything meant to read as unposed."
+      }
+    },
+    "demeanor": {
+      "confident-upright": {
+        "label": "Confident and upright",
+        "phrase": "standing tall with an upright, confident posture, chin level and shoulders relaxed back",
+        "note": "The default 'in-charge' demeanor - reads as self-assured without looking stiff or braced."
+      },
+      "poised-composed": {
+        "label": "Poised and composed",
+        "phrase": "a poised, composed carriage, movements measured and unhurried",
+        "note": "Suits editorial or luxury contexts where the subject should read as unflappable rather than energetic."
+      },
+      "casual-loose": {
+        "label": "Casual and loose",
+        "phrase": "a loose, casual stance, weight settled comfortably rather than held",
+        "note": "The everyday-relaxed opposite of a held, camera-ready pose - good for lifestyle and candid contexts."
+      },
+      "soft-slouch": {
+        "label": "Soft, easy slouch",
+        "phrase": "a soft, easy slouch through the shoulders, unguarded and informal",
+        "note": "A gentle slouch reads as comfortable and unposed - distinct from a fatigued or defeated slump."
+      },
+      "shy-withdrawn": {
+        "label": "Shy and withdrawn",
+        "phrase": "shoulders drawn slightly inward, a shy, withdrawn body language",
+        "note": "Useful for a bashful or introspective moment rather than a confident, camera-facing one."
+      },
+      "formal-straight-backed": {
+        "label": "Formal and straight-backed",
+        "phrase": "a formal, straight-backed posture, still and composed",
+        "note": "The buttoned-up, professional register - pairs well with corporate or headshot contexts."
       }
     }
   },

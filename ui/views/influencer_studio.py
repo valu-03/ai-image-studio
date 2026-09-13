@@ -2,12 +2,33 @@
 tags, hair/eye colour, free-text details and up to 8 mood-reference images,
 composed into one Subject description and saved to a roster for reuse.
 
-  Roster   saved personas (temp/resources/personas/*.json) - new/load/
-           rename/delete, the same CRUD shape ComposeView's own character
-           library already uses (ui/views/compose.py)
-  Build    the form, plus a live-recomposed Result panel (Copy, Save to
-           roster, Apply to Compose) - the same "give me the prompt, then I
-           decide" shape every other technique section already has
+  Roster          saved personas (temp/resources/personas/*.json) - new/
+                  load/rename/delete, the same CRUD shape ComposeView's own
+                  character library already uses (ui/views/compose.py)
+  Build           the form, plus a live-recomposed Result panel (Copy, Save
+                  to roster, Apply to Compose) - the same "give me the
+                  prompt, then I decide" shape every other technique
+                  section already has
+  Face Reference  a searchable, read-only browser over
+                  tools/face_glossary.json (face-shape/facial-structure/
+                  skin-texture vocabulary), the same shape as the Videos
+                  tab's own filmmaking Glossary. "Insert into Details"
+                  appends the selected term into the Build tab's free-text
+                  Additional Details field - it is never composed, scored
+                  or wired into any spec field itself.
+  Voice           a persona's reusable VOICE blueprint (accent, tone, pacing,
+                  personality) - the course's "Consistent Character Voices"
+                  lesson teaches defining this once and pasting the exact
+                  same text into every prompt where the character speaks,
+                  since even small wording changes shift the voice a model
+                  produces. tools/voice_bank.json/build_voice.py supply 16
+                  named starting-point styles; the actual persisted field is
+                  the freely-editable text box, saved/loaded with the
+                  persona like `details` already is. Not folded into
+                  compose_persona()'s Subject sentence (voice isn't visual
+                  spec content) and not wired into video generation directly
+                  - this app has no per-line dialogue field to wire it into,
+                  so the payoff is a stable, copyable block of text.
 
 Reference images are a local mood board only - style/aesthetic reference,
 never wired into SpecEditor.set_reference()/lock_identity, the app's actual
@@ -15,7 +36,9 @@ identity-lock mechanism. There is deliberately no attractiveness/face-shape/
 body-shape control here - a face or build is free-text prose in Additional
 Details, the same way Compose's own Subject field already works everywhere
 else in this app. See tools/build_persona.py's docstring and
-workflows/build-an-influencer.md.
+workflows/build-an-influencer.md. The Face Reference tab respects that
+boundary too - it is a browsable word list to help write that prose, not a
+new structured pick.
 """
 
 import json
@@ -23,7 +46,7 @@ import sys
 from pathlib import Path
 
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QGuiApplication, QPixmap
+from PyQt6.QtGui import QBrush, QColor, QGuiApplication, QPixmap
 from PyQt6.QtWidgets import (
     QComboBox,
     QFileDialog,
@@ -41,6 +64,8 @@ from PyQt6.QtWidgets import (
     QScrollArea,
     QTabWidget,
     QToolButton,
+    QTreeWidget,
+    QTreeWidgetItem,
     QVBoxLayout,
     QWidget,
 )
@@ -50,6 +75,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 import build_persona as bper  # noqa: E402
 import build_prompt as bp  # noqa: E402
+import build_voice as bvoice  # noqa: E402
 
 from .. import assets, tokens as T  # noqa: E402
 from ..widgets import Badge, Card, MutedLabel, TitleLabel, chip_row  # noqa: E402
@@ -134,8 +160,10 @@ class InfluencerStudioView(QWidget):
     def __init__(self, palette=None, parent=None):
         super().__init__(parent)
         self.bank = bper.load_bank()
+        self.voice_bank = bvoice.load_bank()
         self._palette = palette or {}
         self._reference_images = []
+        self.face_glossary = self._load_face_glossary()
         self.setup_ui()
         self.reload_roster()
         self.rebuild_compose()
@@ -145,6 +173,8 @@ class InfluencerStudioView(QWidget):
         self.tabs = QTabWidget()
         self.tabs.addTab(self._build_roster_tab(), "Roster")
         self.tabs.addTab(self._build_build_tab(), "Build")
+        self.tabs.addTab(self._build_face_reference_tab(), "Face Reference")
+        self.tabs.addTab(self._build_voice_tab(), "Voice")
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -317,6 +347,185 @@ class InfluencerStudioView(QWidget):
         layout.addWidget(result)
         return self._scrolled(body)
 
+    # -- Face Reference (browse-only, feeds Additional Details) -------------#
+    def _load_face_glossary(self):
+        path = ROOT / "tools" / "face_glossary.json"
+        if not path.exists():
+            return {"terms": [], "categories": {}}
+        return json.loads(path.read_text(encoding="utf-8"))
+
+    def _build_face_reference_tab(self):
+        self.face_search = QLineEdit()
+        self.face_search.setPlaceholderText("Search face-shape and facial-structure terms…")
+        self.face_search.setClearButtonEnabled(True)
+        self.face_search.textChanged.connect(self._filter_face_glossary)
+
+        self.face_tree = QTreeWidget()
+        self.face_tree.setColumnCount(2)
+        self.face_tree.setHeaderLabels(["TERM", "MEANING"])
+        self.face_tree.setAlternatingRowColors(True)
+        self.face_tree.setColumnWidth(0, 220)
+        self.face_tree.setWordWrap(True)
+        self.face_tree.itemDoubleClicked.connect(self._insert_face_term)
+
+        insert_button = QPushButton("Insert into Details")
+        insert_button.clicked.connect(lambda: self._insert_face_term(self.face_tree.currentItem()))
+
+        card = Card()
+        card.body.setSpacing(T.SPACE["md"])
+        card.body.addWidget(TitleLabel("Face & facial-structure reference"))
+        card.body.addWidget(MutedLabel(
+            "Browse-only vocabulary for the Build tab's free-text Additional Details "
+            "field - there is deliberately no face-shape or body-shape picker in this "
+            "app (see the Build tab). Double-click a term, or select one and press "
+            "\"Insert into Details\", to add it there."
+        ))
+        card.body.addWidget(self.face_search)
+        card.body.addWidget(self.face_tree, 1)
+        actions = QHBoxLayout()
+        actions.addWidget(insert_button)
+        actions.addStretch(1)
+        card.body.addLayout(actions)
+
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(0, T.SPACE["md"], 0, 0)
+        layout.addWidget(card)
+
+        self._filter_face_glossary("")
+        return self._scrolled(page)
+
+    def _filter_face_glossary(self, text):
+        needle = (text or "").strip().lower()
+        self.face_tree.clear()
+        labels = self.face_glossary.get("categories", {})
+        by_category = {}
+        for entry in self.face_glossary.get("terms", []):
+            haystack = (entry["term"] + " " + entry["definition"]).lower()
+            if needle and needle not in haystack:
+                continue
+            by_category.setdefault(entry["category"], []).append(entry)
+
+        for key, label in labels.items():
+            rows = by_category.get(key, [])
+            if not rows:
+                continue
+            parent = QTreeWidgetItem(["{}  ({})".format(label, len(rows)), ""])
+            parent.setForeground(0, QBrush(QColor(self._palette.get("text_muted", "#94A3B8"))))
+            self.face_tree.addTopLevelItem(parent)
+            for entry in rows:
+                parent.addChild(QTreeWidgetItem([entry["term"], entry["definition"]]))
+            parent.setExpanded(True)
+
+    def _insert_face_term(self, item, _column=0):
+        if item is None or item.parent() is None:
+            self.status.emit("Select a term (not a category) to insert it")
+            return
+        term = item.text(0)
+        existing = self.details_field.toPlainText().strip()
+        self.details_field.setPlainText(existing + (", " if existing else "") + term)
+        self.status.emit("Inserted \"{}\" into Additional Details".format(term))
+
+    # -- Voice (a persona's reusable voice blueprint) ------------------------#
+    def _build_voice_tab(self):
+        self.voice_style_combo = QComboBox()
+        self.voice_style_combo.addItem("(pick a starting point)", "")
+        for key, cfg in bvoice.styles(self.voice_bank).items():
+            self.voice_style_combo.addItem(cfg["label"], key)
+        self.voice_style_combo.setToolTip(
+            "A named vocal-delivery style from the course's \"Consistent Character "
+            "Voices\" lesson - a starting point, not required.")
+        self.voice_style_combo.currentIndexChanged.connect(self._rebuild_voice_preview)
+
+        self.voice_accent_field = QLineEdit()
+        self.voice_accent_field.setPlaceholderText(
+            "e.g. \"Australian accent\", \"soft Irish accent\" - leave blank for a neutral accent")
+        self.voice_accent_field.textChanged.connect(self._rebuild_voice_preview)
+
+        self.voice_preview = MutedLabel("")
+        self.voice_preview.setWordWrap(True)
+        self.voice_preview.setProperty("class", "mono")
+
+        use_button = QPushButton("Use this blueprint")
+        use_button.clicked.connect(self._use_voice_preview)
+
+        generator = Card()
+        generator.body.addWidget(TitleLabel("Generate a starting point"))
+        generator.body.addWidget(MutedLabel(
+            "Pick a named vocal style and an accent, or skip this and just type your own "
+            "below. Either way: keep the wording IDENTICAL across every prompt for this "
+            "character - even a small change shifts the voice a model produces."))
+        generator.body.addWidget(self.voice_style_combo)
+        generator.body.addWidget(self.voice_accent_field)
+        generator.body.addWidget(self.voice_preview)
+        gen_actions = QHBoxLayout()
+        gen_actions.addWidget(use_button)
+        gen_actions.addStretch(1)
+        generator.body.addLayout(gen_actions)
+
+        self.voice_field = QPlainTextEdit()
+        self.voice_field.setPlaceholderText(
+            "This character's voice blueprint - accent, tone, pacing, personality. Paste "
+            "this exact text into every prompt where they need to speak.")
+        self.voice_field.setFixedHeight(96)
+
+        copy_voice_button = QPushButton("Copy")
+        copy_voice_button.setProperty("class", "ghost")
+        copy_voice_button.setIcon(assets.icon("copy"))
+        copy_voice_button.setIconSize(assets.ICON_SIZE)
+        copy_voice_button.clicked.connect(self.copy_voice)
+
+        blueprint = Card()
+        blueprint.body.addWidget(TitleLabel("Voice blueprint"))
+        blueprint.body.addWidget(MutedLabel(
+            "Saved and reloaded with this persona, like Additional Details. Not applied "
+            "to Compose automatically - this app has no per-line dialogue field to wire "
+            "it into, so copy it into whatever prompt needs this character to speak."))
+        blueprint.body.addWidget(self.voice_field)
+        voice_actions = QHBoxLayout()
+        voice_actions.addWidget(copy_voice_button)
+        voice_actions.addStretch(1)
+        blueprint.body.addLayout(voice_actions)
+
+        self._rebuild_voice_preview()
+
+        body = QWidget()
+        layout = QVBoxLayout(body)
+        layout.setContentsMargins(0, T.SPACE["md"], 0, 0)
+        layout.setSpacing(T.COLUMN_GAP)
+        layout.addWidget(generator)
+        layout.addWidget(blueprint)
+        return self._scrolled(body)
+
+    def _rebuild_voice_preview(self):
+        if not hasattr(self, "voice_preview"):
+            return
+        style = self.voice_style_combo.currentData() or None
+        if not style:
+            self.voice_preview.setText("Pick a style above to preview a starting blueprint.")
+            return
+        accent = self.voice_accent_field.text().strip()
+        phrase, _warnings = bvoice.compose_voice(self.voice_bank, style=style, accent=accent)
+        self.voice_preview.setText(phrase)
+
+    def _use_voice_preview(self):
+        style = self.voice_style_combo.currentData() or None
+        if not style:
+            self.status.emit("Pick a style first")
+            return
+        accent = self.voice_accent_field.text().strip()
+        phrase, _warnings = bvoice.compose_voice(self.voice_bank, style=style, accent=accent)
+        self.voice_field.setPlainText(phrase)
+        self.status.emit("Voice blueprint set - edit it freely, then Save to roster")
+
+    def copy_voice(self):
+        text = self.voice_field.toPlainText().strip()
+        if not text:
+            self.status.emit("Nothing to copy yet")
+            return
+        QGuiApplication.clipboard().setText(text)
+        self.status.emit("Copied voice blueprint")
+
     def _wrap(self, card):
         page = QWidget()
         layout = QVBoxLayout(page)
@@ -435,6 +644,7 @@ class InfluencerStudioView(QWidget):
             "eye_color": self._picked_single(self.eye_buttons) or "",
             "details": self.details_field.toPlainText().strip(),
             "reference_images": list(self._reference_images),
+            "voice": self.voice_field.toPlainText().strip(),
         }
 
     @staticmethod
@@ -495,6 +705,8 @@ class InfluencerStudioView(QWidget):
 
         self._reference_images = list(persona.get("reference_images", []))
         self._rebuild_reference_thumbnails()
+
+        self.voice_field.setPlainText(persona.get("voice", ""))
 
         self.rebuild_compose()
 
@@ -642,6 +854,8 @@ class InfluencerStudioView(QWidget):
     # -- theming -------------------------------------------------------------#
     def set_palette_tokens(self, palette):
         self._palette = palette or {}
+        if hasattr(self, "face_search"):
+            self._filter_face_glossary(self.face_search.text())
 
     def refresh(self):
         pass

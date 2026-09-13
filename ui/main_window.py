@@ -373,6 +373,8 @@ class MainWindow(QMainWindow):
         # are already working on, the same one-directional link Videos uses.
         self.ads_view.context = lambda: self.compose_view.editor.spec()
         self.ads_view.generate_requested.connect(self.generate_ad)
+        self.ads_view.video_requested.connect(
+            lambda jobs, options: self.generate_videos(jobs, options, self.ads_view))
         # One-directional apply-then-navigate, the same shape apply_motion_hints()
         # already uses for a movement's image hints: build the override, load it
         # into the editor, jump to Images so the result is immediately visible.
@@ -782,11 +784,20 @@ class MainWindow(QMainWindow):
 
         The local path goes straight in - generate_image uploads it and turns it
         into the URL the provider wants, so there is no second copy of that here.
+
+        A job may also carry its own `product_reference` (Ads only - Cats jobs
+        never set this) - a second, simultaneous reference alongside the
+        locked presenter, so a product's exact packaging stays consistent too.
+        Kept additive rather than folded into `reference_path` itself: the
+        presenter lock is one path for the whole batch, a product reference is
+        per-job (every job here happens to want the same one today, but there
+        is no reason a future caller couldn't vary it).
         """
         jobs, self._batch.sequence_rest = self._batch.sequence_rest, []
         self._batch.offset = 1
         self.pool.submit(
-            [(job["index"], job["prompt"], job["out_name"], [reference_path])
+            [(job["index"], job["prompt"], job["out_name"],
+              [reference_path] + ([job["product_reference"]] if job.get("product_reference") else []))
              for job in jobs],
             self.provider, self.model, self.request_options(jobs[0].get("spec")))
         self.statusBar().showMessage(
@@ -803,6 +814,11 @@ class MainWindow(QMainWindow):
         if self.video_pool.busy:
             self.statusBar().showMessage("Clips are already generating")
             return
+        # Cats/Videos never set this, so they get exactly today's behaviour
+        # (the shared image bank's own aspect); Ads sets it per platform - a
+        # landscape platform's clips must not come back vertical.
+        options = dict(options)
+        aspect_ratio = options.pop("aspect_ratio", None) or self.bank.get("aspect") or None
         seconds = sum(int(job.get("duration", 0)) for job in jobs)
         if not self.confirm_spend(gv.DEFAULT_MODEL, seconds,
                                   "{} clips".format(len(jobs)), len(jobs), **options):
@@ -814,7 +830,7 @@ class MainWindow(QMainWindow):
             target, len(jobs),
             {job["index"]: int(job.get("duration", 0)) for job in jobs})
         self.busy_badge.set_status("accent", "clips 0/{}".format(len(jobs)))
-        self.video_pool.submit(jobs, aspect_ratio=self.bank.get("aspect") or None, **options)
+        self.video_pool.submit(jobs, aspect_ratio=aspect_ratio, **options)
 
     def on_video_finished(self, index, path, used):
         if self._video is not None and self._video.target is not None:

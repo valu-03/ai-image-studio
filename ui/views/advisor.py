@@ -15,6 +15,7 @@ from pathlib import Path
 
 from PyQt6.QtCore import Qt, QThreadPool, pyqtSignal
 from PyQt6.QtWidgets import (
+    QComboBox,
     QFileDialog,
     QFrame,
     QHBoxLayout,
@@ -154,6 +155,34 @@ class AdvisorView(QWidget):
         input_row.addWidget(attach_button)
         input_row.addWidget(self.send_button)
 
+        # A one-turn persona overlay (tools/advisor.py's own PERSONAS) - a
+        # curated subset of the course's named chat role-templates, scoped to
+        # this app's actual content-creation use. "(no persona)" (empty data)
+        # is the default and sends the plain advisor brief, unchanged.
+        self.persona_combo = QComboBox()
+        self.persona_combo.addItem("(no persona)", "")
+        for key, cfg in advisor_tool.PERSONAS.items():
+            self.persona_combo.addItem(cfg["label"], key)
+            self.persona_combo.setItemData(
+                self.persona_combo.count() - 1, cfg["when"], Qt.ItemDataRole.ToolTipRole)
+        persona_row = QHBoxLayout()
+        persona_row.setSpacing(T.SPACE["sm"])
+        persona_row.addWidget(MutedLabel("Ask as:"))
+        persona_row.addWidget(self.persona_combo, 1)
+
+        # The Cheat Sheet's own "follow-up commands" - one click sends that
+        # exact phrase as the next ordinary chat turn, pushing a first draft
+        # further rather than settling for it.
+        followup_row = QHBoxLayout()
+        followup_row.setSpacing(T.SPACE["xs"])
+        for label, phrase in advisor_tool.FOLLOW_UPS:
+            button = QPushButton(label)
+            button.setProperty("class", "ghost")
+            button.setToolTip(phrase)
+            button.clicked.connect(lambda _checked=False, p=phrase: self.send_follow_up(p))
+            followup_row.addWidget(button)
+        followup_row.addStretch(1)
+
         self.suggestion_badge = AiSuggestionBadge("Thinking…")
         self.suggestion_badge.apply_requested.connect(self.apply_suggestion)
 
@@ -170,6 +199,8 @@ class AdvisorView(QWidget):
         ))
         card.body.addWidget(self.scroll, 1)
         card.body.addLayout(attach_row)
+        card.body.addLayout(persona_row)
+        card.body.addLayout(followup_row)
         card.body.addLayout(input_row)
         card.body.addWidget(self.suggestion_badge)
 
@@ -205,6 +236,16 @@ class AdvisorView(QWidget):
         self.clear_attach_button.hide()
 
     # -- sending -------------------------------------------------------------#
+    def send_follow_up(self, phrase):
+        """One of the Cheat Sheet's own follow-up commands, sent exactly as
+        labelled - the same send() path as anything the user types, just
+        pre-filled rather than requiring it to be retyped."""
+        if self._busy:
+            self.status.emit("Wait for the current reply first")
+            return
+        self.input.setText(phrase)
+        self.send()
+
     def send(self):
         # Belt and braces against a turn overlapping another: disabling the
         # Send button alone left a hole open behind it - the QLineEdit's own
@@ -234,12 +275,14 @@ class AdvisorView(QWidget):
         if self.context:
             context_prompt, _image = self.context()
 
+        persona = self.persona_combo.currentData() or None
+
         self._busy = True
         self.input.setEnabled(False)
         self.send_button.setEnabled(False)
         self.suggestion_badge.thinking("Thinking…")
         task = LlmTask("advisor_chat", self.bank, list(self.history), message,
-                       image or None, context_prompt)
+                       image or None, context_prompt, persona)
         # `message` is bound into the callback via the lambda default rather
         # than read back from a shared `self.*` attribute at completion time -
         # the busy-guard above already makes two turns overlap impossible, but

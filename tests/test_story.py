@@ -126,7 +126,28 @@ HASHES = {
     # every other layer's terms and the negatives/banned/warn lists are
     # untouched. Each new term confirmed to score 8/8 via an override, not
     # assumed - see tests/test_autofill.py.
-    "tools/prompt_bank.json": "003669c8c1b1aa4f",
+    # Bumped again (version 8 -> 9) for six terms added to `warn`, not
+    # `banned`: "cinematic masterpiece", "hyper-detailed", "ultra-glossy",
+    # "award-winning", "perfect lighting", "cinematic lighting" - the AI
+    # Video Bootcamp's own "AVB Prompt Framework" and "Prompting" lessons
+    # name these exact phrases as pushing a result toward the fake,
+    # over-polished AI look, the same soft-caution role "masterpiece"/"8k"
+    # already play here. No layer term, negative or DETECT key changed -
+    # realism_lint.py's keyword-presence check is untouched, so no bank
+    # phrase newly trips a warning (confirmed by running lint() against
+    # every generatable phrase in every layer, not assumed).
+    # Bumped again (version 9 -> 10) for two terms added to `banned`, not
+    # `warn`: "beauty filter", "glamour retouching" - the AI Video
+    # Bootcamp's own "Removing the 'AI' Look" lesson names these explicitly
+    # as fake-AI-look markers, the same hard-reject tier "airbrushed"
+    # already occupies here. shot_presets.selfie.extra already carries the
+    # literal phrase "no beauty filter" - that stays clean because it's
+    # already phrased as a negation, which realism_lint.py's find_terms()/
+    # is_negated() already treats as NOT a positive hit (confirmed by
+    # running lint() against every shot preset's assembled phrase, not
+    # assumed - see tests/test_style_bank.py's own 8/8 checks). No layer
+    # term, negative or DETECT key changed.
+    "tools/prompt_bank.json": "0830bfd4b16f76da",
     # Bumped for the new Lighting section's DETECT["lighting"]["keys"]
     # additions (rembrandt, split lighting, catchlight, colour temperature,
     # falling off, ...) - every one of tools/lighting_bank.json's phrases
@@ -170,7 +191,16 @@ HASHES = {
     # the image side already had, cycled by seed the same way the original
     # six were. The 40 movements themselves, their requires/image_hints, the
     # two toolkit rules, and the negatives list are untouched.
-    "tools/motion_bank.json": "24e5d16237c3c574",
+    # Bumped again (version 3 -> 4) for a new, separate `avatar_guard` list -
+    # six opt-in phrases (identity drift, plastic skin/beauty filter,
+    # overacting, frozen pauses, gimbal-smooth camera moves, generated
+    # captions) mined from the AI Video Bootcamp Skool's Seedance avatar-ad
+    # prompt craft, NOT the Kling toolkit PDF the rest of this file
+    # transcribes - the `source` field says so. Only ever appended when a
+    # caller explicitly asks (build_motion.py's new `avatar_guard=True`
+    # param on compose()/assemble_template()); the existing `negatives` list,
+    # the 40 movements and the two toolkit rules are untouched.
+    "tools/motion_bank.json": "413f112244e1dd88",
 }
 for name, expected in HASHES.items():
     raw = (ROOT / name).read_bytes()
@@ -321,6 +351,25 @@ repeat[2] = dict(repeat[2], movement=repeat[1]["movement"])
 failed, detail = fails_on("moves_vary", repeat)
 check("the same move twice running fails", failed, detail[:60])
 
+failed, detail = fails_on("shot_repeats", build(arc="escalating"))
+check("an escalating story varies its own escalation shots", not failed, detail[:70])
+
+shot_repeat = [dict(s) for s in build(arc="escalating")]
+escalations = [i for i, s in enumerate(shot_repeat) if s["beat"] == "escalation"]
+check("the escalating arc has at least two escalations to force a repeat on",
+      len(escalations) >= 2, str(escalations))
+first, second = escalations[0], escalations[1]
+shot_repeat[second] = dict(shot_repeat[second],
+                           spec=dict(shot_repeat[second]["spec"],
+                                    shot=shot_repeat[first]["spec"]["shot"]))
+failed, detail = fails_on("shot_repeats", shot_repeat)
+check("forcing two escalations to frame the same shot fails", failed, detail[:70])
+
+different_beats = [dict(s) for s in build()]
+failed, detail = fails_on("shot_repeats", different_beats)
+check("setup and escalation sharing a shot category is not a repeat - "
+      "different beats, not the same one twice", not failed, detail[:70])
+
 same = [dict(s) for s in build()]
 same = [dict(s, spec=dict(s["spec"], action="sitting still")) for s in same]
 failed, detail = fails_on("actions_vary", same)
@@ -444,6 +493,7 @@ print()
 print("=== THE FORM ===")
 from PyQt6.QtWidgets import QApplication, QPlainTextEdit  # noqa: E402
 
+import generate_image as gi  # noqa: E402
 from ui.views.cats import CatsView  # noqa: E402
 
 app = QApplication.instance() or QApplication(sys.argv)
@@ -746,19 +796,19 @@ check("and it still scores full marks", got == total, "{}/{}".format(got, total)
 print()
 print("=== THE STORY FORMAT IS UNTOUCHED BY ANY OF THIS ===")
 story_checks = set(stl.checks_for(bank, "story"))
-check("story's twelve checks are exactly what they were",
+check("story's thirteen checks are exactly what they were, plus shot_repeats",
       story_checks == {"arc", "clips", "trims", "runtime", "hook", "identity",
-                       "moves_vary", "actions_vary", "moves_fit", "words",
-                       "style", "prompts"}, str(sorted(story_checks)))
+                       "moves_vary", "shot_repeats", "actions_vary", "moves_fit",
+                       "words", "style", "prompts"}, str(sorted(story_checks)))
 check("none of trade's four checks leaked into story",
       not story_checks & {"costume", "pair", "locked_off", "tasks_vary"})
 check("story still defaults to 5s clips and a 30s runtime",
       bs.default_clip(bank) == 5 and bs.default_seconds(bank) == 30,
       "{}s / {}s".format(bs.default_clip(bank), bs.default_seconds(bank)))
 old_story = build()
-check("an ordinary story still scores 12/12",
+check("an ordinary story still scores 13/13",
       stl.score(stl.lint(bank, old_story, "classic", 30, image_bank=image_bank))
-      == (12, 12))
+      == (13, 13))
 
 print()
 print("=== IDENTITY: the pair, not a fresh cat every scene ===")
@@ -846,6 +896,42 @@ check("a scene's cue cleared back to blank drops out of the overrides dict",
 view.refresh_sheet()
 check("the edited cue reaches the actual CapCut sound sheet",
       "claws scraping on the linoleum floor" in view.sheet_box.toPlainText())
+
+print()
+print("=== REAL SFX PER SCENE, NOT JUST SHEET TEXT ===")
+layers = view._scene_sound_layers(0)
+check("three layers, ambience/key/accent", [l["layer"] for l in layers] ==
+      ["ambience", "key", "accent"], str([l["layer"] for l in layers]))
+check("the key layer carries scene 0's own audio-cue override",
+      next(l for l in layers if l["layer"] == "key")["text"]
+      == "claws scraping on the linoleum floor")
+check("every layer already carries a sound_lint score",
+      all(isinstance(l["score"], int) and isinstance(l["total"], int) for l in layers))
+check("an out-of-range index returns nothing rather than raising",
+      view._scene_sound_layers(999) == [])
+
+real_env_value = gi.env_value
+gi.env_value = lambda name, env=None: ""
+try:
+    before_sfx = json.loads(json.dumps(view.sfx))
+    view.generate_scene_sfx(0, "ambience")
+finally:
+    gi.env_value = real_env_value
+check("no ElevenLabs key refuses rather than submitting a task",
+      view.sfx == before_sfx, str(view.sfx))
+
+view._on_scene_sfx_done(0, "ambience", "/tmp/cats-1-ambience.mp3")
+check("a finished layer is recorded under its scene and layer",
+      view.sfx[0]["ambience"] == "/tmp/cats-1-ambience.mp3", str(view.sfx))
+view._on_scene_sfx_done(0, "key", "/tmp/cats-1-key.mp3")
+check("a second layer for the same scene does not overwrite the first",
+      view.sfx[0]["ambience"] == "/tmp/cats-1-ambience.mp3"
+      and view.sfx[0]["key"] == "/tmp/cats-1-key.mp3", str(view.sfx))
+status = view._motion_widgets[0]["sfx_status"]
+view._on_scene_sfx_failed(0, "No ELEVENLABS_API_KEY set in .env")
+check("a failure is shown without touching what already succeeded",
+      "ELEVENLABS_API_KEY" in status.text() and view.sfx[0]["ambience"]
+      == "/tmp/cats-1-ambience.mp3", status.text())
 
 # A story rebuild (arc/length change, or just re-editing the script) recomposes
 # every scene's motion_prompt from scratch - a stored hand edit has to win back

@@ -396,6 +396,20 @@ check("all 5 sections came through", sorted(r["sections"]) == sorted(adv.SECTION
       str(sorted(r["sections"])))
 
 print()
+print("=== PERSONAS: the Chat tab's 'Ask as...' overlays ===")
+for key, cfg in adv.PERSONAS.items():
+    check("'{}' has a label, a when and a non-empty overlay".format(key),
+          all(cfg.get(f) for f in ("label", "when", "overlay")), str(sorted(cfg)))
+check("persona_overlay() adds text for a real key, nothing for an unknown one",
+      bool(adv.persona_overlay("hook-writer")) and adv.persona_overlay("not-a-real-persona") == "")
+ugc_overlay = adv.PERSONAS["ugc-scriptwriter"]["overlay"]
+for phrase in ("game changer", "you need this", "I'm obsessed", "this changed my life"):
+    check("ugc-scriptwriter's overlay names '{}' as a phrase to avoid".format(phrase),
+          phrase in ugc_overlay)
+check("ugc-scriptwriter's overlay also carries the no-invented-claims rule",
+      "invent" in ugc_overlay and "claim" in ugc_overlay, ugc_overlay)
+
+print()
 print("=== CLI parity ===")
 
 p = subprocess.run([sys.executable, str(TOOL), "show"], capture_output=True, text=True, cwd=str(ROOT))

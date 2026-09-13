@@ -13,6 +13,7 @@ Standard library only; no network, no PyQt.
 """
 import json
 import os
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -110,6 +111,55 @@ check("an invented mode is dropped, not sent", body["input"]["mode"] == "std", s
 check("and an aspect Kling does not take is too",
       body["input"]["aspect_ratio"] == "9:16", str(dropped))
 check("both are reported", len(dropped) == 2, str(dropped))
+
+print()
+print("=== generate()'s own multi_shots parameter actually reaches the payload ===")
+# build_submit() has always accepted/sent multi_shots (the check above already
+# covers that) - what was missing was generate() ever forwarding a caller's
+# value to it at all, so it was permanently False no matter what a CLI flag
+# or a UI checkbox asked for. Patch build_submit to see what generate() sends
+# it, rather than assuming the plumbing works from build_submit's own test.
+captured = {}
+_original_build_submit = gv.build_submit
+
+
+def _capture_build_submit(*args, **kwargs):
+    result = _original_build_submit(*args, **kwargs)
+    captured["body"] = result[1]
+    return result
+
+
+gv.build_submit = _capture_build_submit
+try:
+    gv.generate(prompt="x", multi_shots=True, dry_run=True)
+    on_default = dict(captured)
+    gv.generate(prompt="x", dry_run=True)
+finally:
+    gv.build_submit = _original_build_submit
+check("generate(multi_shots=True) reaches the built payload",
+      on_default.get("body", {}).get("input", {}).get("multi_shots") is True,
+      str(on_default.get("body")))
+check("generate() with no multi_shots argument still defaults to False",
+      captured.get("body", {}).get("input", {}).get("multi_shots") is False,
+      str(captured.get("body")))
+
+print()
+print("=== the CLI's --multi-shots flag reaches the same payload ===")
+TOOL = ROOT / "tools" / "generate_video.py"
+
+
+def run(args):
+    return subprocess.run([sys.executable, str(TOOL)] + args,
+                          capture_output=True, text=True, cwd=str(ROOT))
+
+
+p = run(["--prompt", "x", "--dry-run"])
+check("no flag -> multi_shots false in the dry-run payload",
+      p.returncode == 0 and "\"multi_shots\": false" in p.stdout, p.stdout[-200:])
+
+p = run(["--prompt", "x", "--dry-run", "--multi-shots"])
+check("--multi-shots -> multi_shots true in the dry-run payload",
+      p.returncode == 0 and "\"multi_shots\": true" in p.stdout, p.stdout[-200:])
 
 print()
 print("=== THE BANK AND THE BUILDER AGREE ===")

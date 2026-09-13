@@ -90,3 +90,24 @@ class LintPanel(QWidget):
             "Ready to generate." if passed else "Fix the flagged items before generating."
         )
         return passed
+
+    def show_checks(self, checks):
+        """Render a pre-built check list (e.g. tools/vision_lint.py's output)
+        rather than running realism_lint itself - a different scorer's data,
+        reusing this same tree/badge/verdict shell so the two panels look
+        consistent without update_result needing to change at all.
+        """
+        self.tree.clear()
+        for item in checks:
+            mark = "✓" if item["passed"] else "✗"
+            color_key = "success" if item["passed"] else "error"
+            detail = item["ok_text"] if item["passed"] else item["fix"]
+            self._row(mark, item["label"], detail, color_key)
+
+        total = len(checks)
+        score = sum(1 for item in checks if item["passed"])
+        passed = total > 0 and score == total
+        self.score, self.passed = score, passed
+        self.badge.set_status("success" if passed else "danger", "{}/{}".format(score, total))
+        self.verdict.setText(
+            "Matches the spec." if passed else "The model flagged some mismatches.")

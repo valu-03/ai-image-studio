@@ -192,6 +192,23 @@ def rate(entry_id, rating, note=None, image=None):
     return entry
 
 
+def record_vision_qc(entry_id, result):
+    """Attach a post-generation vision QC result to an entry. Returns the entry.
+
+    `result` is whatever tools/vision_lint.py's caller assembled (score, total,
+    checks) - stored as-is under a new key. weights()/term_stats() below only
+    ever read `layers` and `rating`, so this key is provably inert to the
+    bandit logic; no migration is needed for entries that lack it.
+    """
+    entries = load()
+    entry = find(entries, entry_id)
+    if entry is None:
+        return None
+    entry["vision_qc"] = result
+    save_all(entries)
+    return entry
+
+
 def usable(entries=None, bank_version=None):
     """(rated entries from the current bank, count skipped as stale)."""
     entries = load() if entries is None else entries

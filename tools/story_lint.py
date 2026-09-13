@@ -173,6 +173,37 @@ def check_actions_vary(bank, scenes):
     return True, "{} distinct actions".format(len(seen))
 
 
+def check_shot_repeats(bank, scenes):
+    """A repeated beat (escalation, most often) should not frame the same
+    shot every time it recurs. Only compares scenes sharing the SAME beat
+    key - two DIFFERENT beats sharing a shot category (setup and escalation
+    are both "environmental" by design) is not this check's business, only
+    a beat repeating against itself with no visual change is.
+
+    Only checked when the beat actually defines more than one `shots` option
+    to rotate through (shot_for() in build_story.py). A beat with a single
+    fixed shot - payoff's pull-out movements need the same wide frame every
+    time, so it has none - has nothing it could have varied, and flagging it
+    anyway would punish a beat for a movement choice that requires the
+    repetition, not for forgetting to vary it.
+    """
+    beats = bank.get("beats", {})
+    repeats = []
+    for earlier, later in zip(scenes, scenes[1:]):
+        beat_key = earlier.get("beat")
+        if not beat_key or beat_key != later.get("beat"):
+            continue
+        if len(beats.get(beat_key, {}).get("shots") or []) < 2:
+            continue
+        shot = (earlier.get("spec") or {}).get("shot")
+        if shot and shot == (later.get("spec") or {}).get("shot"):
+            repeats.append("scenes {} and {} ({}) both frame a {} shot".format(
+                earlier.get("n"), later.get("n"), beat_key, shot))
+    if repeats:
+        return False, "; ".join(repeats) + " - vary the frame or the repeat reads as padding"
+    return True, "every repeated beat varies its shot"
+
+
 def check_moves_fit(bank, scenes):
     """Reuses build_motion's own 'think ahead' rule rather than restating it."""
     labels = bank.get("requirement_labels", {})
@@ -336,6 +367,7 @@ CHECKS = [
     ("hook", "Opens in 3 seconds", check_hook),
     ("identity", "The same cats throughout", check_identity),
     ("moves_vary", "Camera varies", check_moves_vary),
+    ("shot_repeats", "Repeated beats vary their shot", check_shot_repeats),
     ("actions_vary", "Something new each scene", check_actions_vary),
     ("moves_fit", "Moves suit the stills", check_moves_fit),
     ("words", "Narration and captions", check_words),

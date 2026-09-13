@@ -182,6 +182,10 @@
       "role": "It gets worse, or bigger, or more committed.",
       "must_do": "Each escalation must raise the stakes on the one before it. Repeating the same level reads as padding and is where people scroll.",
       "shot": "environmental",
+      "shots": [
+        "environmental",
+        "portrait"
+      ],
       "movements": [
         "track-alongside",
         "low-angle",
@@ -339,6 +343,7 @@
         "hook",
         "identity",
         "moves_vary",
+        "shot_repeats",
         "actions_vary",
         "moves_fit",
         "words",

@@ -1,6 +1,6 @@
 {
-  "source": "AI Video Bootcamp - Kling AI Cinematic Camera Movement Toolkit",
-  "version": 3,
+  "source": "AI Video Bootcamp - Kling AI Cinematic Camera Movement Toolkit. `avatar_guard` (version 4) is NOT from that toolkit - it is community-sourced (the AI Video Bootcamp Skool's Seedance avatar-ad prompt craft, e.g. 'Insane Avatar Adverts'/'Seedance 2.5 Short-film Explanation'), condensed into a provider-agnostic opt-in guard rather than the Seedance-specific 'LOCK' block wording it was mined from.",
+  "version": 4,
   "rules": {
     "lead_with_camera": "Always start your prompt with the camera angle and build from there, this way Kling recognizes it immediately.",
     "think_ahead": "Always create your images in a way that will complement the camera movement. If you say 'tracking over the shoulder' but there is no character in your scene, or 'the camera dives underwater' but there is no water nearby, Kling will get confused."
@@ -13,6 +13,14 @@
     "no blurry edges",
     "no extra fingers",
     "no morphing"
+  ],
+  "avatar_guard": [
+    "no identity drift between cuts",
+    "no plastic skin, no beauty filter",
+    "no overacting, exaggerated expressions or repetitive gestures",
+    "no frozen avatar pauses",
+    "no gimbal-smooth or dolly-smooth camera moves - keep it handheld",
+    "no generated captions, UI or subtitles"
   ],
   "style_presets": [
     "shot on a DSLR with an 85mm lens, natural color grading",
