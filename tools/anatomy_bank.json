@@ -1,11 +1,12 @@
 {
-  "source": "This app's own 8-layer prompt system (tools/prompt_bank.json + tools/realism_lint.py), plus slot structure reverse-engineered from worked prompts - the `beauty-macro` and `macro-insert` templates from a community-supplied macro/beauty-portrait prompt contributed by the user (the same prompt tools/macro_insert_bank.json harvests its vocabulary from), and `photoreal-portrait` from this app's own build_prompt.py compose order. The `video-sequence` template is reverse-engineered from a community-supplied luxury-vlog video prompt contributed by the user, and `video-shot` from this app's own tools/motion_lint.py rules (which DO transcribe the bootcamp's Kling camera-movement toolkit, via tools/motion_bank.json). Everything else here is NOT AI Video Bootcamp course material.",
-  "version": 2,
-  "note": "A template is an ORDERED list of slots - the skeleton of a prompt, not its words. This bank teaches structure; the vocabulary banks (prompt_bank, lighting_bank, style_bank, macro_insert_bank, ...) supply what goes in each slot. Detection is deliberately split: a slot that maps onto one of the eight gated realism layers declares `layer` and is detected by tools/realism_lint.py's OWN DETECT table - never a second copy of those keywords, the same no-duplication rule tools/relight_bank.json follows for lighting and camera-angle phrases. Only slots the eight layers do not cover carry their own `detect` list - and a slot whose vocabulary already lives in ANOTHER linter borrows it by name instead: a `borrow` of 'motion-verbs' takes tools/motion_lint.py's own MOTION_VERBS, so the camera-movement slots cannot drift away from what that linter actually gates on. The video templates also record two facts about this app that a prompt written elsewhere will trip over: tools/sound_bank.json is effects-only and its linter rejects music vocabulary outright (hence a separate `music` slot), and tools/build_story.py distinguishes clip_seconds from edit_seconds (hence the shot-sequence slot's warning that two-second beats are edit lengths, not generation lengths). `analyse()` is keyword presence, not parsing: it answers 'which slots does this prompt appear to fill', which is honest, rather than pretending to segment free prose into semantic regions.",
+  "source": "This app's own 8-layer prompt system (tools/prompt_bank.json + tools/realism_lint.py), plus slot structure reverse-engineered from worked prompts - the `beauty-macro` and `macro-insert` templates from a community-supplied macro/beauty-portrait prompt contributed by the user (the same prompt tools/macro_insert_bank.json harvests its vocabulary from), and `photoreal-portrait` from this app's own build_prompt.py compose order. The `video-sequence` template is reverse-engineered from a community-supplied luxury-vlog video prompt contributed by the user, and `video-shot` from this app's own tools/motion_lint.py rules (which DO transcribe the bootcamp's Kling camera-movement toolkit, via tools/motion_bank.json). The `action-commercial` template is reverse-engineered from a second, different community-supplied video prompt contributed by the user (a high-action car commercial) - see its own `source_note` for how its shape differs from video-sequence. Everything else here is NOT AI Video Bootcamp course material.",
+  "version": 4,
+  "note": "A template is an ORDERED list of slots - the skeleton of a prompt, not its words. This bank teaches structure; the vocabulary banks (prompt_bank, lighting_bank, style_bank, macro_insert_bank, ...) supply what goes in each slot. Every template also declares `kind` - 'image' or 'video' - so the Anatomy tab's picker can group them instead of listing all five as one undifferentiated list; a template produces exactly one kind of prompt, never both, so this is a fixed fact about the template rather than a per-run choice. Detection is deliberately split: a slot that maps onto one of the eight gated realism layers declares `layer` and is detected by tools/realism_lint.py's OWN DETECT table - never a second copy of those keywords, the same no-duplication rule tools/relight_bank.json follows for lighting and camera-angle phrases. Only slots the eight layers do not cover carry their own `detect` list - and a slot whose vocabulary already lives in ANOTHER linter borrows it by name instead: a `borrow` of 'motion-verbs' takes tools/motion_lint.py's own MOTION_VERBS, so the camera-movement slots cannot drift away from what that linter actually gates on. The video templates also record two facts about this app that a prompt written elsewhere will trip over: tools/sound_bank.json is effects-only and its linter rejects music vocabulary outright (hence a separate `music` slot), and tools/build_story.py distinguishes clip_seconds from edit_seconds (hence the shot-sequence slot's warning that two-second beats are edit lengths, not generation lengths). `analyse()` is keyword presence, not parsing: it answers 'which slots does this prompt appear to fill', which is honest, rather than pretending to segment free prose into semantic regions.",
 
   "templates": {
     "beauty-macro": {
       "label": "Beauty macro portrait",
+      "kind": "image",
       "summary": "An extreme close-up beauty portrait where the skin itself is the subject. Fifteen slots; slots 7-10 are the ones that separate real skin from plastic skin.",
       "source_note": "Reverse-engineered from the community-supplied FULL FACE prompt.",
       "scaffold": "inline",
@@ -99,6 +100,7 @@
 
     "macro-insert": {
       "label": "Macro insert (feature crop)",
+      "kind": "image",
       "summary": "The short, repeatable template for an extreme macro of ONE feature of a face that already exists. Five slots - and the last one is the whole trick.",
       "source_note": "Reverse-engineered from the community-supplied EYE / MOUTH / CHEEK prompts. Implemented by tools/build_macro_insert.py.",
       "scaffold": "inline",
@@ -135,6 +137,7 @@
 
     "photoreal-portrait": {
       "label": "Photoreal portrait (this app's own default)",
+      "kind": "image",
       "summary": "Eight slots - the eight-layer skeleton tools/build_prompt.py composes by default, in its own order. Shown here so you can compare it against the macro templates above and see exactly what they add.",
       "scaffold": "inline",
       "source_note": "This app's own build_prompt.py LAYER_ORDER and tools/prompt_bank.json.",
@@ -176,6 +179,7 @@
 
     "video-sequence": {
       "label": "Timed video sequence (locks + shots)",
+      "kind": "video",
       "summary": "A whole short video in one prompt: three locks that must not drift, one pass of global look and sound, then a timed shot list with its own dialogue. Thirteen slots, and the first three are the ones that decide whether it is still the same video by the end.",
       "source_note": "Reverse-engineered from a community-supplied luxury-vlog video prompt contributed by the user. NOT AI Video Bootcamp course material.",
       "slots": [
@@ -261,6 +265,7 @@
 
     "video-shot": {
       "label": "Single video shot (this app's own gate)",
+      "kind": "video",
       "summary": "Six slots - the shape tools/motion_lint.py actually scores one shot against. Use it per beat of the sequence template above, or on its own for a single clip.",
       "scaffold": "inline",
       "source_note": "This app's own motion_lint.py rules and tools/motion_bank.json, which transcribe the AI Video Bootcamp Kling camera-movement toolkit.",
@@ -299,6 +304,70 @@
          "why": "Rule seven. compose() appends it automatically, so this slot is really a check that a hand-edited prompt has not lost it.",
          "detect": ["no warped", "no morphing", "no floating limbs", "no distorted", "no extra fingers"],
          "example": "no warped face, no floating limbs, no distorted hands, no morphing"}
+      ]
+    },
+
+    "action-commercial": {
+      "label": "High-action commercial (render/look/grade + timed shots)",
+      "kind": "video",
+      "summary": "A finished commercial EDIT script, not a single generation prompt: a four-line technical/creative header (Render, Look, Grade, Audio+VO), then a shot list where each shot packs its timing, frame count, shot-size code and frame position into one bracket. Nine slots.",
+      "source_note": "Reverse-engineered from a second community-supplied video prompt contributed by the user (a high-action car commercial). NOT AI Video Bootcamp course material, and a different shape from video-sequence above: that template's three locks exist to hold one PERSON steady across cuts, while this one is a vehicle/action piece with no character to lock, so it spends its header on capture technicals instead.",
+      "slots": [
+        {"key": "render", "label": "Render",
+         "does": "The camera body and sensor, the film stock and grain, and a blanket physical-realism / anti-CGI negative - one compact technical header line.",
+         "why": "This template writes camera + grain + negative as ONE line rather than build_prompt.py's three separate layers, because that is how a real commercial brief is actually written. 'ARRI Alexa' is realism_lint's own camera-layer keyword and 'film grain' is its own grain-layer keyword, so even folded into one line this slot still reaches vocabulary the image side of the app already gates on.",
+         "detect": ["shot on", "arri alexa", "film stock", "film grain", "gravity-accurate",
+                    "no smooth surfaces", "no artificial perfection", "no cgi", "raw tactile"],
+         "example": "RENDER: Shot on ARRI Alexa 35, IMAX-grade sensor. 35mm film stock with natural film grain and organic imperfect textures throughout. Gravity-accurate physics. Raw tactile materials, no smooth surfaces, no artificial perfection, no CGI aesthetic."},
+
+        {"key": "look", "label": "Look",
+         "does": "One line naming the cinematography genre, pacing and camera energy for the whole piece.",
+         "why": "Like video-sequence's own Style slot, this applies to every shot at once and is written once at the top rather than repeated per beat.",
+         "detect": ["cinematography", "commercial pacing", "aggressive angles", "kinetic energy", "high-octane"],
+         "example": "LOOK: High-octane action cinematography, fast-paced commercial pacing, aggressive angles, dynamic kinetic energy."},
+
+        {"key": "grade", "label": "Grade",
+         "does": "The colour grade for the whole piece - the palette and the shadow treatment.",
+         "why": "Written once at the top exactly like the Look and Render lines, so every shot inherits the same grade instead of re-deciding it - the same continuity reasoning video-sequence's global Lighting line already uses.",
+         "detect": ["golden hour", "crushed black", "contrasting sunset", "oranges and teals"],
+         "example": "GRADE: Golden hour cinematic, rich contrasting sunset oranges and teals, deep crushed black shadows."},
+
+        {"key": "audio", "label": "Audio",
+         "does": "The scene's diegetic sound AND an explicit statement about music, together in one line.",
+         "why": "tools/sound_bank.json is effects-only and its linter rejects music vocabulary outright, which is why video-sequence above keeps Music and Sound as two separate slots. This template's source prompt states both in a single AUDIO line and opens by ruling music out explicitly - 'No music' is a real, working instruction, the same 'None is a real answer' reasoning the VO slot below and video-sequence's own Text slot already rely on.",
+         "detect": ["no music", "engine revving", "bass rumble", "tire screeching", "exhaust pops", "supersonic whoosh"],
+         "example": "AUDIO: No music. Aggressive V8 engine revving, heavy bass rumble, mechanical click of paddle shifters, tire screeching, rushing wind transitioning at 00:10.0 into a massive supersonic whoosh, violent exhaust pops, fading engine echoes against a vast landscape, distant ocean waves."},
+
+        {"key": "vo", "label": "VO",
+         "does": "States whether there is a voice-over line at all - or explicitly that there is none.",
+         "why": "The same 'None is a real answer' rule as video-sequence's own on-screen-text slot: a video model volunteers a voice unprompted unless told not to, so writing 'VO: None' is a working instruction, not a blank line.",
+         "detect": ["vo:", "voice-over", "voiceover", "no vo"],
+         "example": "VO: None"},
+
+        {"key": "shot-timing", "label": "Shot timing",
+         "does": "One shot's identity: the timestamp range, the frame count at the frame rate, the shot-size code (ECU/CU/MCU/MS/WS), and where in the frame it sits.",
+         "why": "A commercial edit is cut to the FRAME, not the second - the frame-count-at-fps figure is what an editor actually reads off this line, and the shot-size code is the same shorthand a director would write on a storyboard. video-shot's own six slots carry nothing this precise.",
+         "detect": ["fps", "f @", "->", "ecu", "mcu", "top center frame"],
+         "example": "S1 [00:00.0->00:02.0 | 48f @ 24fps | ECU | top center frame]"},
+
+        {"key": "shot-action", "label": "Shot action",
+         "does": "What the subject and environment actually do in the shot - wardrobe, vehicle, motion - as one flowing paragraph.",
+         "why": "Written as prose, not a bracketed field, because this is the part of the shot a viewer actually sees; the technical bracket above and the camera line below sandwich it.",
+         "detect": ["engine rumble", "carbon-fiber", "rearview mirror", "space bun", "eyelashes fluttering"],
+         "example": "Female driver's intense dark eyes glance sharply up into the carbon-fiber framed rearview mirror. Her space bun hair vibrates slightly from the intense engine rumble, eyelashes fluttering."},
+
+        {"key": "shot-camera", "label": "Shot camera",
+         "does": "The camera's own behaviour for this shot - locked off or moving, the lens, the depth of field or shutter speed - placed at the END of the paragraph.",
+         "why": "The opposite order from video-shot's own camera-LEAD rule (motion_lint.py's rule one: start with the camera). That rule exists for a single shot fed straight to a Kling-style model; this template is a finished commercial edit script read by a person, where the action is what a viewer's eye follows and the camera note confirms it afterward. Use video-shot's own template, not this one, when writing a single generation prompt.",
+         "borrow": "motion-verbs",
+         "detect": ["locked", "static", "zero movement", "shallow dof", "handheld"],
+         "example": "Camera static, locked on the mirror, zero movement. Macro lens, shallow DOF blurring the road ahead."},
+
+        {"key": "cut", "label": "Cut",
+         "does": "Names the edit transition OUT of this shot.",
+         "why": "Every shot in the reference prompt ends with an explicit 'Cut: <type>' line - naming the edit is as load-bearing as naming the camera move, because an unstated cut defaults to a straight cut and the model has no way to know a smash cut or a whip pan was wanted.",
+         "detect": ["cut:", "smash cut", "hard cut", "whip pan", "fade to black", "jump cut"],
+         "example": "Cut: smash cut."}
       ]
     }
   }

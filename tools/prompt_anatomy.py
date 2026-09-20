@@ -60,6 +60,16 @@ def slots(bank, template):
     return templates(bank).get(template, {}).get("slots", [])
 
 
+def image_templates(bank):
+    """The templates that produce a still-image prompt, in bank order."""
+    return {k: v for k, v in templates(bank).items() if v.get("kind") == "image"}
+
+
+def video_templates(bank):
+    """The templates that produce a video prompt, in bank order."""
+    return {k: v for k, v in templates(bank).items() if v.get("kind") == "video"}
+
+
 def validate_template(bank, name):
     """Return an error message for an unknown template, or None."""
     if name and name not in templates(bank):
@@ -267,10 +277,13 @@ def main(argv=None):
     bank = load_bank()
 
     if args.list:
-        for key, cfg in templates(bank).items():
-            print("  {:<20} {:<32} {} slots".format(key, cfg["label"], len(cfg["slots"])))
-            print("  {:<20} {}".format("", cfg["summary"]))
-            print()
+        for heading, group in (("IMAGE PROMPTS", image_templates(bank)),
+                               ("VIDEO PROMPTS", video_templates(bank))):
+            print(heading)
+            for key, cfg in group.items():
+                print("  {:<20} {:<32} {} slots".format(key, cfg["label"], len(cfg["slots"])))
+                print("  {:<20} {}".format("", cfg["summary"]))
+                print()
         return 0
 
     error = validate_template(bank, args.template)

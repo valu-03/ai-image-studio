@@ -66,8 +66,15 @@ class AnatomyView(QWidget):
         # asks for and let the popup be as wide as it likes.
         self.picker.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
         self.picker.setMinimumContentsLength(24)
-        for key, cfg in pa.templates(self.bank).items():
-            self.picker.addItem("{}  ({} slots)".format(cfg["label"], len(cfg["slots"])), key)
+        # Grouped, not just listed - a template produces exactly one kind of
+        # prompt, and the suffix says which before you have picked it. Mirrors
+        # StyleView's own photoreal/stylised combo (ui/views/style.py), the
+        # existing precedent for separating one flat picker into two kinds.
+        for kind, tag in (("image", "Image prompt"), ("video", "Video prompt")):
+            group = pa.image_templates(self.bank) if kind == "image" else pa.video_templates(self.bank)
+            for key, cfg in group.items():
+                self.picker.addItem("{}  ({} slots, {})".format(
+                    cfg["label"], len(cfg["slots"]), tag), key)
         self.picker.currentIndexChanged.connect(self._on_template_changed)
 
         self.summary = MutedLabel("")

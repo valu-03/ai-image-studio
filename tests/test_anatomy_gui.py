@@ -52,6 +52,23 @@ view.resize(900, 700)
 view.show()
 app.processEvents()
 
+print("=== the picker separates image prompts from video prompts ===")
+picker_keys = [view.picker.itemData(i) for i in range(view.picker.count())]
+picker_labels = [view.picker.itemText(i) for i in range(view.picker.count())]
+image_keys = list(pa.image_templates(bank))
+video_keys = list(pa.video_templates(bank))
+check("every template appears exactly once in the picker",
+      sorted(picker_keys) == sorted(pa.templates(bank)), str(picker_keys))
+check("image templates come first, as one contiguous group",
+      picker_keys[:len(image_keys)] == image_keys, str(picker_keys))
+check("video templates come after, as one contiguous group",
+      picker_keys[len(image_keys):] == video_keys, str(picker_keys))
+check("every image template's label says so",
+      all("Image prompt" in lab for lab in picker_labels[:len(image_keys)]), str(picker_labels))
+check("every video template's label says so",
+      all("Video prompt" in lab for lab in picker_labels[len(image_keys):]), str(picker_labels))
+
+print()
 print("=== the Skeleton half renders text, for every template ===")
 for index in range(view.picker.count()):
     view.picker.setCurrentIndex(index)

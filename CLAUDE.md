@@ -1111,10 +1111,14 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   all 5 sections composing - `tests/test_advisor.py` locks this down as a structural regression
   check (the app-side pipeline handles this input shape correctly), which is the most that can
   be unit-tested here since nothing can assert what a live model chooses to write.
-- **`tools/anatomy_bank.json` teaches prompt STRUCTURE and owns no vocabulary.** Five templates
-  (`beauty-macro`, `macro-insert`, `photoreal-portrait`, `video-sequence`, `video-shot`), read
-  and scored by `tools/prompt_anatomy.py` and shown on the Assistant tab's Anatomy section.
-  Three things about it are not guessable from the outside. (1) **A slot never keeps its own
+- **`tools/anatomy_bank.json` teaches prompt STRUCTURE and owns no vocabulary.** Six templates
+  (`beauty-macro`, `macro-insert`, `photoreal-portrait`, `video-sequence`, `video-shot`,
+  `action-commercial`), read and scored by `tools/prompt_anatomy.py` and shown on the Anatomy
+  tab. Every template declares `kind` (`image` or `video`) and the picker groups the two apart
+  rather than listing all six as one flat dropdown - `pa.image_templates()`/`video_templates()`,
+  mirroring `ui/views/style.py`'s existing photoreal/stylised combo precedent rather than
+  inventing a new grouping mechanism. Four things about it are not guessable from the outside.
+  (1) **A slot never keeps its own
   copy of a keyword list another linter already owns**: `layer` borrows `realism_lint.DETECT`,
   and `borrow: "motion-verbs"` borrows `motion_lint.MOTION_VERBS` - a slot may add its own
   `detect` keys on top of a `borrow`, but those are searched FIRST, because the borrowed verbs
@@ -1140,7 +1144,13 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   beats are edit lengths, not generation lengths - most video models will not generate below
   about five seconds). There is still no outfit lock or environment lock ANYWHERE in `tools/`;
   `build_prompt.py` locks identity and `build_relight.py` locks scene, so the video template's
-  other two locks are written out by hand.
+  other two locks are written out by hand. (4) **The two video templates that came before
+  `action-commercial` are not the only valid video shape.** `video-sequence`'s three locks exist
+  to hold one PERSON steady across cuts; `action-commercial` is a vehicle/action piece with no
+  character to lock at all, so it spends its header on capture technicals (`Render`/`Look`/
+  `Grade`) instead, and packs each shot's timing, frame-count@fps, shot-size code (ECU/CU/MCU/
+  MS/WS) and frame position into one bracket that neither older template teaches. Do not assume
+  a third video prompt will fit either existing shape without reading it first.
 - **`ui/views/anatomy.py` adds every label into `card.body`, never `QVBoxLayout(card)`.**
   `ui/widgets.py`'s `Card` builds its own layout in `__init__`; Qt refuses to install a second
   one, so a label added to that second layout is orphaned - never parented, never laid out,

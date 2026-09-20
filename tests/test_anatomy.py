@@ -29,7 +29,7 @@ def check(name, cond, detail=""):
 bank = pa.load_bank()
 
 print("=== the bank is well-formed ===")
-check("five templates", len(pa.templates(bank)) == 5, str(sorted(pa.templates(bank))))
+check("six templates", len(pa.templates(bank)) == 6, str(sorted(pa.templates(bank))))
 for name, cfg in pa.templates(bank).items():
     check("'{}' has label and summary".format(name), bool(cfg.get("label")) and bool(cfg.get("summary")))
     check("'{}' has slots".format(name), bool(cfg.get("slots")))
@@ -54,6 +54,22 @@ for name, cfg in pa.templates(bank).items():
 
 check("every summary mentions slots", all("slot" in cfg["summary"].lower()
                                           for cfg in pa.templates(bank).values()))
+
+print()
+print("=== every template declares which kind of prompt it produces ===")
+for name, cfg in pa.templates(bank).items():
+    check("'{}' declares a kind".format(name), cfg.get("kind") in ("image", "video"),
+          repr(cfg.get("kind")))
+check("image_templates() and video_templates() partition every template, no overlap",
+      set(pa.image_templates(bank)) | set(pa.video_templates(bank)) == set(pa.templates(bank))
+      and not set(pa.image_templates(bank)) & set(pa.video_templates(bank)),
+      "{} / {}".format(sorted(pa.image_templates(bank)), sorted(pa.video_templates(bank))))
+check("the three still-image templates are grouped as 'image'",
+      set(pa.image_templates(bank)) == {"beauty-macro", "macro-insert", "photoreal-portrait"},
+      str(sorted(pa.image_templates(bank))))
+check("the three video templates are grouped as 'video'",
+      set(pa.video_templates(bank)) == {"video-sequence", "video-shot", "action-commercial"},
+      str(sorted(pa.video_templates(bank))))
 
 print()
 print("=== a layer slot borrows realism_lint's own keys, never a copy ===")
@@ -174,6 +190,12 @@ def run(args, stdin=None):
 p = run(["--list"])
 check("--list exits 0", p.returncode == 0, p.stderr[:160])
 check("--list names every template", all(k in p.stdout for k in pa.templates(bank)))
+check("--list groups image prompts under their own heading",
+      "IMAGE PROMPTS" in p.stdout and "VIDEO PROMPTS" in p.stdout)
+check("--list prints the image heading before the video heading",
+      p.stdout.index("IMAGE PROMPTS") < p.stdout.index("VIDEO PROMPTS"))
+check("--list keeps every video template after the VIDEO PROMPTS heading",
+      all(p.stdout.index(k) > p.stdout.index("VIDEO PROMPTS") for k in pa.video_templates(bank)))
 
 p = run(["--help"])
 check("--help exits 0", p.returncode == 0, p.stdout[:120])
