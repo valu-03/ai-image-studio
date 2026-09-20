@@ -1510,7 +1510,7 @@ class CatsView(QWidget):
         task = LlmTask("autofill_story", self.story_bank, self.bank, idea,
                        self.base_spec(), self.arc_key(), self.style_key(),
                        self.seconds.value(), self.clip_length(), None,
-                       self.format_key(), self.trade_key())
+                       self.format_key(), self.trade_key(), self.cast_key())
         task.signals.finished.connect(self.on_written)
         task.signals.failed.connect(self.on_write_failed)
         task.signals.done.connect(lambda _a: self.write_button.setEnabled(True))

@@ -5,6 +5,7 @@ The assertion this file exists to protect is the last section: `story` and
 `trade` must score exactly what they scored before any of this was added. A
 third format that quietly re-tunes the other two is worse than no third format.
 """
+import json
 import os
 import subprocess
 import sys
@@ -338,10 +339,72 @@ check("--list names the casts", "kitten_and_mother" in p.stdout and "tommy" in p
 check("--list names the premises", "screentime" in p.stdout, p.stdout[-400:])
 
 print()
+print("=== 'Auto-fill the whole story' actually respects the selected cast ===")
+# Real bug, caught by hand: brief.autofill_story() never took a `cast` argument
+# at all, and brief.cast_brief()/sitcom_brief() always read
+# build_story.default_cast() - the format's bank-declared default - rather
+# than whichever cast the GUI's own Cast picker held. Selecting "tommy" and
+# clicking Auto-fill silently wrote a kitten_and_mother story instead: the
+# casting call invented a subject "recognisably kitten_and_mother", and the
+# script call was told to write for "The kitten" and "The mother cat" no
+# matter what. Fixed by threading `cast` through autofill_story() ->
+# cast_brief()/story_from_idea() -> sitcom_brief()/compose_story().
+import brief  # noqa: E402
+
+TOMMY_SCRIPT = json.dumps({k: SCRIPT[k] for k in bs.scene_keys(bank, "curve", 15, 3, "sitcom")})
+
+
+def counting(calls):
+    def _ask(prompt, system=None, images=(), **kw):
+        calls.append((prompt, system))
+        return (TOMMY_SCRIPT, None)
+    return _ask
+
+
+calls = []
+r = brief.autofill_story(bank, image_bank, "Tommy guards the remote", current={},
+                         arc="curve", seconds=15, clip_length=3, fmt="sitcom",
+                         cast="tommy", ask=counting(calls))
+check("a solo cast that names both subject and setting needs no casting call",
+      len(calls) == 1, "{} call(s)".format(len(calls)))
+check("the story is composed and accepted", r["ok"] and r["accepted"],
+      "{}/{}".format(r.get("score"), r.get("total")))
+check("nothing was invented to override the cast",
+      r["cast"] == {}, str(r["cast"]))
+check("the subject is left for apply_cast() to fill, not defaulted to the pair",
+      "subject" not in r["spec"], str(r["spec"].get("subject")))
+check("the composed scene actually carries Tommy, not the default pair",
+      r["scenes"][0]["spec"]["subject"].startswith("a slender adult grey mackerel tabby"),
+      repr(r["scenes"][0]["spec"]["subject"][:50]))
+
+only_prompt, only_system = calls[0]
+check("the one call made was the SCRIPT call, not a casting call",
+      "lead_action" in only_system and "foil_action" in only_system, only_system[:200])
+check("the script brief names Tommy as the lead, not 'The kitten'",
+      "Tommy" in only_system and "The kitten" not in only_system, only_system[:400])
+check("the script brief names the unseen owner's hand as the foil, not 'The mother cat'",
+      "unseen owner" in only_system.lower() and "The mother cat" not in only_system,
+      only_system[:400])
+
+# The default pair cast must still behave exactly as before this fix.
+calls2 = []
+r2 = brief.autofill_story(bank, image_bank, "the usual chaos", current={},
+                          arc="curve", seconds=15, clip_length=3, fmt="sitcom",
+                          ask=counting(calls2))
+check("the default pair cast still needs no casting call either (it also names both)",
+      len(calls2) == 1, "{} call(s)".format(len(calls2)))
+check("its own script brief still names the kitten and the mother",
+      "The kitten" in calls2[0][1] and "The mother cat" in calls2[0][1])
+check("the default composed scene carries the default pair, not Tommy",
+      r2["scenes"][0]["spec"]["subject"].startswith("two ginger cats"),
+      repr(r2["scenes"][0]["spec"]["subject"][:50]))
+
+print()
 print("=== the GUI switches formats cleanly ===")
 from PyQt6.QtWidgets import QApplication  # noqa: E402
 
 app = QApplication.instance() or QApplication([])
+import ui.views.cats as catsview  # noqa: E402
 from ui.views.cats import CatsView  # noqa: E402
 
 view = CatsView(image_bank)
@@ -402,6 +465,35 @@ check("picking a premise fills the Idea box", bool(view.idea.text()), view.idea.
 check("and the post composes", "HASHTAGS" in view.social_box.toPlainText())
 check("the post's gate has six rows", view.social_gate.tree.topLevelItemCount() == 6,
       str(view.social_gate.tree.topLevelItemCount()))
+
+# The "Auto-fill the whole story" button, from the actual GUI call site - not
+# just brief.autofill_story() called directly, which every check above this
+# one does. LlmTask stores its constructor args verbatim, so capturing them
+# is enough to prove write_story() actually hands over cast_key() rather
+# than silently dropping it, the way it did before this fix.
+captured = []
+real_llm_task = catsview.LlmTask
+
+
+class _CapturingTask(real_llm_task):
+    def __init__(self, *args, **kwargs):
+        captured.append(args)
+        super().__init__(*args, **kwargs)
+
+    def run(self):
+        pass  # capture the args reaching it; no real network call
+
+
+catsview.LlmTask = _CapturingTask
+try:
+    check("cast is still 'tommy' going into the Auto-fill click",
+          view.cast_key() == "tommy", view.cast_key())
+    view.write_story()
+finally:
+    catsview.LlmTask = real_llm_task
+check("write_story() built exactly one task", len(captured) == 1, str(len(captured)))
+check("Auto-fill hands the LlmTask the actually-selected cast, not none",
+      captured[0][-1] == "tommy", str(captured[0][-3:]))
 
 view.format.setCurrentIndex(view.format.findData("trade"))
 app.processEvents()

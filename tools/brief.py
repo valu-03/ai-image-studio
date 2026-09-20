@@ -533,8 +533,13 @@ def brief_kind(story_bank, fmt=None):
         "trade" if bs.scene_fields(story_bank, fmt) == ["task", "mishap"] else "story")
 
 
-def cast_brief(story_bank, style=None, fmt=None, trade=None):
-    """The brief for inventing the cat (or the pair) and the place."""
+def cast_brief(story_bank, style=None, fmt=None, trade=None, cast=None):
+    """The brief for inventing the cat (or the pair) and the place.
+
+    `cast`, when the format has one, names WHICH cast to brief for - the GUI's
+    own Cast picker value. Falls back to the format's declared default only
+    when no cast was chosen, never silently defaulting once one has been.
+    """
     import build_story as bs
 
     style_cfg = bs.styles(story_bank).get(style or "", {})
@@ -545,7 +550,7 @@ def cast_brief(story_bank, style=None, fmt=None, trade=None):
     # than a second character being bolted on later.
     if brief_kind(story_bank, fmt) == "sitcom":
         cast_cfg = bs.casts(story_bank).get(
-            bs.default_cast(story_bank, fmt) or "", {})
+            cast or bs.default_cast(story_bank, fmt) or "", {})
         constraints = [
             "Reply with a single JSON object and nothing else.",
             'Exactly two keys: "subject" and "setting".',
@@ -693,7 +698,8 @@ def trade_brief(story_bank, arc, style=None, seconds=None, clip_length=None, tra
 
 
 def autofill_story(story_bank, bank, idea, current=None, arc="classic", style=None,
-                   seconds=None, clip_length=None, ask=None, fmt=None, trade=None):
+                   seconds=None, clip_length=None, ask=None, fmt=None, trade=None,
+                   cast=None):
     """Idea -> the cat, the place, and every scene. Blanks only, then gated.
 
     Two calls, because they are two different jobs: cast the animal, then write
@@ -705,19 +711,38 @@ def autofill_story(story_bank, bank, idea, current=None, arc="classic", style=No
     The whitelist rule holds throughout: the model may set `subject`, `setting`
     and the scene words. It cannot set seed, reference, lock_identity or
     overrides, here or anywhere else.
+
+    `cast` names which sitcom cast this is for - the GUI's own Cast picker
+    value. A cast that already declares both subject and setting (every
+    sitcom cast does) needs no model call to invent them at all: skip it, and
+    leave both keys unset so apply_cast() fills them in deterministically
+    later, inside compose_story(). Without this a click of "Auto-fill the
+    whole story" always spent a real call inventing a subject, ALWAYS briefed
+    on the format's default cast (cast_brief() had no way to hear which one
+    was actually picked) - so selecting "tommy" and autofilling silently
+    produced the default pair instead. See CatsView.base_spec()'s own
+    _cast_supplies_subject() for the matching rule on the GUI's typed-field
+    side.
     """
+    import build_story as bs
+
     ask = ask or ask_llm.ask
     current = dict(current or {})
     if current.get("subject") == PLACEHOLDER_SUBJECT:
         current.pop("subject")
 
+    kind = brief_kind(story_bank, fmt)
+    cast_cfg = (bs.casts(story_bank).get(cast or bs.default_cast(story_bank, fmt) or "", {})
+               if kind == "sitcom" else {})
+    cast_supplies_both = bool(cast_cfg.get("subject") and cast_cfg.get("setting"))
+
     filled = {k: v for k, v in current.items() if k in CAST_KEYS and str(v or "").strip()}
-    cast, cast_dropped = {}, []
-    if len(filled) < len(CAST_KEYS):
+    cast_fields, cast_dropped = {}, []
+    if len(filled) < len(CAST_KEYS) and not cast_supplies_both:
         request = 'idea: "{}"'.format((idea or "").strip())
         if filled:
             request += chr(10) + "Already chosen (do not change): " + json.dumps(filled)
-        text, error = ask(request, system=cast_brief(story_bank, style, fmt, trade))
+        text, error = ask(request, system=cast_brief(story_bank, style, fmt, trade, cast))
         if error:
             return {"ok": False, "error": error}
         payload = ask_llm.extract_json(text)
@@ -728,34 +753,32 @@ def autofill_story(story_bank, bank, idea, current=None, arc="classic", style=No
             value = str(payload.get(key) or "").strip()
             # Blanks only. What he typed is the brief, not a suggestion.
             if value and not filled.get(key):
-                cast[key] = value
-
-    import build_story as bs
+                cast_fields[key] = value
 
     spec = dict(current)
-    spec.update(cast)
+    spec.update(cast_fields)
     # The pair format needs two animals in the subject or its own gate refuses
-    # it, so the fallback names two rather than one.
-    kind = brief_kind(story_bank, fmt)
-    if kind in ("trade", "sitcom"):
-        # Both pair formats need two animals in the subject or their own gate
-        # refuses it, so the fallback names two rather than one. A sitcom cast
-        # supplies its own subject anyway; this only matters when none is set.
+    # it, so the fallback names two rather than one - but only when nothing
+    # else will fill it in. A sitcom cast that supplies its own subject must
+    # win this fallback, not lose to it: apply_cast() is what actually fills
+    # it, downstream in compose_story(), and it only runs when the key is
+    # still absent here.
+    if kind in ("trade", "sitcom") and not cast_cfg.get("subject"):
         spec.setdefault("subject", "two cats")
-    else:
+    elif kind not in ("trade", "sitcom"):
         spec.setdefault("subject", "a cat")
     spec.setdefault("seed", 0)
 
     result = story_from_idea(story_bank, bank, idea, arc=arc, style=style,
                              seconds=seconds, clip_length=clip_length,
-                             base_spec=spec, ask=ask, fmt=fmt, trade=trade)
-    result["cast"] = cast
+                             base_spec=spec, ask=ask, fmt=fmt, trade=trade, cast=cast)
+    result["cast"] = cast_fields
     result["spec"] = spec
     result["dropped"] = sorted(set(result.get("dropped") or []) | set(cast_dropped))
     return result
 
 
-def sitcom_brief(story_bank, arc, style=None, seconds=None, clip_length=None):
+def sitcom_brief(story_bank, arc, style=None, seconds=None, clip_length=None, cast=None):
     """The brief for one episode of a two-character pet sitcom.
 
     Deliberately NOT story_brief with different words. This format has no
@@ -768,11 +791,17 @@ def sitcom_brief(story_bank, arc, style=None, seconds=None, clip_length=None):
     the linter alone. A linter that only rejects teaches nothing; a brief that
     states the rule up front gets a usable first draft, and safety_lint is
     still what decides.
+
+    `cast`, when given, is which cast the episode is for - without it this
+    silently briefed every sitcom autofill on the format's DEFAULT cast's
+    lead/foil labels, so picking "tommy" (lead: Tommy, foil: the unseen
+    owner's hand) still got the model told to write for "The kitten" and
+    "The mother cat".
     """
     import build_story as bs
 
     beats = bs.beats(story_bank, "sitcom")
-    cast_key = bs.default_cast(story_bank, "sitcom") or ""
+    cast_key = cast or bs.default_cast(story_bank, "sitcom") or ""
     cast_cfg = bs.casts(story_bank).get(cast_key, {})
     members = {m.get("role"): m for m in cast_cfg.get("members", [])}
     lead = members.get("lead", {}).get("label", "the troublemaker")
@@ -892,12 +921,17 @@ def story_brief(story_bank, arc, style=None, seconds=None, clip_length=None):
 
 
 def story_from_idea(story_bank, bank, idea, arc="classic", style=None, seconds=None,
-                    clip_length=None, base_spec=None, ask=None, fmt=None, trade=None):
+                    clip_length=None, base_spec=None, ask=None, fmt=None, trade=None,
+                    cast=None):
     """An idea -> a whole story, gated by story_lint.
 
     Same rule as everywhere else: the model suggests, the linter decides. A story
     whose scenes all do the same thing, or whose hook has no words, is reported
     rather than written in.
+
+    `cast` passes straight through to compose_story() - without it, a format
+    with more than one cast (sitcom) always fell back to its bank-declared
+    default there, no matter which one the caller actually meant.
     """
     import build_story as bs
     import story_lint as stl
@@ -912,7 +946,7 @@ def story_from_idea(story_bank, bank, idea, arc="classic", style=None, seconds=N
         system = trade_brief(story_bank, arc, style, seconds, clip_length, trade)
         allowed = TRADE_SCENE_KEYS
     elif kind == "sitcom":
-        system = sitcom_brief(story_bank, arc, style, seconds, clip_length)
+        system = sitcom_brief(story_bank, arc, style, seconds, clip_length, cast)
         allowed = SITCOM_SCENE_KEYS
     else:
         system = story_brief(story_bank, arc, style, seconds, clip_length)
@@ -947,7 +981,7 @@ def story_from_idea(story_bank, bank, idea, arc="classic", style=None, seconds=N
     scenes = bs.compose_story(story_bank, spec, arc=arc, seconds=seconds,
                               clip_length=clip_length, style=style, script=script,
                               reference="scene-1.png", image_bank=bank,
-                              fmt=fmt, trade=trade)
+                              fmt=fmt, trade=trade, cast=cast)
     results = stl.lint(story_bank, scenes, arc, seconds, image_bank=bank, fmt=fmt)
     got, total = stl.score(results)
     failures = [(label, detail) for _, label, passed, detail in results if not passed]
