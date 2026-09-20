@@ -66,6 +66,23 @@ for text in ["sad piano melody playing softly in a room",
     effect_row = next(r for r in results if r[0] == "effect")
     check("rejects music/speech: {!r}".format(text[:34]), not effect_row[2], effect_row[3][:60])
 
+# The music gate is exactly bank["not_effects"] - no more, no less. This pin
+# exists because prose elsewhere in the project twice claimed the list contains
+# "beat", and it does not: "chic upbeat lounge hip-hop beat" sails through
+# check_is_an_effect and fails check_event instead, for naming an object rather
+# than a sound. A doc that names the gate's contents from memory is a doc that
+# drifts; this makes the next wrong claim fail a test.
+for word in ("beat", "hip-hop", "bass", "rhythm", "tempo", "drums"):
+    check("'{}' is NOT a not_effects word".format(word),
+          word not in bank["not_effects"], str(bank["not_effects"]))
+for word in ("music", "soundtrack", "lyrics", "narration", "instrumental"):
+    check("'{}' IS a not_effects word".format(word), word in bank["not_effects"])
+
+hiphop = "chic upbeat lounge hip-hop beat, subtle bass"
+bed = {r[0]: r for r in sl.lint(bank, hiphop)}
+check("a music bed fails, but on the EVENT check", not bed["event"][2], bed["event"][3][:40])
+check("and passes the music gate untouched", bed["effect"][2], bed["effect"][3][:40])
+
 long_text = "a very long description of an entire scene in which many things happen at once"
 results = sl.lint(bank, long_text)
 length_row = next(r for r in results if r[0] == "length")

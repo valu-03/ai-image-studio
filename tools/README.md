@@ -46,9 +46,13 @@ Scripts the agent calls to get things done. Workflows hold the sequence; tools h
 | `ad_lint.py` | The advert gate: nine checks including product-by-10s, feeling-before-features and proof-AND-urgency. Same contract as the other two linters. | no |
 | `story_bank.json` | The cat-story material as data: two visual styles (the stylised one lives here so it cannot weaken the shared 8/8 gate), four story arcs, the Kling clip lengths, and the CapCut reference. Not a script. | no |
 | `build_story.py` | Idea → scenes, each with a still prompt and a camera move, one cat locked across all of them. Also builds the CapCut edit sheet. Every scene carries TWO durations - see below. | no |
-| `story_lint.py` | The story gate: twelve checks including real clip lengths, a 3-second opening, trims that add up, and no scene repeating another's action. Same contract as the other linters. | no |
+| `story_lint.py` | The story gate. The check list is per FORMAT, not global: 13 for `story`, 12 for `trade`, 16 for `sitcom`. Same contract as the other linters. | no |
+| `safety_lint.py` | The app's first CONTENT gate - injury, distress, hazards, and contact nobody softened. Scans human-authored fields ONLY, never a composed prompt. Opt-in per format; today only `sitcom` runs it. `--check-bank` audits its vocabulary against every shipped bank. | no |
+| `build_pet_sound.py` | The two extra audio layers the sitcom format adds: an animal vocalisation and the reset snap. No linter of its own - every phrase is scored through `sound_lint` before it is returned. | no |
+| `build_social.py` | Premise + captions → three titles, a caption and 15-20 hashtags. Deterministic, no model. | no |
+| `social_lint.py` | The post gate: titles sized and actually different, caption sized, hashtags well-formed and counted, no claim language. | no |
 | `sound_bank.json` | The course's 100 ElevenLabs example prompts verbatim, tagged by theme, plus the pattern measured across them. Not a script. | no |
-| `build_sound.py` | Source + action → one prompt; a scene → its three layers (ambience, key, accent). Everything it emits is pre-scored by `sound_lint`. | no |
+| `build_sound.py` | Source + action → one prompt; a scene → its three layers (ambience, key, accent), or five when a format passes `extra=`. Everything it emits is pre-scored by `sound_lint`, extras included. | no |
 | `sound_lint.py` | The sound gate: describes an event, short enough, and is an effect rather than music or speech. The 100 examples are its fixture. | no |
 | `make_icons.py` | Regenerates the SVG icon set into `assets/icons/`, including the application mark (`app.svg` - an aperture whose opening is a play triangle). Run after editing a glyph. `ICON_NAMES` is what `tests/test_layout.py` checks `ui/assets.py` against. | no |
 | `make_exe_icon.py` | Rasterizes `app.svg` into `assets/icons/app.ico` (6 sizes, each rendered separately from the vector so small sizes stay crisp) for `AIVideoStudio.spec`'s `EXE(icon=...)`. Run after `make_icons.py` any time the mark changes, before rebuilding the .exe. | no |

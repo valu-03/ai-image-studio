@@ -516,6 +516,21 @@ SCENE_KEYS = {"caption", "narration", "action"}
 
 CAST_KEYS = {"subject", "setting"}
 TRADE_SCENE_KEYS = {"task", "mishap"}
+SITCOM_SCENE_KEYS = {"caption", "lead_action", "foil_action"}
+
+
+def brief_kind(story_bank, fmt=None):
+    """Which brief a format wants, declared by the format itself.
+
+    This used to be three separate `scene_fields(...) == ["task", "mishap"]`
+    comparisons in this file - a test for one specific format, written in three
+    places, which a third format could only join by adding a fourth branch to
+    each. The format names its own brief now.
+    """
+    import build_story as bs
+
+    return bs.format_cfg(story_bank, fmt).get("brief") or (
+        "trade" if bs.scene_fields(story_bank, fmt) == ["task", "mishap"] else "story")
 
 
 def cast_brief(story_bank, style=None, fmt=None, trade=None):
@@ -528,7 +543,30 @@ def cast_brief(story_bank, style=None, fmt=None, trade=None):
     # The trade format is two cats working together, and one reference image has
     # to carry BOTH - so the subject is written as a pair from the start rather
     # than a second character being bolted on later.
-    if bs.scene_fields(story_bank, fmt) == ["task", "mishap"]:
+    if brief_kind(story_bank, fmt) == "sitcom":
+        cast_cfg = bs.casts(story_bank).get(
+            bs.default_cast(story_bank, fmt) or "", {})
+        constraints = [
+            "Reply with a single JSON object and nothing else.",
+            'Exactly two keys: "subject" and "setting".',
+            "  subject - the cast, as ONE phrase. " + (
+                cast_cfg.get("subject") and
+                "Keep it recognisably this cast: " + cast_cfg["subject"] or
+                "Two cats of obviously different sizes, starting with the word \"two\"."),
+            "  setting - the one room the whole series happens in, in a few words.",
+            "Both under 30 words. No camera, lens, lighting or composition terms.",
+            "This is a repeating series: the cast and the room are the same in every "
+            "episode, so describe them as fixtures, not as a one-off scene.",
+        ]
+        return build_brief(
+            purpose="Name the recurring cast and the one room the series lives in.",
+            role="You cast a short-form comedy series and dress its single standing set.",
+            structure='{"subject": "two cats - ...", "setting": "..."}',
+            tone="Concrete and plain.",
+            constraints=constraints,
+        )
+
+    if brief_kind(story_bank, fmt) == "trade":
         constraints = [
             "Reply with a single JSON object and nothing else.",
             'Exactly two keys: "subject" and "setting".',
@@ -698,7 +736,11 @@ def autofill_story(story_bank, bank, idea, current=None, arc="classic", style=No
     spec.update(cast)
     # The pair format needs two animals in the subject or its own gate refuses
     # it, so the fallback names two rather than one.
-    if bs.scene_fields(story_bank, fmt) == ["task", "mishap"]:
+    kind = brief_kind(story_bank, fmt)
+    if kind in ("trade", "sitcom"):
+        # Both pair formats need two animals in the subject or their own gate
+        # refuses it, so the fallback names two rather than one. A sitcom cast
+        # supplies its own subject anyway; this only matters when none is set.
         spec.setdefault("subject", "two cats")
     else:
         spec.setdefault("subject", "a cat")
@@ -711,6 +753,70 @@ def autofill_story(story_bank, bank, idea, current=None, arc="classic", style=No
     result["spec"] = spec
     result["dropped"] = sorted(set(result.get("dropped") or []) | set(cast_dropped))
     return result
+
+
+def sitcom_brief(story_bank, arc, style=None, seconds=None, clip_length=None):
+    """The brief for one episode of a two-character pet sitcom.
+
+    Deliberately NOT story_brief with different words. This format has no
+    narration (it is built to read on mute), it has TWO characters whose
+    actions are authored separately, and it has a content gate - safety_lint -
+    that no other format runs. Asking the story brief for this would get
+    narration nobody uses and staging the gate would reject.
+
+    The harmlessness rules are restated here as constraints rather than left to
+    the linter alone. A linter that only rejects teaches nothing; a brief that
+    states the rule up front gets a usable first draft, and safety_lint is
+    still what decides.
+    """
+    import build_story as bs
+
+    beats = bs.beats(story_bank, "sitcom")
+    cast_key = bs.default_cast(story_bank, "sitcom") or ""
+    cast_cfg = bs.casts(story_bank).get(cast_key, {})
+    members = {m.get("role"): m for m in cast_cfg.get("members", [])}
+    lead = members.get("lead", {}).get("label", "the troublemaker")
+    foil = members.get("foil", {}).get("label", "the authority")
+
+    scene_lines = []
+    for key in bs.scene_keys(story_bank, arc, seconds, clip_length, "sitcom"):
+        beat_key = key.split("-")[0]
+        beat = beats.get(beat_key, {})
+        scene_lines.append('  "{}"  ({}) {}'.format(
+            key, beat.get("label", beat_key), beat.get("must_do", "")))
+
+    constraints = [
+        "Use ONLY these scene keys: " + ", ".join(
+            '"{}"'.format(line.split('"')[1]) for line in scene_lines) + ".",
+        "Each scene is an object with exactly three fields: caption, lead_action, "
+        "foil_action.",
+        "  caption     - the on-screen words. Under 8 words. This is what the viewer "
+        "reads; the last scene's caption is the punchline.",
+        "  lead_action - what {} does, as a phrase.".format(lead),
+        "  foil_action - what {} does, as a phrase.".format(foil),
+        "Every scene's lead_action must be DIFFERENT. The same action twice is one "
+        "shot repeated, which is where people scroll.",
+        "There is no narration and nobody speaks. The captions carry every word.",
+        "The camera is locked off and never moves. Never describe a cut, a zoom or a "
+        "camera move.",
+        # The content gate, stated rather than only enforced.
+        "HARMLESSNESS, and this is checked by a linter that will reject the reply: "
+        "the physical comedy is a soft, cartoon-like paw tap with the claws IN. "
+        "Whenever you describe contact, say so in the same phrase - 'a soft "
+        "cartoon-like paw tap, claws in' rather than 'a swat'.",
+        "Never describe injury, pain, blood, fear, cowering, trembling or punishment. "
+        "The drama is PERFORMED outrage, and the relationship underneath it is "
+        "affectionate.",
+        "Never put anything sharp, hot, toxic, electrical or high in the scene - no "
+        "knives, stoves, medication, chocolate, balconies or cables. Props are safe "
+        "miniatures: a rubber phone, a plush toy, a soft silicone bottle.",
+    ]
+    return build_brief(
+        purpose="Write one episode of a repeating two-character pet sitcom.",
+        role="You write 15-second physical comedy that reads on mute.",
+        structure="Scenes, in order:\n" + "\n".join(scene_lines),
+        constraints=constraints,
+    )
 
 
 def story_brief(story_bank, arc, style=None, seconds=None, clip_length=None):
@@ -801,9 +907,13 @@ def story_from_idea(story_bank, bank, idea, arc="classic", style=None, seconds=N
     # A format brings its own brief and its own scene fields. Asking a
     # one-take gag for a caption and a narration line would get both, and both
     # would be wrong: these videos have no words in them at all.
-    if fields == ["task", "mishap"]:
+    kind = brief_kind(story_bank, fmt)
+    if kind == "trade":
         system = trade_brief(story_bank, arc, style, seconds, clip_length, trade)
         allowed = TRADE_SCENE_KEYS
+    elif kind == "sitcom":
+        system = sitcom_brief(story_bank, arc, style, seconds, clip_length)
+        allowed = SITCOM_SCENE_KEYS
     else:
         system = story_brief(story_bank, arc, style, seconds, clip_length)
         allowed = SCENE_KEYS

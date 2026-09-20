@@ -1,0 +1,115 @@
+{
+  "source": "Community-supplied reference material - a four-part macro/beauty-portrait prompt (one FULL FACE extreme close-up beauty portrait plus three extreme-macro feature inserts: EYE, MOUTH, CHEEK/SKIN), contributed by the user. NOT AI Video Bootcamp course material - the same honesty convention tools/style_bank.json's `tilt-shift`/`iphone-ugc-realism`/`on-camera-flash-candid` entries already use. The source prompt's '8K ultra-photorealistic' and 'hyper-detailed' framing is deliberately NOT carried across: tools/prompt_bank.json already lists '8k' and 'hyper-detailed' in `warn`, and 'beauty filter'/'glamour retouching' in `banned`. What is harvested is the physical detail - pore-level skin, peach fuzz, subsurface scattering, sebaceous variation, per-zone tonal variation, individual brow/lash rendering - not the resolution boasting.",
+  "version": 1,
+  "note": "Two stages, not one. `full-face` CREATES the canonical face: no reference, no identity lock, no `preserve` phrase - it is the photograph the other three are cut from. The three inserts DERIVE from it: each requires the generated full-face image as `--reference`, sets lock_identity, and carries its own feature-scoped `preserve` phrase. No lighting or shot-size vocabulary lives here: `lighting_setup`/`techniques` are keys into tools/lighting_bank.json (beauty lighting is already fully covered there - butterfly, clam-shell, beauty-box, plus catchlights/specularity/subsurface-translucency) and `size` is a key into tools/camera_angle_bank.json, both resolved at build time by tools/build_macro_insert.py - the same rule tools/relight_bank.json set, so this bank cannot drift out of sync with those two gates. The size phrase is routed into spec['overrides']['composition'], NOT spec['shot_custom'] as build_relight.py does: composition is pick:2 and pins rather than replaces, so the camera slot keeps a real capture device and every shot holds a full 8/8 instead of build_relight.py's documented 7/8 angle-shot floor. `preserve` is a feature-scoped restatement of the identity lock and rides spec['extra'] into build_prompt.py's free trailing segment - no new LOCK_* constant: build_prompt.LOCK_COMPACT already says 'identical face, bone structure, eye colour, hairline, skin tone and distinguishing marks', and RELIGHT_LOCK_* earned its own constant only because it encodes the INVERSE invariant, which this does not. Every phrase is a comma-joinable fragment with no terminal full stop, because build_compact() comma-joins them and build_detailed() wraps them in 'Additional direction: {}.'. Anti-retouching direction is stated POSITIVELY inside `overrides.texture` ('not a smoothed surface') rather than as a negative list - the same shape prompt_bank.json's own 'authentic pores visible, not airbrushed smooth' term already uses, and the only shape realism_lint.is_negated() reliably reads. 'peach fuzz' already existed in tools/face_glossary.json as browse-only prose with no builder behind it; this bank is the first thing that makes it composable and gated.",
+
+  "inserts": {
+    "full-face": {
+      "label": "Full face beauty macro",
+      "scope": "the whole face",
+      "kind": "portrait",
+      "lighting_setup": "beauty-box",
+      "techniques": ["catchlights", "subsurface-translucency", "specularity"],
+      "size": "close-up",
+      "overrides": {
+        "camera": "shot on a Hasselblad medium format camera",
+        "lens": ["shot on a 100mm macro lens", "shallow depth of field"],
+        "texture": [
+          "visible pores across the whole face, larger and deeper through the T-zone, finer at the temples",
+          "fine vellus peach fuzz along the jawline, temples and upper lip, lit from the side so it catches",
+          "subsurface scattering warming the thinnest skin at the nostrils, eyelids and ear edges",
+          "natural sebaceous shine through the T-zone and matte, drier skin across the cheeks",
+          "per-zone tonal variation - redder around the nose and eyelids, cooler and flatter across the forehead",
+          "individual eyebrow hairs with visible direction, gaps and stray strands - micro-detail, not a painted shape",
+          "individual eyelashes separated at the root, uneven in length, with visible skin texture at the lash line"
+        ],
+        "composition": ["the whole face filling the frame edge to edge, hairline and chin cropped by the frame"]
+      },
+      "note": "Stage one. This CREATES the face - it takes no reference and sets no identity lock, because there is nothing yet to lock to. Generate this first, keep the frame you like, and hand that image to the three inserts as their reference. `size` is `close-up` ('the face filling the frame'), NOT the `extreme-close-up` the three inserts use ('just one part of the face') - pairing the latter with this entry's own 'the whole face filling the frame edge to edge' would put two contradictory framings in one prompt."
+    },
+
+    "eye": {
+      "label": "Eye macro insert",
+      "scope": "one eye",
+      "kind": "insert",
+      "lighting_setup": "beauty-box",
+      "techniques": ["catchlights", "subsurface-translucency"],
+      "size": "extreme-close-up",
+      "preserve": "preserve the exact eye colour, eye shape, lash line and direction of gaze from the reference image - this is the same eye magnified, not a new one",
+      "overrides": {
+        "camera": "shot on a Hasselblad medium format camera",
+        "lens": ["shot on a 100mm macro lens", "shallow depth of field"],
+        "texture": [
+          "the iris rendered as fibrous texture - visible striations, a distinct limbal ring and an irregular pupil edge",
+          "individual eyelashes separated at the root, uneven in length, with visible skin texture at the lash line",
+          "fine vellus peach fuzz on the lid and brow skin",
+          "faint capillaries and tonal variation in the sclera, not a clinical white"
+        ],
+        "composition": ["one eye filling the entire frame, brow and cheekbone cropped away"]
+      },
+      "note": "Direction of gaze is the one thing build_prompt.LOCK_COMPACT never names, which is why `preserve` states it explicitly."
+    },
+
+    "mouth": {
+      "label": "Mouth macro insert",
+      "scope": "the mouth",
+      "kind": "insert",
+      "lighting_setup": "beauty-box",
+      "techniques": ["catchlights", "specularity"],
+      "size": "extreme-close-up",
+      "preserve": "preserve the exact lip shape, lip proportions and expression from the reference image - this is the same mouth magnified, not a new one",
+      "overrides": {
+        "camera": "shot on a Hasselblad medium format camera",
+        "lens": ["shot on a 100mm macro lens", "shallow depth of field"],
+        "texture": [
+          "lip texture in full relief - fine vertical creases, a slightly dry edge and uneven natural gloss",
+          "a vermilion border that is soft and slightly irregular rather than drawn, lip texture crossing it",
+          "fine vellus peach fuzz on the upper lip skin",
+          "subsurface scattering through the lip giving it depth rather than a flat colour"
+        ],
+        "composition": ["the mouth filling the entire frame, nose and chin cropped away"]
+      },
+      "note": "Expression is scoped to the mouth here; spec['mood'] still drives the face as a whole in `full-face`."
+    },
+
+    "cheek": {
+      "label": "Cheek / skin macro insert",
+      "scope": "cheek and jawline skin",
+      "kind": "insert",
+      "lighting_setup": "beauty-box",
+      "techniques": ["specularity", "subsurface-translucency"],
+      "size": "extreme-close-up",
+      "preserve": "preserve the exact skin tone, undertone and surface texture of the reference face - this is the same skin magnified, not a new surface",
+      "overrides": {
+        "camera": "shot on a Hasselblad medium format camera",
+        "lens": ["shot on a 100mm macro lens", "shallow depth of field"],
+        "texture": [
+          "pore-level skin detail - each pore a distinct opening with its own depth and shadow, not a smoothed surface",
+          "fine vellus peach fuzz across the cheek, side-lit so every hair catches",
+          "natural sebaceous shine sitting in the skin rather than on it",
+          "per-zone tonal variation - a faint capillary flush over the cheekbone fading into a cooler jaw"
+        ],
+        "composition": ["one cheek and jawline filling the entire frame, no eye and no mouth in shot"]
+      },
+      "note": "The purest texture test of the four - nothing recognisable is in frame, so only the skin itself can carry it."
+    }
+  },
+
+  "sets": {
+    "beauty-macro": {
+      "label": "Beauty macro (full face plus all three inserts, 4 shots)",
+      "source_note": "The community prompt's own four parts, in its own order. Two-stage: generate the full face first, then re-run the three inserts against it.",
+      "inserts": ["full-face", "eye", "mouth", "cheek"]
+    },
+    "inserts-only": {
+      "label": "Inserts only (3 shots)",
+      "source_note": "Stage two on its own, once the full-face beauty portrait exists and is saved as the reference.",
+      "inserts": ["eye", "mouth", "cheek"]
+    },
+    "full-face-only": {
+      "label": "Full face only (1 shot)",
+      "source_note": "Stage one on its own - judge the skin rendering before spending three more generations on crops of it.",
+      "inserts": ["full-face"]
+    }
+  }
+}

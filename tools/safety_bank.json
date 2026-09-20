@@ -1,0 +1,219 @@
+{
+  "source": "Written for this app, from the harmlessness rules in a user-supplied pet-comedy series brief ('harmless slapstick: soft feline paw swats without extended claws. Zero genuine pain, hostility, or fear' / 'no dangerous heights, sharp objects, toxic substances, or choking hazards'). NOT transcribed from the AI Video Bootcamp course, and not measured from reference video.",
+  "version": 1,
+  "note": "The app's first CONTENT gate. Every other linter in this project judges how an image is MADE - realism layers, structural completeness, continuity. This one judges what it DEPICTS. Two rules make it safe to run: (1) it scans only human-authored fields, never an assembled prompt and never a sound brief, because the shared vocabulary is full of innocent collisions - 'crushing' lives in camera_angle_bank, 'squash and stretch' in story_bank's stylised style, 'slap' and 'smacked' in sound_bank's comedy examples; (2) it is opt-in per format, listed only in `sitcom`'s checks, so `story` and `trade` are provably unaffected - trade's own shipped mishap 'one shoves the other and it lands flat on its back' would fail the softener rule, and widening a gate to content written before it turns a correct linter into a nuisance.",
+  "matching_note": "Each category carries TWO lists, and the split is not cosmetic. `stems` are start-anchored, so 'claw' catches 'claws' and 'clawing'; `words` are whole-word, so 'pain' does not fire on 'a painted wall'. Start-anchoring everything breaks on 'pain'; whole-wording everything misses 'swatting'. This is the same plain-word-versus-phrase distinction realism_lint._layer_key_present already draws, for the same reason. Negation is NOT re-implemented here: safety_lint imports realism_lint.is_negated, so 'no claws' reads as safe everywhere the shared gate would read it that way.",
+  "defused": {
+    "note": "is_negated() is a PREFIX rule - it looks backwards from the term. A phrase that defuses itself AFTER the word escapes it entirely, so these are stripped from the text before anything is scanned. Measured: 'claws sheathed' reads as a positive claw hit without this.",
+    "phrases": [
+      "claws sheathed",
+      "sheathed claws",
+      "claws retracted",
+      "retracted claws",
+      "claws in",
+      "clawless",
+      "nobody is hurt",
+      "nobody gets hurt",
+      "never hurt",
+      "painless"
+    ]
+  },
+  "categories": {
+    "injury": {
+      "label": "No injury",
+      "role": "Nothing may be described as damaging the animal.",
+      "stems": [
+        "injur",
+        "bleed",
+        "bruis",
+        "maul",
+        "strangl",
+        "throttl",
+        "wound",
+        "lacerat",
+        "claw",
+        "bite",
+        "biting",
+        "bitten"
+      ],
+      "words": [
+        "blood",
+        "hurt",
+        "hurts",
+        "hurting",
+        "pain",
+        "painful",
+        "kick",
+        "kicks",
+        "kicked",
+        "punch",
+        "punches",
+        "punched",
+        "choke",
+        "chokes",
+        "choked",
+        "stomp",
+        "stomps",
+        "stomped"
+      ],
+      "fix": "Say what the animal does, not what it costs. A tap is an event; a scratch is an injury."
+    },
+    "distress": {
+      "label": "No genuine distress",
+      "role": "The comedy is performed outrage, never real fear.",
+      "stems": [
+        "terrifi",
+        "terror",
+        "traumatis",
+        "traumatiz",
+        "cower",
+        "trembl",
+        "whimper",
+        "suffer",
+        "torment",
+        "agonis",
+        "agoniz"
+      ],
+      "words": [
+        "cruel",
+        "cruelty",
+        "agony",
+        "punish",
+        "punishes",
+        "punished",
+        "punishment",
+        "petrified",
+        "abuse",
+        "abused"
+      ],
+      "fix": "A cat throwing a theatrical tantrum is funny. A frightened cat is not. Describe the performance, not the feeling."
+    },
+    "hazard": {
+      "label": "No dangerous set",
+      "role": "Nothing sharp, hot, toxic, electrical or high may be staged near the animal.",
+      "stems": [
+        "knife",
+        "knives",
+        "blade",
+        "scissor",
+        "boiling",
+        "scald",
+        "electrocut",
+        "poison",
+        "chemical"
+      ],
+      "words": [
+        "stove",
+        "oven",
+        "toxic",
+        "bleach",
+        "medication",
+        "pills",
+        "chocolate",
+        "balcony",
+        "ledge",
+        "rooftop",
+        "banister",
+        "plastic bag",
+        "broken glass",
+        "electrical cord",
+        "power cable"
+      ],
+      "fix": "Swap the prop. The brief's own rule is safe miniatures - a rubber phone, a plush burger, a soft silicone bottle."
+    }
+  },
+  "softened": {
+    "label": "Contact is softened",
+    "role": "A contact word is fine - unsoftened contact is not.",
+    "note": "The one POSITIVE rule here: the others fail on what is present, this one fails on what is MISSING. It passes trivially when no contact word appears at all, the same way story_lint.check_tasks_vary passes when there is nothing to compare. Scoped per field, not across the joined text, so a 'soft daylight' in the setting cannot vouch for a swat in the action.",
+    "contact_stems": [
+      "swat",
+      "bop",
+      "cuff",
+      "smack",
+      "slap",
+      "whack",
+      "wallop",
+      "clout",
+      "shove",
+      "shoving",
+      "shoved",
+      "swipe",
+      "swiping",
+      "swiped",
+      "pounce",
+      "pouncing"
+    ],
+    "contact_words": [
+      "paw tap",
+      "paw taps",
+      "bap",
+      "boop",
+      "tap on the head",
+      "knock"
+    ],
+    "softeners": [
+      "gentle",
+      "gently",
+      "softly",
+      "soft paw",
+      "light paw",
+      "lightly",
+      "cartoon-like",
+      "cartoonish",
+      "comedic",
+      "playful",
+      "playfully",
+      "harmless",
+      "harmlessly",
+      "no claws",
+      "claws sheathed",
+      "claws in",
+      "claws retracted",
+      "blunt",
+      "mock",
+      "pretend",
+      "featherlight",
+      "feather-light",
+      "weightless",
+      "theatrical"
+    ],
+    "fix": "Name the softness in the same breath as the contact: 'a soft cartoon-like paw tap, claws in' rather than 'a swat'.",
+    "stem_note": "Both forms are listed where an inflection drops the stem's final letter. 'shoving' does not contain 'shove', and the shorter stem that would catch it - 'shov' - also catches 'shovelling wet cement', which story_bank ships as a construction task. Explicit forms beat a stem that catches a shovel."
+  },
+  "audit_allow": {
+    "note": "Reviewed collisions. safety_lint --check-bank fails on any collision NOT listed here, so a term added later that fires on shipped vocabulary is caught the day it lands. Each entry says why the collision is acceptable: in every case the phrase lives in vocabulary that cannot reach a human-authored scene field - a sound-effect prompt, a colour-grade reference, a style example, a camera-angle description.",
+    "allow": [
+      {
+        "bank": "sound_bank.json",
+        "term": "punch",
+        "contains": "punch impact",
+        "why": "An ElevenLabs sound-effect prompt from the course's own 100. Sound briefs are never scanned - rule 1 in safety_lint's docstring - and 'punch' must stay a harm word."
+      },
+      {
+        "bank": "color_bank.json",
+        "term": "blade",
+        "contains": "blade runner",
+        "why": "The film, not the object. A colour-grade reference; 'blade' stays a hazard word."
+      },
+      {
+        "bank": "motion_bank.json",
+        "term": "blood",
+        "contains": "battlefield",
+        "why": "A camera-movement example describing a battlefield shot. Motion examples are not scene fields."
+      },
+      {
+        "bank": "style_bank.json",
+        "term": "rooftop",
+        "contains": "rooftop",
+        "why": "Two style examples set on rooftops. A rooftop genuinely is a hazard for a cat, so the term stays; these are style vocabulary, not staging."
+      },
+      {
+        "bank": "camera_angle_bank.json",
+        "term": "cower",
+        "contains": "towers over",
+        "why": "A low-angle description of how a SUBJECT reads to the viewer, not a distressed animal."
+      }
+    ]
+  }
+}

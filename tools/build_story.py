@@ -396,6 +396,94 @@ def apply_style(bank, style, spec):
     return merged
 
 
+def casts(bank):
+    """Named, reusable casts. A cast is WHO the series is about."""
+    return bank.get("casts", {})
+
+
+def validate_cast(bank, name):
+    if name and name not in casts(bank):
+        return "Unknown cast '{}'. Available: {}".format(name, ", ".join(casts(bank)))
+    return None
+
+
+def default_cast(bank, fmt=None):
+    return format_cfg(bank, fmt).get("default_cast")
+
+
+def cast_members(bank, cast, onscreen_only=False):
+    """The cast's members. `onscreen_only` drops anything marked offscreen.
+
+    The distinction matters for two checks: an unseen owner's hand is a real
+    member with a real action to write, but it must not be demanded in the
+    subject string, and one on-screen character has nothing to be in scale WITH.
+    """
+    members = casts(bank).get(cast or "", {}).get("members", [])
+    if onscreen_only:
+        return [m for m in members if not m.get("offscreen")]
+    return list(members)
+
+
+def premises(bank):
+    """{key: {"seed", "short"}} - episode seeds. Vocabulary, not scripts.
+
+    A plain string is still accepted and read as the seed, so a bank written
+    before the short form existed keeps working.
+    """
+    out = {}
+    for key, value in bank.get("premises", {}).items():
+        if isinstance(value, str):
+            out[key] = {"seed": value, "short": value}
+        else:
+            out[key] = {"seed": value.get("seed", ""),
+                        "short": value.get("short") or value.get("seed", "")}
+    return out
+
+
+def premise_seed(bank, key):
+    """The sentence form - what fills the Idea box."""
+    return premises(bank).get(key or "", {}).get("seed", "")
+
+
+def premise_short(bank, key):
+    """The noun-phrase form - what a title pattern takes."""
+    return premises(bank).get(key or "", {}).get("short", "")
+
+
+def apply_cast(bank, cast, spec):
+    """Fold a cast's subject, setting and scale phrase into the spec.
+
+    No new mechanism, the same as apply_trade: `subject` and `setting` are
+    existing spec keys, and the relative-scale sentence rides `extra`, which
+    build_prompt already renders as a free trailing segment. Two cats reach the
+    model as ONE subject string starting with the word "two" - the mechanism
+    `trade` proved - which is why check_pair and build_motion's own
+    second_subject detector agree about them without being told twice.
+    """
+    cfg = casts(bank).get(cast or "", {})
+    if not cfg:
+        return spec
+    merged = dict(spec)
+    for field in ("subject", "setting", "wardrobe"):
+        if cfg.get(field) and not merged.get(field):
+            merged[field] = cfg[field]
+    if cfg.get("scale"):
+        merged["extra"] = list(merged.get("extra", [])) + [cfg["scale"]]
+    return merged
+
+
+def action_recipe(bank, fmt=None):
+    """{"fields": [...], "join": "..."} - how a format builds one action from many.
+
+    build_prompt renders exactly one action clause, but a format may want two
+    authored fields feeding it: `trade` writes a task and the mishap that ends
+    it, `sitcom` writes what each of two characters does. This used to be a
+    hardcoded task/mishap join here; a format declares its own recipe now, so
+    adding a third format needed no third branch.
+    """
+    return format_cfg(bank, fmt).get("action_from") or {}
+
+
 def apply_trade(bank, trade, spec):
     """Fold a trade's costume, place and props into the spec.
 
@@ -417,10 +505,10 @@ def apply_trade(bank, trade, spec):
 
 
 def scene_spec(bank, beat_key, occurrence, base_spec, style, reference=None,
-               fmt=None, trade=None):
+               fmt=None, trade=None, cast=None):
     """The character spec for one scene's still."""
     beat = beats(bank, fmt).get(beat_key, {})
-    spec = dict(base_spec)
+    spec = apply_cast(bank, cast, dict(base_spec))
     spec["shot"] = base_spec.get("shot") or shot_for(bank, beat_key, occurrence, fmt)
     if bank.get("aspect") and not spec.get("aspect"):
         spec["aspect"] = bank["aspect"]
@@ -435,7 +523,7 @@ def scene_spec(bank, beat_key, occurrence, base_spec, style, reference=None,
 
 def compose_story(bank, base_spec, arc=None, seconds=None, clip_length=None,
                   style=None, script=None, reference=None,
-                  image_bank=None, motion_bank=None, fmt=None, trade=None):
+                  image_bank=None, motion_bank=None, fmt=None, trade=None, cast=None):
     """Idea -> the whole story as a list of scene dicts.
 
     `script` maps a scene key ("hook", "escalation-2") to
@@ -455,6 +543,8 @@ def compose_story(bank, base_spec, arc=None, seconds=None, clip_length=None,
     script = script or {}
     fields = scene_fields(bank, fmt)
     camera = locked_camera(bank, fmt)
+    cast = cast or default_cast(bank, fmt)
+    recipe = action_recipe(bank, fmt)
 
     scenes = []
     rows = scene_timings(bank, arc, seconds, clip_length, fmt)
@@ -470,18 +560,19 @@ def compose_story(bank, base_spec, arc=None, seconds=None, clip_length=None,
             if (lines.get(field) or "").strip():
                 scene_base[field] = lines[field].strip()
 
-        # A trade scene is written as a task and the thing that goes wrong. Both
-        # belong in one continuous action, because that is what a single take
-        # shows - splitting them across two clips is the one thing the reference
-        # videos never do.
-        task = (lines.get("task") or "").strip()
-        mishap = (lines.get("mishap") or "").strip()
-        if task or mishap:
-            scene_base["action"] = " until ".join(part for part in (task, mishap) if part)
+        # A format may compose its one action clause from several authored
+        # fields - a trade's task and the mishap that ends it, a sitcom's two
+        # characters. The recipe is declared in the bank (see action_recipe),
+        # so a new format needs vocabulary rather than a branch here.
+        written = {name: (lines.get(name) or "").strip() for name in fields}
+        parts = [written.get(name, "") for name in recipe.get("fields", [])]
+        parts = [part for part in parts if part]
+        if parts:
+            scene_base["action"] = recipe.get("join", " until ").join(parts)
 
         spec = scene_spec(bank, beat_key, occurrence, scene_base, style,
                           reference=reference if (reference and index > 0) else None,
-                          fmt=fmt, trade=trade)
+                          fmt=fmt, trade=trade, cast=cast)
         prompt, layers = bp.compose(image_bank, spec)
 
         # What realism_lint makes of this still, recorded as a fact rather than
@@ -507,7 +598,7 @@ def compose_story(bank, base_spec, arc=None, seconds=None, clip_length=None,
                 motion, _ = bm.compose(motion_bank, movement, spec)
                 warnings = bm.check_compatibility(motion_bank, movement, spec)
 
-        scenes.append({
+        scene = {
             "n": index + 1,
             "key": key,
             "beat": beat_key,
@@ -524,10 +615,15 @@ def compose_story(bank, base_spec, arc=None, seconds=None, clip_length=None,
             "trim_out": edit_seconds,
             "format": fmt,
             "fields": fields,
+            "cast": cast or "",
+            # Every field this format declares, by its own name - so a format
+            # can add one without this dict learning about it. The four below
+            # are always present regardless, because the edit sheet, the GUI
+            # and several suites read them by name on any scene.
             "narration": lines.get("narration", ""),
             "caption": lines.get("caption", ""),
-            "task": task,
-            "mishap": mishap,
+            "task": written.get("task", ""),
+            "mishap": written.get("mishap", ""),
             "spec": spec,
             "prompt": prompt,
             "layers": layers,
@@ -536,18 +632,33 @@ def compose_story(bank, base_spec, arc=None, seconds=None, clip_length=None,
             "movement": movement,
             "motion_prompt": motion,
             "warnings": warnings,
-        })
+        }
+        # A format's own declared fields, under their own names. Set last and
+        # only where the key is free, so this can never quietly overwrite one
+        # of the structural keys above.
+        for name, value in written.items():
+            scene.setdefault(name, value)
+        scenes.append(scene)
     return scenes
 
 
 # --------------------------------------------------------------------------- #
 # The edit sheet
 # --------------------------------------------------------------------------- #
-def cut_between(bank, earlier, later):
-    """Which cut to use between two beats, named from the film glossary."""
-    cuts = bank.get("capcut", {}).get("cuts", {})
+def cut_between(bank, earlier, later, fmt=None):
+    """Which cut to use between two beats, named from the film glossary.
+
+    Reads the FORMAT's own cuts map, not the top-level one. This used to read
+    `bank["capcut"]["cuts"]` unconditionally, which is why `trade` had to
+    duplicate the story format's map verbatim - its own beats are setup/task/
+    payoff, and none of the story keys it was forced to copy could ever match.
+    The format is taken from the scene itself when not passed, so every
+    existing caller keeps working unchanged.
+    """
     if later is None:
         return "end"
+    fmt = fmt or (earlier or {}).get("format")
+    cuts = capcut_cfg(bank, fmt).get("cuts") or bank.get("capcut", {}).get("cuts", {})
     key = "{}->{}".format(earlier.get("beat"), later.get("beat"))
     return cuts.get(key, cuts.get("default", "hard cut"))
 
@@ -697,11 +808,17 @@ def parse_args(argv):
         epilog=__doc__,
     )
     p.add_argument("--spec", help="path to a character spec JSON (the cat)")
-    p.add_argument("--subject", help="the cat, if no --spec is given")
+    p.add_argument("--subject", help="the cat, if no --spec and no --cast is given")
     p.add_argument("--setting", help="where it happens")
     p.add_argument("--action", help="what the cat is doing")
-    p.add_argument("--format", help="story or trade (see --list)")
+    p.add_argument("--format", help="story, trade or sitcom (see --list)")
     p.add_argument("--trade", help="the job, for --format trade (see --list)")
+    p.add_argument("--cast", help="a named cast, for --format sitcom (see --list) - "
+                                  "fills --subject/--setting when they are left out")
+    p.add_argument("--premise", help="an episode seed, printed with the story as a header "
+                                     "note. This file makes no network call and writes no "
+                                     "words from it - see tools/brief.py's sitcom_brief() "
+                                     "for that.")
     p.add_argument("--arc", help="story shape (see --list)")
     p.add_argument("--style", help="photoreal or stylised")
     p.add_argument("--seconds", type=int, help="target runtime")
@@ -734,6 +851,12 @@ def main(argv=None):
         print("\nSTYLES")
         for key, cfg in styles(bank).items():
             print("  {:<12} {:<24} {}".format(key, cfg["label"], cfg["note"]))
+        print("\nCASTS (--format sitcom)")
+        for key, cfg in casts(bank).items():
+            print("  {:<20} {:<32} {}".format(key, cfg["label"], cfg.get("note", "")))
+        print("\nPREMISES (a header note only - see --premise's own help)")
+        for key, row in premises(bank).items():
+            print("  {:<20} {}".format(key, row["seed"]))
         low, high = clip_range(bank)
         print("\nCLIP LENGTH   {}-{}s, whole seconds (default {}s)".format(
             low, high, default_clip(bank)))
@@ -746,9 +869,15 @@ def main(argv=None):
 
     for error in (validate_format(bank, args.format), validate_trade(bank, args.trade),
                   validate_arc(bank, args.arc, args.format), validate_style(bank, args.style),
-                  validate_clip(bank, args.clip)):
+                  validate_clip(bank, args.clip), validate_cast(bank, args.cast)):
         if error:
             sys.exit(error)
+
+    # A cast with its own subject makes --subject optional, the same relaxation
+    # ui/views/cats.py's base_spec() makes for the GUI - and for the same
+    # reason: apply_cast() only fills spec["subject"] when the key is absent,
+    # so a caller has to actually leave it out rather than pass an empty string.
+    cast_has_subject = bool(casts(bank).get(args.cast or "", {}).get("subject"))
 
     if args.spec:
         path = Path(args.spec)
@@ -759,8 +888,11 @@ def main(argv=None):
         base_spec = json.loads(path.read_text(encoding="utf-8"))
     elif args.subject:
         base_spec = {"subject": args.subject, "seed": 0}
+    elif cast_has_subject:
+        base_spec = {"seed": 0}
     else:
-        sys.exit("Give either --spec <path> or --subject \"...\". See --help.")
+        sys.exit("Give --spec <path>, --subject \"...\", or --cast <name> (see --list). "
+                 "See --help.")
 
     for field in ("setting", "action"):
         value = getattr(args, field, None)
@@ -771,13 +903,20 @@ def main(argv=None):
     arc = args.arc or format_cfg(bank, fmt).get("default_arc") or bank.get("default_arc", "classic")
     scenes = compose_story(bank, base_spec, arc=arc, seconds=args.seconds,
                            clip_length=args.clip, style=args.style,
-                           fmt=fmt, trade=args.trade)
+                           fmt=fmt, trade=args.trade, cast=args.cast)
 
     runtime = total_runtime(bank, arc, args.seconds, args.clip, fmt)
     generated = sum(s["clip_seconds"] for s in scenes)
     print("{} / {} - {} scenes, {:.1f}s edited from {}s of generated clip".format(
         format_cfg(bank, fmt).get("label", fmt), arcs(bank, fmt)[arc]["label"],
         len(scenes), runtime, generated), file=sys.stderr)
+    if args.premise:
+        # Informational only - this file makes no network call, so a premise
+        # here is a note for whoever writes the script by hand next, not a
+        # request to invent one. See sitcom_brief() in tools/brief.py for the
+        # path that actually turns a premise into words.
+        print("premise:  {}".format(premise_seed(bank, args.premise) or args.premise),
+              file=sys.stderr)
     print(story_script(scenes))
 
     if not args.no_write:

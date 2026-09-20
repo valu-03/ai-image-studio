@@ -111,6 +111,7 @@ class CustomPromptTab(QWidget):
         right_scroll.setMinimumWidth(320)
 
         split = QSplitter(Qt.Orientation.Horizontal)
+        split.setObjectName("cats_custom_left_right")
         split.addWidget(left_scroll)
         split.addWidget(right_scroll)
         split.setChildrenCollapsible(False)

@@ -1,0 +1,305 @@
+{
+  "source": "This app's own 8-layer prompt system (tools/prompt_bank.json + tools/realism_lint.py), plus slot structure reverse-engineered from worked prompts - the `beauty-macro` and `macro-insert` templates from a community-supplied macro/beauty-portrait prompt contributed by the user (the same prompt tools/macro_insert_bank.json harvests its vocabulary from), and `photoreal-portrait` from this app's own build_prompt.py compose order. The `video-sequence` template is reverse-engineered from a community-supplied luxury-vlog video prompt contributed by the user, and `video-shot` from this app's own tools/motion_lint.py rules (which DO transcribe the bootcamp's Kling camera-movement toolkit, via tools/motion_bank.json). Everything else here is NOT AI Video Bootcamp course material.",
+  "version": 2,
+  "note": "A template is an ORDERED list of slots - the skeleton of a prompt, not its words. This bank teaches structure; the vocabulary banks (prompt_bank, lighting_bank, style_bank, macro_insert_bank, ...) supply what goes in each slot. Detection is deliberately split: a slot that maps onto one of the eight gated realism layers declares `layer` and is detected by tools/realism_lint.py's OWN DETECT table - never a second copy of those keywords, the same no-duplication rule tools/relight_bank.json follows for lighting and camera-angle phrases. Only slots the eight layers do not cover carry their own `detect` list - and a slot whose vocabulary already lives in ANOTHER linter borrows it by name instead: a `borrow` of 'motion-verbs' takes tools/motion_lint.py's own MOTION_VERBS, so the camera-movement slots cannot drift away from what that linter actually gates on. The video templates also record two facts about this app that a prompt written elsewhere will trip over: tools/sound_bank.json is effects-only and its linter rejects music vocabulary outright (hence a separate `music` slot), and tools/build_story.py distinguishes clip_seconds from edit_seconds (hence the shot-sequence slot's warning that two-second beats are edit lengths, not generation lengths). `analyse()` is keyword presence, not parsing: it answers 'which slots does this prompt appear to fill', which is honest, rather than pretending to segment free prose into semantic regions.",
+
+  "templates": {
+    "beauty-macro": {
+      "label": "Beauty macro portrait",
+      "summary": "An extreme close-up beauty portrait where the skin itself is the subject. Fifteen slots; slots 7-10 are the ones that separate real skin from plastic skin.",
+      "source_note": "Reverse-engineered from the community-supplied FULL FACE prompt.",
+      "scaffold": "inline",
+      "slots": [
+        {"key": "subject", "label": "Framing + subject",
+         "does": "States the shot type and who is in it, in one breath.",
+         "why": "The model needs the frame before the detail. 'Extreme close-up beauty portrait of X' front-loads both.",
+         "detect": ["portrait of", "close-up", "photograph of", "shot of", "macro of"],
+         "example": "extreme close-up, straight-on beauty portrait of a blonde woman with blue eyes, looking directly into the camera"},
+
+        {"key": "styling", "label": "Styling",
+         "does": "Hair and wardrobe, described as they affect the frame.",
+         "why": "In a beauty macro, hair is mostly a negative space decision - slicking it back is what exposes the face.",
+         "detect": ["hair", "wearing", "wardrobe", "slicked", "tied", "styled"],
+         "example": "hair slicked straight back in a wet-look style, exposing the entire face, temples and hairline"},
+
+        {"key": "composition", "label": "Composition", "layer": "composition",
+         "does": "Where the subject sits in the frame and where the camera is relative to it.",
+         "why": "Symmetry and camera height are decisions, not defaults. Saying nothing gets you the model's average.",
+         "example": "symmetrical front-facing composition, camera perfectly level with her eyes, face centred in frame"},
+
+        {"key": "expression", "label": "Expression",
+         "does": "The face's state - mouth, eyes, tension.",
+         "why": "Unstated, models drift to a slight smile. 'Neutral, lips gently closed' is a real instruction.",
+         "detect": ["expression", "lips", "smile", "gaze", "looking", "mouth closed"],
+         "example": "neutral relaxed expression, lips gently closed"},
+
+        {"key": "camera", "label": "Camera", "layer": "camera",
+         "does": "Names an actual capture device.",
+         "why": "This is the single highest-value realism word. A named camera implies a whole optical rendering.",
+         "example": "captured on a full-frame high-resolution camera"},
+
+        {"key": "lens", "label": "Lens and focus", "layer": "lens",
+         "does": "Focal length, aperture, and what is sharp.",
+         "why": "100mm macro is what makes pore detail physically plausible rather than hallucinated.",
+         "example": "100mm macro portrait lens, extremely sharp focus across the eyes and central features"},
+
+        {"key": "skin-base", "label": "Skin: surface", "layer": "texture",
+         "does": "The literal surface - pores, lines, blemishes.",
+         "why": "Slot one of four. On its own this still reads retouched; it needs the next three.",
+         "example": "visible pores across the forehead, nose and cheeks, microscopic fine lines, faint blemishes"},
+
+        {"key": "skin-variation", "label": "Skin: variation",
+         "does": "States that skin tone is NOT uniform across the face.",
+         "why": "The most-skipped slot, and the biggest single tell. Real faces are redder at the nose and cooler at the forehead; a uniform tone is the plastic look.",
+         "detect": ["tonal variation", "colour variation", "color variation", "never a single", "uneven", "redness", "blotch"],
+         "example": "natural tonal variation between forehead, cheeks, nose and chin - never a single uniform skin tone"},
+
+        {"key": "light-in-skin", "label": "Skin: light behaviour",
+         "does": "How light enters and leaves the skin - peach fuzz catching it, blood tones beneath it.",
+         "why": "Skin is translucent. Prompts that treat it as an opaque surface get waxwork results no amount of 'detailed' fixes.",
+         "detect": ["peach fuzz", "subsurface scattering", "translucen", "vellus", "blood tones", "sebaceous"],
+         "example": "fine translucent peach fuzz catching the light along the jawline, subsurface scattering warming the thinnest skin"},
+
+        {"key": "feature-detail", "label": "Individual features",
+         "does": "Brows, lashes, irises - resolved as individual fibres, with asymmetry stated.",
+         "why": "'Perfect' features read as CGI. Naming irregular density and slight asymmetry is what buys realism.",
+         "detect": ["eyebrow", "eyelash", "lashes", "iris", "irises", "asymmetry", "individual hairs"],
+         "example": "individual eyebrow hairs with irregular density, individual eyelashes without perfect uniformity, slight natural asymmetry"},
+
+        {"key": "hair-detail", "label": "Hair detail",
+         "does": "Strand separation, baby hairs, moisture.",
+         "why": "Hair rendered as a mass is a giveaway; rendered as separable sections it is not.",
+         "detect": ["strand", "baby hairs", "flyaway", "damp", "individual hairs"],
+         "example": "separated into realistic individual strands and small damp sections, fine baby hairs at the hairline"},
+
+        {"key": "lighting", "label": "Lighting", "layer": "lighting",
+         "does": "Source, direction, size, and the shadows it makes.",
+         "why": "'Soft light' is not a lighting instruction. Direction plus source size is.",
+         "example": "soft directional beauty lighting from slightly above and camera-left, a large diffused source casting delicate dimensional shadows, realistic shadows with gentle falloff toward the jaw"},
+
+        {"key": "background", "label": "Background",
+         "does": "What is behind the subject, and that it does not compete.",
+         "why": "Unstated, the model invents one - usually a busy one.",
+         "detect": ["background", "backdrop", "seamless", "studio wall", "behind her", "behind him"],
+         "example": "neutral light grey studio background with no distractions"},
+
+        {"key": "negatives", "label": "Negatives",
+         "does": "Names the retouching operations you do not want.",
+         "why": "The key principle: name the PROCESS, not the look. 'No frequency separation, no pore removal' is far more precise than 'not fake'.",
+         "detect": ["no ", "without", "avoid", "never", "zero "],
+         "example": "no beauty filter, no skin smoothing, no frequency separation, no pore removal, no facial reshaping"},
+
+        {"key": "aesthetic", "label": "Aesthetic framing",
+         "does": "One closing line naming the genre the image belongs to.",
+         "why": "Anchors everything above to a real-world reference the model has seen thousands of.",
+         "detect": ["editorial", "campaign", "aesthetic", "photography,", "documentary", "look"],
+         "example": "raw high-end editorial beauty photography, intimate skincare-campaign aesthetic"}
+      ]
+    },
+
+    "macro-insert": {
+      "label": "Macro insert (feature crop)",
+      "summary": "The short, repeatable template for an extreme macro of ONE feature of a face that already exists. Five slots - and the last one is the whole trick.",
+      "source_note": "Reverse-engineered from the community-supplied EYE / MOUTH / CHEEK prompts. Implemented by tools/build_macro_insert.py.",
+      "scaffold": "inline",
+      "slots": [
+        {"key": "render-verb", "label": "Render instruction",
+         "does": "States that this is a macro render of a region.",
+         "why": "Sets scale before anything else, so the detail list below is read at the right magnification.",
+         "detect": ["render", "macro of", "extreme macro", "close-up of"],
+         "example": "render an extreme ultra-realistic macro of the eye"},
+
+        {"key": "region", "label": "Region", "layer": "composition",
+         "does": "Which feature fills the frame, and what is cropped away.",
+         "why": "Saying what is NOT in frame is what stops the model pulling back to a portrait.",
+         "example": "extreme close-up, one eye filling the entire frame, brow and cheekbone cropped away"},
+
+        {"key": "detail-list", "label": "Region detail list", "layer": "texture",
+         "does": "The anatomy specific to this region only.",
+         "why": "Each region has its own vocabulary - iris fibres and sclera vessels for an eye, vermilion border and philtrum for a mouth. Generic 'detailed' does nothing here.",
+         "example": "detailed iris fibres, dark limbal ring, individual eyelashes and roots, wet tear-film reflections, fine sclera vessels, natural eyelid texture"},
+
+        {"key": "no-retouch", "label": "No-retouch clause",
+         "does": "One short negative, scoped to this crop.",
+         "why": "At macro scale smoothing is instantly visible, so this is worth repeating per insert rather than relying on the base prompt.",
+         "detect": ["no smoothing", "no retouching", "without smoothing", "no airbrush"],
+         "example": "no smoothing or retouching"},
+
+        {"key": "preserve", "label": "Preserve clause",
+         "does": "Names exactly which properties of the reference must not change.",
+         "why": "THE load-bearing slot. Without it a macro crop becomes a different person's eye. A general identity lock never says 'gaze', 'lip proportions' or 'undertone' - this does.",
+         "detect": ["preserve", "exact same", "identical", "do not change", "keep the exact"],
+         "example": "preserve the exact eye colour, shape, eyelid position, gaze and identity"}
+      ]
+    },
+
+    "photoreal-portrait": {
+      "label": "Photoreal portrait (this app's own default)",
+      "summary": "Eight slots - the eight-layer skeleton tools/build_prompt.py composes by default, in its own order. Shown here so you can compare it against the macro templates above and see exactly what they add.",
+      "scaffold": "inline",
+      "source_note": "This app's own build_prompt.py LAYER_ORDER and tools/prompt_bank.json.",
+      "slots": [
+        {"key": "core", "label": "Core realism triggers", "layer": "core",
+         "does": "Two or three words asserting photorealism up front.",
+         "why": "Cheap and load-bearing; the rest of the prompt is read in this frame.",
+         "example": "ultra-realistic, true-to-life textures"},
+        {"key": "camera", "label": "Camera", "layer": "camera",
+         "does": "Names a capture device.",
+         "why": "Implies a whole optical rendering in two words.",
+         "example": "DSLR photography"},
+        {"key": "lens", "label": "Lens", "layer": "lens",
+         "does": "Focal length and depth of field.",
+         "why": "Controls how much of the frame is sharp, which reads as physical rather than generated.",
+         "example": "shot on an 85mm portrait lens, shallow depth of field"},
+        {"key": "lighting", "label": "Lighting", "layer": "lighting",
+         "does": "Source, direction, quality.",
+         "why": "See tools/lighting_bank.json for the full vocabulary - this is the deepest toolkit in the app.",
+         "example": "soft natural daylight with realistic shadows"},
+        {"key": "texture", "label": "Texture", "layer": "texture",
+         "does": "Surface detail and imperfection.",
+         "why": "The layer the macro templates above explode into four separate slots.",
+         "example": "visible skin pores, slight imperfections"},
+        {"key": "colour", "label": "Colour", "layer": "colour",
+         "does": "Grade and restraint.",
+         "why": "Stated restraint prevents the oversaturated AI look.",
+         "example": "natural colour grading, realistic contrast"},
+        {"key": "composition", "label": "Composition", "layer": "composition",
+         "does": "Framing and subject separation.",
+         "why": "See tools/composition_bank.json and tools/camera_angle_bank.json.",
+         "example": "eye-level shot, foreground and background separation"},
+        {"key": "grain", "label": "Grain and capture quality", "layer": "grain",
+         "does": "Sensor noise, dynamic range, the absence of over-polish.",
+         "why": "The final anti-CGI signal.",
+         "example": "subtle film grain, sharp focus, not overly polished"}
+      ]
+    },
+
+    "video-sequence": {
+      "label": "Timed video sequence (locks + shots)",
+      "summary": "A whole short video in one prompt: three locks that must not drift, one pass of global look and sound, then a timed shot list with its own dialogue. Thirteen slots, and the first three are the ones that decide whether it is still the same video by the end.",
+      "source_note": "Reverse-engineered from a community-supplied luxury-vlog video prompt contributed by the user. NOT AI Video Bootcamp course material.",
+      "slots": [
+        {"key": "character-lock", "label": "Character lock",
+         "does": "Describes the person once, in terms that stay true from the first frame to the last.",
+         "why": "Lock one of three. A video model re-decides the face at every cut unless you state it is the same person - tools/motion_bank.json's avatar_guard exists for the same reason and its first line is literally 'no identity drift between cuts'. Describe build and bearing, never a passing pose: anything that changes shot to shot does not belong in a lock.",
+         "detect": ["character lock", "consistent identity", "same person", "same woman", "same man", "identity stays"],
+         "example": "CHARACTER LOCK: tall slim athletic woman, elegant natural beauty, effortless confidence, consistent identity in every shot"},
+
+        {"key": "outfit-lock", "label": "Outfit lock",
+         "does": "Pins the wardrobe - garment, cut, fabric and colour - as a separate statement from the person.",
+         "why": "Lock two of three, and the one most often folded into the character lock by mistake. An identity lock says nothing about clothes, so the model is free to re-dress her between cuts; naming the cut and the fabric is what survives a change of angle. This app has no outfit-lock tool - build_prompt.py locks identity, build_relight.py locks scene - so this slot is written out by hand.",
+         "detect": ["outfit lock", "wardrobe lock", "same outfit", "wearing the same", "outfit stays", "wardrobe:"],
+         "example": "OUTFIT LOCK: powder-blue premium activewear set - ruched sports bra, sculpting high-waisted leggings, luxe fitted fabric, unchanged throughout"},
+
+        {"key": "environment-lock", "label": "Environment lock",
+         "does": "Fixes the room: its size, its materials, its furniture, its light sources.",
+         "why": "Lock three of three. Cutting between a wide and a close-up is where invented architecture appears - a different floor, a ceiling twice as high. State the ceiling height and the floor material explicitly; they are the two a model reinvents first.",
+         "detect": ["environment lock", "location lock", "set lock", "same room", "same studio", "same space"],
+         "example": "ENVIRONMENT LOCK: upscale boutique wellness studio, realistic domestic ceiling height, warm cream walls, oak floors, designer mirrors, candles and plants, one aerial silk rig"},
+
+        {"key": "style", "label": "Style",
+         "does": "One line naming the genre and the capture register the whole video sits in.",
+         "why": "It applies to every shot at once, so it is stated once at the top rather than repeated per beat. This is where a hybrid belongs - 'iPhone realism with a cinematic grade' is a real instruction; 'cinematic' on its own is not.",
+         "detect": ["vlog", "lifestyle", "cinematic", "documentary", "film look", "aesthetic"],
+         "example": "STYLE: luxury lifestyle vlog, clean expensive taste, realistic iPhone capture with a cinematic grade, no CGI look"},
+
+        {"key": "lighting", "label": "Lighting", "layer": "lighting",
+         "does": "The light the whole piece is shot in - source, direction, warmth.",
+         "why": "A global lighting line is also a continuity lock: without one, each shot invents its own time of day. See tools/lighting_bank.json for the vocabulary.",
+         "example": "LIGHTING: warm golden interior glow, soft window light from camera-left, flattering natural skin tones"},
+
+        {"key": "music", "label": "Music bed",
+         "does": "The scored track under the whole video - genre, tempo, and how loud it sits.",
+         "why": "Deliberately its own slot, because this app's tools/sound_bank.json is effects-ONLY: sound_lint rejects every word in that bank's own not_effects list - music, song, melody, soundtrack, background score, singing, lyrics, instrumental and the narration words - so a music bed can never come from that bank. Note what is NOT on that list: 'beat' and 'hip-hop' pass the music gate, and a line like 'chic upbeat lounge hip-hop beat' fails a different check instead, for naming an object rather than a sound. The bed belongs here in the video prompt, or in your editor - never in a sound-effects brief.",
+         "detect": ["music", "soundtrack", "instrumental", "score under", "hip-hop", "no music"],
+         "example": "MUSIC: chic upbeat lounge hip-hop, subtle bass, sitting low under the dialogue"},
+
+        {"key": "sound", "label": "Diegetic sound",
+         "does": "The sounds the scene itself makes - room tone, footsteps, handled objects.",
+         "why": "The half tools/sound_bank.json genuinely covers, in its own three layers: ambience, key sound, accent. Naming what the body and the props do is what stops a video reading as a silent clip with music pasted over it.",
+         "detect": ["room tone", "ambience", "ambient sound", "footsteps", "foley", "diegetic", "sound design"],
+         "example": "SOUND: quiet room tone, footsteps on oak floor, fabric movement, a water bottle set down on wood"},
+
+        {"key": "voice", "label": "Voice",
+         "does": "How the spoken lines sound - register, pace, distance from the mic.",
+         "why": "Separate from what is said. See tools/voice_bank.json's sixteen styles; a tone named once at the top keeps every line in the shot list consistent.",
+         "detect": ["voice:", "vocal tone", "voice-over tone", "narration", "spoken in", "close-mic"],
+         "example": "VOICE: soft feminine vlog tone, calm and playful, close-mic and conversational"},
+
+        {"key": "text", "label": "On-screen text",
+         "does": "States what appears as graphics - or explicitly that nothing does.",
+         "why": "'None' is a real answer and worth writing down. Video models volunteer garbled captions and watermarks unprompted, so an explicit 'no on-screen text' is a working instruction, not a blank line.",
+         "detect": ["text:", "on-screen text", "caption", "lower third", "subtitle", "title card"],
+         "example": "TEXT: none - no captions, no subtitles, no lower thirds"},
+
+        {"key": "camera", "label": "Camera behaviour",
+         "does": "How the camera moves, and how the piece is cut.",
+         "why": "Movement first: tools/motion_lint.py's rule one is that a video prompt leads with the camera, because that is what the model latches onto. One dominant move per shot - pushing in and pulling out at once is the classic failure the same linter catches.",
+         "borrow": "motion-verbs",
+         "detect": ["handheld", "selfie", "static camera", "locked off", "cuts", "close-ups"],
+         "example": "CAMERA: smooth handheld vlog cuts, the camera drifts in for intimate close-ups, polished handheld rather than gimbal-smooth"},
+
+        {"key": "shot-sequence", "label": "Shot sequence",
+         "does": "The timed beat list - a timestamp, a name, and what is in frame.",
+         "why": "The structural slot. Mind the distinction tools/build_story.py already draws between clip_seconds (what the model generates, and most will not go below about five) and edit_seconds (what survives your cut): seven beats across fifteen seconds averages barely two seconds each, so those are edit lengths. Generate each beat long, then trim it short.",
+         "detect": ["00:", "[0", "shot 1", "beat 1", "timestamp", "seconds |"],
+         "example": "[00:00-00:02 | Intro arrival] front-facing selfie entering the studio, sunglasses pushed up, tote bag on the shoulder"},
+
+        {"key": "dialogue", "label": "Dialogue",
+         "does": "The actual words, attached to the beat that carries them.",
+         "why": "Written per beat rather than as one block, and kept short - a line has to fit the seconds you gave it. Mark which lines are on camera and which are voice-over: the model lip-syncs the first and not the second.",
+         "detect": ["dialogue", "voice-over:", "(vo)", "she says", "he says", "line:"],
+         "example": "Dialogue: 'Come to class with me - I needed a reset today.' Dialogue (VO): 'This studio is honestly a dream.'"},
+
+        {"key": "negatives", "label": "Negative prompt",
+         "does": "Names the video-specific failures you do not want.",
+         "why": "Video has failure modes stills do not: jitter, flicker, drifting identity, bad lip sync, limbs clipping through props. tools/motion_bank.json already carries a negatives list and an opt-in avatar_guard - start from those rather than inventing a list.",
+         "detect": ["no ", "without", "avoid", "never", "zero "],
+         "example": "NEGATIVE PROMPT: no warped limbs, no stiff robotic movement, no bad lip sync, no jitter or flicker between cuts, no plastic skin, no clipping through props"}
+      ]
+    },
+
+    "video-shot": {
+      "label": "Single video shot (this app's own gate)",
+      "summary": "Six slots - the shape tools/motion_lint.py actually scores one shot against. Use it per beat of the sequence template above, or on its own for a single clip.",
+      "scaffold": "inline",
+      "source_note": "This app's own motion_lint.py rules and tools/motion_bank.json, which transcribe the AI Video Bootcamp Kling camera-movement toolkit.",
+      "slots": [
+        {"key": "camera-lead", "label": "Camera lead",
+         "does": "Opens the prompt with the camera move, before anything else.",
+         "why": "Rule one, in the toolkit's own words: 'always start your prompt with the camera angle, this way Kling recognizes it immediately'. motion_lint.py checks only the first ninety characters for it.",
+         "borrow": "motion-verbs",
+         "example": "the camera slowly pushes in toward her"},
+
+        {"key": "subject", "label": "Subject",
+         "does": "Who or what the move is aimed at.",
+         "why": "Rule two: 'if you say tracking over the shoulder but there is no character in your scene, Kling will get confused'. The move and the subject have to agree.",
+         "detect": ["a woman", "a man", "a person", "the subject", "a product", "her ", "his "],
+         "example": "a woman in her powder-blue activewear"},
+
+        {"key": "action", "label": "Action",
+         "does": "One thing the subject does, in the present tense.",
+         "why": "Rule six: one action, not a chain. 'Walking while talking while eating' confuses a video model exactly the way two competing camera moves do.",
+         "detect": ["reaches", "turns", "walks", "lifts", "smiles", "steps", "sits", "looks up"],
+         "example": "reaches up and grips the silk"},
+
+        {"key": "setting", "label": "Setting",
+         "does": "Where it happens, in enough detail to be lit.",
+         "why": "Rule five catches contradictions between the move and the place - a camera that dives underwater in a kitchen. The setting is what makes that checkable.",
+         "detect": ["studio", "room", "kitchen", "street", "interior", "outdoors", "against a"],
+         "example": "in a warm boutique studio with oak floors"},
+
+        {"key": "style", "label": "Capture style", "layer": "camera",
+         "does": "The camera and grade, as one closing phrase.",
+         "why": "tools/motion_bank.json ships ready-made style_presets for exactly this slot - pick one rather than writing your own.",
+         "example": "shot on an iPhone, raw handheld look, natural colour grading"},
+
+        {"key": "negatives", "label": "Negative guard",
+         "does": "The trailing no-warp, no-morph guard.",
+         "why": "Rule seven. compose() appends it automatically, so this slot is really a check that a hand-edited prompt has not lost it.",
+         "detect": ["no warped", "no morphing", "no floating limbs", "no distorted", "no extra fingers"],
+         "example": "no warped face, no floating limbs, no distorted hands, no morphing"}
+      ]
+    }
+  }
+}

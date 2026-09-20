@@ -185,7 +185,64 @@ HASHES = {
     # added or removed; find_terms()/banned/warn/negatives untouched - the
     # gate only got STRICTER. Every bank suite's own detectability audit still
     # passes, confirming no real phrase became invisible.
-    "tools/realism_lint.py": "1571e1641f8f9164",
+    # Bumped again for five DETECT["texture"]["keys"] additions - "peach fuzz",
+    # "subsurface scattering", "pore-level", "sebaceous" and "tonal variation".
+    # Every skin-macro phrase the new Macro Insert bank
+    # (tools/macro_insert_bank.json) can produce needed a way to be detected,
+    # the same rule every lighting/composition/colour bank phrase already has
+    # to follow, or a deliberate pick from that section would silently fail the
+    # 8/8 gate. Note "pores" is a plain word and therefore start-anchored
+    # (\bpores), so it does NOT fire on "pore-level"; the other four were
+    # absent from this table entirely. Purely additive: no key removed, no
+    # existing key's meaning changed, the other seven layers' key lists and
+    # lint()/find_terms()/the banned+warn/negatives logic are all untouched -
+    # audited by tests/test_macro_insert.py's own "no bank phrase is invisible
+    # to realism_lint" check, run per phrase rather than against an assembled
+    # override (an assembled override passes on one legacy "pores" hit and
+    # would hide undetectable siblings), not assumed. realism_lint.py carries
+    # no `version` field of its own to bump, unlike the banks above it - this
+    # hash is the whole record for the file.
+    # A sixth key, "vellus", was written and then REMOVED before shipping:
+    # every bank phrase using it also says "peach fuzz", so it could never be
+    # the sole reason a phrase was seen, and a key that earns nothing only
+    # widens the gate. tests/test_macro_insert.py asserts that every remaining
+    # new key IS the sole hit for at least one real bank phrase, so a
+    # speculative key cannot be added later and left as dead weakening.
+    # Two keys the source material suggested were deliberately NOT added:
+    # "eyelash" and "eyebrow hair". An eyelash is not on its own evidence of
+    # skin texture, and keys that broad would let a glamour prompt saying
+    # "long, full eyelashes" pass the texture layer brief.upgrade_prompt()
+    # gates on - the same loophole the \bwear / "streetwear" fix above closed.
+    # Those phrases were reworded to carry an existing key instead.
+    # The one measurable side effect was found by running it, not assumed:
+    # tools/story_bank.json's `stylised` style carries "subsurface scattering
+    # on fur", so a stylised story prompt now scores 6/8 where it scored 5/8.
+    # Still a FAIL, so this suite's own "a stylised prompt would FAIL
+    # realism_lint" check below still holds - verified across all seven
+    # stylised scenes, not just the first. The margin narrows from three
+    # misses to two, which is the honest cost of the key.
+    # tools/prompt_bank.json is NOT touched by this feature at all: every new
+    # word lives in tools/macro_insert_bank.json, the bank precedent
+    # lighting/composition/colour/camera-angle already set, so no shot preset
+    # was added and tests/test_composition.py's every-preset-scores-8/8 loop is
+    # untouched.
+    # Bumped again, same session, for two DETECT["lens"]["keys"] additions -
+    # "mm macro" and "mm portrait". This one is a BUG FIX, not new vocabulary:
+    # "mm lens" is a plain substring, so any word between the millimetres and
+    # the lens hid the phrase entirely. "100mm macro portrait lens" scored the
+    # lens layer at zero, and so did this app's OWN portrait preset phrase,
+    # "shot on an 85mm portrait lens" (tools/prompt_bank.json shot_presets.
+    # portrait.lens) - that preset only ever passed because its sibling
+    # "shallow depth of field" term carried the layer. Surfaced by the new
+    # tools/prompt_anatomy.py reporting a false MISS against a real prompt that
+    # plainly named its lens, and confirmed by running lint() on the preset's
+    # own phrase in isolation, not assumed. Purely additive and strictly
+    # widening on a layer that was under-detecting: no key removed, no existing
+    # key's meaning changed, and no bank phrase newly trips a banned or warn
+    # term (both new keys were checked for overlap against every other layer's
+    # key list first - zero collisions). tools/prompt_bank.json is still NOT
+    # touched; the preset text was already correct, the detector was not.
+    "tools/realism_lint.py": "f0375cfe0f708b77",
     # Bumped for a larger style_presets list (version 2 -> 3) - ten more
     # camera/lighting/grade combinations drawn from the same PDF vocabulary
     # the image side already had, cycled by seed the same way the original

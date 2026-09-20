@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (
     QLineEdit,
     QMainWindow,
     QMessageBox,
+    QSplitter,
     QStackedWidget,
     QVBoxLayout,
     QWidget,
@@ -1024,6 +1025,21 @@ class MainWindow(QMainWindow):
         self.compose_view.form_mode.setCurrentIndex(int(self.settings.value("form_mode", 0)))
         learned = self.settings.value("learned", "false") == "true"
         self.insights_view.learned.setChecked(learned)
+        self.restore_splitters()
+
+    def restore_splitters(self):
+        # Every splitter in the app is found and restored by objectName rather
+        # than named one by one here, so a splitter added to a new view is
+        # covered for free - the same reasoning the geometry save/restore
+        # already uses for the window itself. All views are built in
+        # setup_ui() before this runs, so every splitter already exists.
+        for splitter in self.findChildren(QSplitter):
+            name = splitter.objectName()
+            if not name:
+                continue
+            state = self.settings.value("splitter/" + name)
+            if state:
+                splitter.restoreState(state)
 
     def closeEvent(self, event):
         self.pool.cancel()
@@ -1036,4 +1052,8 @@ class MainWindow(QMainWindow):
             "learned", "true" if self.insights_view.learned.isChecked() else "false"
         )
         self.settings.setValue("theme", self.theme.name)
+        for splitter in self.findChildren(QSplitter):
+            name = splitter.objectName()
+            if name:
+                self.settings.setValue("splitter/" + name, splitter.saveState())
         super().closeEvent(event)

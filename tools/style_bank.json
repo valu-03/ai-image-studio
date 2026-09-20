@@ -1,6 +1,6 @@
 {
-  "source": "AI Video Bootcamp Phase 3 'Style Reference Library' (AVB_Style_Reference_Library_clean.pdf) - 24 visual styles, each with the look, when to reach for it, and an example prompt. The course's own rule: add the style keywords at the END of the prompt, after the scene description, never lead with them. Version 2 added 2 `photoreal` entries (`iphone-ugc-realism`, `on-camera-flash-candid`) sourced from community UGC/avatar prompt-bank material, not the course PDF - each says so via its own `source` field. Version 3 adds 1 more `photoreal` entry, `universal-realism-lock`, sourced from a DIFFERENT official course lesson (\"Removing the 'AI' Look\", not the Style Reference Library PDF) - its `source` field says so.",
-  "version": 3,
+  "source": "AI Video Bootcamp Phase 3 'Style Reference Library' (AVB_Style_Reference_Library_clean.pdf) - 24 visual styles, each with the look, when to reach for it, and an example prompt. The course's own rule: add the style keywords at the END of the prompt, after the scene description, never lead with them. Version 2 added 2 `photoreal` entries (`iphone-ugc-realism`, `on-camera-flash-candid`) sourced from community UGC/avatar prompt-bank material, not the course PDF - each says so via its own `source` field. Version 3 adds 1 more `photoreal` entry, `universal-realism-lock`, sourced from a DIFFERENT official course lesson (\"Removing the 'AI' Look\", not the Style Reference Library PDF) - its `source` field says so. Version 4 refines the existing `tilt-shift` entry's `keywords`/`look`/`when`/`example` using community reference material identifying the two details that actually drive the miniature illusion (a high angle looking down, and a specific top/bottom-heavy sharp-middle blur shape, not generic shallow depth of field) - its own `source` field says so; no new style added, still 27 total.",
+  "version": 4,
   "note": "Two groups. `photoreal` styles are compatible with the 8/8 realism gate - they describe a real camera/film/lighting look. `stylised` styles deliberately are NOT photographic (anime, oil painting, watercolour); applying one drops the realism score on purpose, the same way tools/story_bank.json's animated look does, and the Style section warns before it is applied. `keywords` is the phrase that gets appended (spec['overrides']['style'], folded into the free extra segment by build_prompt.free_overrides). `custom` typed text always beats a picked style. `photoreal` now holds the course's original 14, 2 community-sourced additions, and 1 more addition from a different course lesson (each addition says which via its own `source` field) - 27 styles total, still 10 `stylised`.",
 
   "photoreal": {
@@ -75,11 +75,12 @@
       "example": "A waterfall in a forest with smooth silky water from a long exposure, mossy rocks, peaceful and serene"
     },
     "tilt-shift": {
-      "label": "Tilt-shift",
-      "keywords": "tilt-shift photography, a selective focus band, the scene made to look like a miniature model",
-      "look": "A selective focus band that makes real scenes look like toy models.",
-      "when": "Making ordinary scenes look like miniatures, creative perspective.",
-      "example": "A busy intersection seen from above, tilt-shift effect making the cars and people look like tiny models"
+      "label": "Tilt-shift miniature",
+      "keywords": "tilt-shift miniature photography, shot from a high angle looking down at the scene, heavy blur at the top and bottom of the frame with a sharp focus band across the middle, oversaturated colours, the scene made to look like a hand-built miniature diorama",
+      "look": "Shot from above looking down, heavy blur top and bottom with a sharp focus band across the middle, oversaturated colours - real scenes read as tiny hand-built dioramas.",
+      "when": "Making an ordinary wide scene (a street, an office, a warehouse) look like a miniature model. Only works shot from a high angle looking down - eye-level photos will not convert; a generic shallow depth of field will not either, the blur has to be that specific top/bottom-heavy, sharp-middle shape.",
+      "example": "A busy intersection seen from a high angle looking down, tilt-shift miniature photography, heavy blur at the top and bottom of the frame with a sharp focus band across the middle, oversaturated colours, the cars and people look like a tiny hand-built diorama",
+      "source": "Community reference material (a tilt-shift/miniature prompting note), not the course PDF - refines the course's own tilt-shift entry with the two details that actually drive the illusion."
     },
     "golden-hour-portrait": {
       "label": "Golden hour portrait",

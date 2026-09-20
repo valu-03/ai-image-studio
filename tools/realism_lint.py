@@ -50,6 +50,14 @@ DETECT = {
         "keys": [
             "mm lens", "mm prime", "depth of field", "bokeh", "focal length",
             "aperture", "f/1", "f/1.8", "f/2", "wide aperture",
+            # "mm lens" is a plain substring, so ANY word between the
+            # millimetres and the lens hid the phrase: "100mm macro portrait
+            # lens" and even this app's own portrait preset phrase, "shot on an
+            # 85mm portrait lens", both scored this layer at zero. The preset
+            # only ever passed on its sibling "shallow depth of field" term.
+            # Found by tools/prompt_anatomy.py reporting a false MISS on a real
+            # prompt that plainly named its lens.
+            "mm macro", "mm portrait",
         ],
         "fix": "add \"shot on a 35mm lens, shallow depth of field, natural bokeh\"",
     },
@@ -88,6 +96,18 @@ DETECT = {
             "pores", "micro-detail", "micro detail", "micro-texture", "fabric grain",
             "fabric fibers", "imperfection", "surface detail", "texture", "blemish",
             "freckle", "tactile", "wrinkle", "scratches", "wear",
+            # The Macro Insert bank (tools/macro_insert_bank.json) - skin-macro
+            # vocabulary none of the keys above reach. Note "pores" is a plain
+            # word and therefore start-anchored (\bpores), so it does NOT fire
+            # on "pore-level"; the other five were absent from this table
+            # entirely. Same rule every lighting/composition/colour bank phrase
+            # already follows - audited per phrase, not assumed, by
+            # tests/test_macro_insert.py. "vellus" was dropped from this list
+            # before it shipped: every bank phrase using it also says "peach
+            # fuzz", so it could never be the sole reason a phrase was seen,
+            # and a key that earns nothing only widens the gate.
+            "peach fuzz", "subsurface scattering", "pore-level",
+            "sebaceous", "tonal variation",
         ],
         "fix": "add \"visible skin pores, natural fabric grain, slight imperfections\"",
     },

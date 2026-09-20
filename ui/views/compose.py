@@ -263,6 +263,7 @@ class ComposeView(QWidget):
         lint_card.body.addWidget(secondary_checks, 1)
 
         middle = QSplitter(Qt.Orientation.Vertical)
+        middle.setObjectName("compose_prompt_lint")
         middle.addWidget(prompt_card)
         middle.addWidget(lint_card)
         middle.setSizes([300, 320])
@@ -487,6 +488,7 @@ class ComposeView(QWidget):
         right_card.setMaximumWidth(460)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
+        splitter.setObjectName("compose_form_prompt_result")
         splitter.addWidget(left)
         splitter.addWidget(middle)
         splitter.addWidget(right_card)

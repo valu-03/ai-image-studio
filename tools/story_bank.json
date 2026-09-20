@@ -1,6 +1,6 @@
 {
   "source": "Story structure for short-form animal video. NOT transcribed from the course: its Cats Niche, Storytelling and CapCut lessons are video files. The Kling movement keys and the realism vocabulary this builds on ARE from the course (motion_bank.json, prompt_bank.json).",
-  "version": 2,
+  "version": 3,
   "note": "A scene is one clip. Kling 3.0 generates any whole second from 3 to 15, so clip_seconds is what the scene keeps, rounded up to a whole second. The hook is a real 3-second clip rather than a 5-second one trimmed to 3. edit_seconds still exists because a trim is sometimes wanted, but generated and kept are now nearly the same number instead of differing by 2x. The scene COUNT comes from the runtime, not from the arc: the arc gives the shape and its repeatable beat expands to fill the time, because a beat that will not fit in one clip has to become two scenes.",
   "clip_seconds": {
     "min": 3,
@@ -350,7 +350,18 @@
         "style",
         "prompts"
       ],
-      "default_seconds": 30
+      "default_seconds": 30,
+      "ui": {
+        "cast_label": "The cat",
+        "subject_placeholder": "a ginger tabby cat with one torn ear",
+        "rows": {
+          "Job": false,
+          "Look": true,
+          "Cast": false,
+          "Premise": false
+        },
+        "show_hook": true
+      }
     },
     "trade": {
       "label": "Working cats (one-take gags)",
@@ -473,6 +484,203 @@
           "payoff->payoff": "L cut",
           "default": "hard cut"
         }
+      },
+      "action_from": {
+        "fields": [
+          "task",
+          "mishap"
+        ],
+        "join": " until ",
+        "why": "A trade scene is written as a task and the thing that goes wrong, and both belong in ONE continuous action because that is what a single take shows. This used to be hardcoded in build_story.compose_story; declaring it made the sitcom format's own two-character join possible without a second branch."
+      },
+      "ui": {
+        "cast_label": "The cats",
+        "subject_placeholder": "two cats - a broad grey tabby and a lean ginger tom",
+        "rows": {
+          "Job": true,
+          "Look": false,
+          "Cast": false,
+          "Premise": false
+        },
+        "show_hook": false
+      }
+    },
+    "sitcom": {
+      "label": "Pet sitcom (the toddler and the enforcer)",
+      "note": "A repeatable series: the same cast, the same room, a five-stage retention curve in 10-15 seconds. Built to read on mute - captions carry the words, there is no narration. One locked-off take per stage, because a series that re-frames its own living room every episode reads as a different show.",
+      "source": "A user-supplied series brief (a 'strict cat mom vs dramatic toddler kitten' format for Reels/Shorts/TikTok), encoded here as a format so the linter decides rather than the wording. NOT AI Video Bootcamp course material, and not measured from reference video the way `trade` was.",
+      "default_arc": "curve",
+      "default_clip": 3,
+      "default_seconds": 15,
+      "default_cast": "kitten_and_mother",
+      "brief": "sitcom",
+      "scene_fields": [
+        "caption",
+        "lead_action",
+        "foil_action"
+      ],
+      "action_from": {
+        "fields": [
+          "lead_action",
+          "foil_action"
+        ],
+        "join": " while ",
+        "why": "Two characters need two separately authored actions, but build_prompt renders exactly one subject clause and one action. Joining them here is the same move `trade` already makes with task/mishap - generalised, so a format declares its recipe instead of build_story hardcoding one."
+      },
+      "camera": {
+        "lead": "locked-off camera holding on",
+        "detail": "the camera does not move at all for the whole take",
+        "why": "A series is recognisable because the room is. A push-in or an orbit re-stages the set every episode; holding still is what makes ten videos look like one show."
+      },
+      "checks": [
+        "arc",
+        "clips",
+        "trims",
+        "runtime",
+        "hook",
+        "identity",
+        "pair",
+        "cast",
+        "scale",
+        "captions",
+        "actions_vary",
+        "locked_off",
+        "safety",
+        "moves_fit",
+        "style",
+        "prompts"
+      ],
+      "beats": {
+        "hook": {
+          "label": "Caught in the act",
+          "role": "Open on the behaviour, already happening.",
+          "must_do": "No establishing shot and nobody walks into frame. The first frame is the gag - if it could be any cat video, it is wrong.",
+          "shot": "portrait",
+          "repeatable": false,
+          "max_edit_seconds": 3.0
+        },
+        "tantrum": {
+          "label": "The meltdown",
+          "role": "A boundary lands and the drama goes full-body.",
+          "must_do": "Bigger than the hook, and physical: on the back, all four paws going. The foil's stillness through it is half the joke.",
+          "shot": "environmental",
+          "shots": [
+            "environmental",
+            "portrait"
+          ],
+          "repeatable": true
+        },
+        "discipline": {
+          "label": "The intervention",
+          "role": "One economical correction from the foil.",
+          "must_do": "A single soft paw tap with the claws in, or a hand simply removing the object. Nothing lands hard and nothing hurts - `safety_lint` gates this beat.",
+          "shot": "environmental",
+          "repeatable": false
+        },
+        "reset": {
+          "label": "Instant angel",
+          "role": "Snaps upright, wide-eyed, as if none of it happened.",
+          "must_do": "The cut IS the joke: the same framing as the tantrum, the opposite posture. Hold it long enough to read.",
+          "shot": "portrait",
+          "repeatable": false
+        },
+        "lecture": {
+          "label": "The lecture",
+          "role": "The telling-off lands, and the video stops on it.",
+          "must_do": "The caption is the punchline. End on it - do not add a wind-down shot after the line has landed.",
+          "shot": "environmental",
+          "repeatable": false
+        }
+      },
+      "arcs": {
+        "curve": {
+          "label": "Full curve (5 stages)",
+          "note": "The whole retention shape. 15 seconds at 3 a stage - the only length that wastes no generated second.",
+          "beats": [
+            "hook",
+            "tantrum",
+            "discipline",
+            "reset",
+            "lecture"
+          ]
+        },
+        "tight": {
+          "label": "Tight (3 stages)",
+          "note": "For 9-10 seconds. Drops the intervention and the reset, which is most of the joke - use it when the premise is thin, not as the default.",
+          "beats": [
+            "hook",
+            "tantrum",
+            "lecture"
+          ]
+        },
+        "double": {
+          "label": "Double meltdown (6 stages)",
+          "note": "Two escalations before the foil moves. Needs 18 seconds, so it runs past the series' own 10-15 brief - deliberate, and off-format.",
+          "beats": [
+            "hook",
+            "tantrum",
+            "tantrum",
+            "discipline",
+            "reset",
+            "lecture"
+          ]
+        }
+      },
+      "capcut": {
+        "note": "No voiceover anywhere in this format - it is built to read on mute. Captions are burned on, the sound is effects and cat vocalisations only, and music (if you want any) is added here in the editor, never in the sound brief.",
+        "steps": [
+          {
+            "step": "1. Start 9:16 at 30fps",
+            "text": "New project, aspect 9:16, 1080x1920. Export 1080p30 - 4K60 downscales and looks worse."
+          },
+          {
+            "step": "2. Lay all five takes end to end first",
+            "text": "Hard cuts, no transitions, nothing trimmed yet. Watch it once through before touching anything."
+          },
+          {
+            "step": "3. Tighten the hook to under 3 seconds",
+            "text": "This is the only trim that matters. If the behaviour is not readable in the first second, re-generate the hook rather than trimming harder."
+          },
+          {
+            "step": "4. Cut the reset on the frame, not around it",
+            "text": "The instant-angel cut is the joke. Land it on the first frame of the new posture - a few frames of drift kills it."
+          },
+          {
+            "step": "5. Five audio layers, in this order",
+            "text": "Ambience at about -30dB under everything, the cat vocalisation on the character, the key effect on the action frame, one accent on the intervention, and the snap on the reset cut."
+          },
+          {
+            "step": "6. Burn the captions on",
+            "text": "One per stage, under eight words, same position and same font every episode. The caption on the last stage is the punchline - hold it to the final frame."
+          },
+          {
+            "step": "7. Music last, if at all",
+            "text": "Ducked under the effects, never over them. The sound bank cannot write music by design - that is an editor job."
+          },
+          {
+            "step": "8. Watch it once on mute",
+            "text": "If the five stages do not read without sound, the problem is the staging, not the audio."
+          }
+        ],
+        "cuts": {
+          "hook->tantrum": "hard cut",
+          "tantrum->tantrum": "hard cut",
+          "tantrum->discipline": "J cut",
+          "discipline->reset": "hard cut on the frame",
+          "reset->lecture": "L cut",
+          "default": "hard cut"
+        }
+      },
+      "ui": {
+        "cast_label": "The cats",
+        "subject_placeholder": "left blank - the cast fills this in",
+        "rows": {
+          "Job": false,
+          "Look": true,
+          "Cast": true,
+          "Premise": true
+        },
+        "show_hook": true
       }
     }
   },
@@ -582,5 +790,270 @@
       "note": ""
     }
   },
-  "trades_note": "Vocabulary, not rules - the same idea as motion_bank and sound_bank. Seeded from the reference videos: costume first, then a real job, then one physical thing going wrong. The comedy is the deadpan competence, so the mishap has to be an accident the cats take seriously."
+  "trades_note": "Vocabulary, not rules - the same idea as motion_bank and sound_bank. Seeded from the reference videos: costume first, then a real job, then one physical thing going wrong. The comedy is the deadpan competence, so the mishap has to be an accident the cats take seriously.",
+  "casts": {
+    "kitten_and_mother": {
+      "label": "The kitten and the mother cat",
+      "subject": "two ginger cats - a tiny dramatic kitten with enormous amber eyes and a creamy white chin, and a plump stern adult ginger tabby mother cat with a broad white chest",
+      "setting": "a bright modern living room with a heather-grey fabric sofa, a mustard knitted cushion, pale oak floors and soft daylight through a large window",
+      "scale": "the kitten is roughly a quarter the size of the mother cat and fits easily under her chin, at the same relative size in every shot",
+      "members": [
+        {
+          "key": "kitten",
+          "label": "The kitten",
+          "role": "lead",
+          "token": "kitten",
+          "phrase": "the tiny ginger kitten"
+        },
+        {
+          "key": "mother",
+          "label": "The mother cat",
+          "role": "foil",
+          "token": "mother",
+          "phrase": "the plump ginger mother cat"
+        }
+      ],
+      "note": "The series' default. Two cats ride ONE subject string starting with the word 'two' - the same mechanism `trade` uses, which is what makes `check_pair` and build_motion's `second_subject` detector agree for free."
+    },
+    "tommy": {
+      "label": "Tommy (solo, with an unseen owner)",
+      "subject": "a slender adult grey mackerel tabby cat with a dark dorsal stripe, pale cream muzzle, chin and chest, clear yellow-green eyes, a pink-grey nose and long white whiskers",
+      "setting": "a bright modern living room with a heather-grey fabric sofa, a mustard knitted cushion, pale oak floors and soft daylight through a large window",
+      "members": [
+        {
+          "key": "tommy",
+          "label": "Tommy",
+          "role": "lead",
+          "token": "tabby",
+          "phrase": "the grey tabby"
+        },
+        {
+          "key": "owner",
+          "label": "The unseen owner's hand",
+          "role": "foil",
+          "token": "hand",
+          "phrase": "an unseen owner's hand",
+          "offscreen": true
+        }
+      ],
+      "reference_note": "Tommy has a six-angle turnaround sheet on white seamless. Generate scene 1 from it, then let scenes 2..N carry it as the identity lock - a turnaround is the single best reference this mechanism can be given, because every later angle is already in it.",
+      "note": "A solo cast. There is no second cat, so the foil is the unseen owner's hand - which the source brief explicitly sanctions ('an unseen owner's hand confiscating a phone'). `offscreen: true` is what tells check_cast not to demand the hand in the subject string, and what makes check_scale pass trivially instead of failing: one on-screen character has nothing to be in scale WITH."
+    }
+  },
+  "scale_words": [
+    "a quarter the",
+    "a third the",
+    "half the size",
+    "smaller than",
+    "fits under",
+    "towering over",
+    "relative size",
+    "the size of",
+    "dwarfed by",
+    "next to"
+  ],
+  "premises": {
+    "screentime": {
+      "seed": "the kitten will not hand over the tiny phone",
+      "short": "the tiny phone"
+    },
+    "bedtime": {
+      "seed": "bedtime is declared and the kitten pretends to be deaf",
+      "short": "bedtime"
+    },
+    "vegetables": {
+      "seed": "a piece of cat grass is refused on principle",
+      "short": "one piece of cat grass"
+    },
+    "bathtime": {
+      "seed": "the water is treated as lava",
+      "short": "bath time"
+    },
+    "homework": {
+      "seed": "a tiny notebook is slumped over dramatically",
+      "short": "homework"
+    },
+    "midnight-snack": {
+      "seed": "a pantry raid at midnight goes badly",
+      "short": "the midnight pantry raid"
+    },
+    "sharing": {
+      "seed": "a toy will not be shared with anyone",
+      "short": "sharing one toy"
+    },
+    "alarm": {
+      "seed": "a paw lands on the snooze button of a tiny alarm clock",
+      "short": "the snooze button"
+    },
+    "shopping": {
+      "seed": "a meltdown beside a tiny shopping cart",
+      "short": "the shopping trip"
+    },
+    "sick-day": {
+      "seed": "a fake illness to get out of kitten school",
+      "short": "a very fake illness"
+    },
+    "moms-spot": {
+      "seed": "the warm blanket spot gets stolen",
+      "short": "mum's warm spot"
+    },
+    "dessert-first": {
+      "seed": "dessert is demanded before dinner",
+      "short": "dessert before dinner"
+    },
+    "winter-boots": {
+      "seed": "a tiny sweater will not go on",
+      "short": "one tiny sweater"
+    },
+    "laundry": {
+      "seed": "clean laundry is thrown out of the basket",
+      "short": "the laundry basket"
+    },
+    "chores": {
+      "seed": "the word 'chores' sends him behind the cushions",
+      "short": "the word 'chores'"
+    },
+    "carry-me": {
+      "seed": "refusing to walk, demanding to be carried",
+      "short": "being carried everywhere"
+    },
+    "sports-injury": {
+      "seed": "a microscopic bump becomes a full dramatic collapse",
+      "short": "a career-ending bump"
+    },
+    "fake-sleep": {
+      "seed": "fake sleeping the instant someone walks in",
+      "short": "pretending to be asleep"
+    },
+    "cartoons": {
+      "seed": "watching cartoons well past curfew",
+      "short": "cartoons past curfew"
+    },
+    "nail-trim": {
+      "seed": "a nail trim is treated as major surgery",
+      "short": "one nail trim"
+    },
+    "back-talk": {
+      "seed": "answering back in tiny chirps",
+      "short": "answering back"
+    },
+    "fighting-sleep": {
+      "seed": "fighting sleep with the eyelids already going",
+      "short": "fighting sleep"
+    },
+    "fast-food": {
+      "seed": "home cooking rejected in favour of takeaway",
+      "short": "takeaway over home cooking"
+    },
+    "spilled-milk": {
+      "seed": "spilled milk, blamed on a ghost",
+      "short": "the spilled milk"
+    },
+    "copycat": {
+      "seed": "mimicking the walk of whoever just told him off",
+      "short": "copying mum's walk"
+    },
+    "cushion-rivalry": {
+      "seed": "war over the softest cushion",
+      "short": "the softest cushion"
+    },
+    "charger": {
+      "seed": "the phone charger is demanded immediately",
+      "short": "the phone charger"
+    },
+    "box-fort": {
+      "seed": "locking himself inside a cardboard box",
+      "short": "the cardboard box"
+    },
+    "dancing": {
+      "seed": "dancing instead of tidying up",
+      "short": "dancing instead of tidying"
+    },
+    "medicine": {
+      "seed": "foul-tasting medicine, absolutely not",
+      "short": "one drop of medicine"
+    },
+    "corner-pout": {
+      "seed": "pouting in the corner with paws crossed",
+      "short": "the corner pout"
+    },
+    "toy-store": {
+      "seed": "a fit at the toy shop counter",
+      "short": "the toy shop counter"
+    },
+    "dress-up": {
+      "seed": "trying on oversized sunglasses",
+      "short": "mum's sunglasses"
+    },
+    "puppy-eyes": {
+      "seed": "begging for treats with enormous eyes",
+      "short": "the big eyes"
+    },
+    "fake-crying": {
+      "seed": "fake crying, stopping the moment nobody looks",
+      "short": "the fake crying"
+    },
+    "sneaking-out": {
+      "seed": "out of bed three seconds after tuck-in",
+      "short": "sneaking out of bed"
+    },
+    "cut-it-smaller": {
+      "seed": "the food must be cut into smaller pieces",
+      "short": "smaller pieces"
+    },
+    "livestream": {
+      "seed": "staring straight down the camera mid-livestream",
+      "short": "the livestream"
+    },
+    "selfies": {
+      "seed": "taking pouty selfies on a tiny phone",
+      "short": "the pouty selfies"
+    },
+    "nap-interrupt": {
+      "seed": "interrupting a nap with loud complaining",
+      "short": "interrupting the nap"
+    },
+    "mirror-fight": {
+      "seed": "picking a fight with his own reflection",
+      "short": "the mirror"
+    },
+    "dramatic-sigh": {
+      "seed": "an enormous sigh at a very basic rule",
+      "short": "one enormous sigh"
+    },
+    "couch-slump": {
+      "seed": "slumped on the sofa like a teenager with snacks",
+      "short": "the sofa slump"
+    },
+    "slow-motion": {
+      "seed": "running away in slow motion when called",
+      "short": "running away in slow motion"
+    },
+    "car-ipad": {
+      "seed": "demanding a screen for the car journey",
+      "short": "a screen in the car"
+    },
+    "selective-hearing": {
+      "seed": "his name is called; he hears nothing",
+      "short": "selective hearing"
+    },
+    "pillow-treats": {
+      "seed": "treats smuggled into bed under the pillow",
+      "short": "treats under the pillow"
+    },
+    "shoe-throwing": {
+      "seed": "shoes distributed down the hallway",
+      "short": "every shoe in the hallway"
+    },
+    "tough-guy": {
+      "seed": "acting tough right up until he is seen",
+      "short": "acting tough"
+    },
+    "surrender": {
+      "seed": "falling asleep mid-lecture, the ultimate surrender",
+      "short": "the bedtime surrender"
+    }
+  },
+  "premises_note": "Vocabulary, not scripts - the same role `trades_note` describes. `seed` is one line that fills the Idea box and reads as a sentence; `short` is the same episode as a two-to-four word noun phrase, which is what tools/build_social.py's title patterns take. The split exists because a sentence dropped into a title pattern truncates into a fragment - 'Last warning, little one: a piece of cat grass is refused on' - and a cut at a word boundary cannot find a sense boundary. The scene words are still written and still gated; fifty hand-written five-stage scripts would be 600 lines of unaudited content pretending to be a bank.",
+  "ui_note": "Which rows a format shows, and what it calls them. This lived in cats.py as an is_trade() boolean, which worked for exactly two formats and silently had no answer for a third: every branch would have had to be re-read as 'trade or sitcom?' one at a time. A format declares its own form now."
 }

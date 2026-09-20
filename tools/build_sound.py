@@ -162,8 +162,12 @@ def accent_for(bank, theme="comedy", seed=0):
     return rows[int(seed) % len(rows)]["text"]
 
 
-def scene_sound(bank, setting, subject, doing, theme="comedy", seed=0, key_override=None):
-    """The full three-layer sheet for one scene, each layer already scored.
+def scene_sound(bank, setting, subject, doing, theme="comedy", seed=0, key_override=None,
+                extra=None):
+    """The full sheet for one scene, each layer already scored.
+
+    Three layers by default - ambience, key, accent - which is what
+    sound_bank.json defines and what every format except `sitcom` wants.
 
     `key_override`, when given, replaces the auto-composed key-effect text -
     the same "an explicit choice always wins" precedence this project already
@@ -171,17 +175,34 @@ def scene_sound(bank, setting, subject, doing, theme="comedy", seed=0, key_overr
     Audio Cue describes the one thing you can see happening, not the room
     tone or the punctuation. Still linted like any other layer - an override
     is not exempt from the gate.
+
+    `extra`, when given, is a list of pre-composed layer dicts - see
+    build_pet_sound.extra_layers() - each carrying its own label/role/note and
+    an `after` naming the layer it follows. They are linted here, by the same
+    call on the same line as the built-in three, so an extra layer cannot
+    reach a sound sheet ungated. This function stays ignorant of what they
+    are: a cat's voice and a comedy snap are build_pet_sound's business, and
+    a second bank's vocabulary has no reason to be named in this file.
     """
     key_override = _clean(key_override)
+    rows = [
+        ("ambience", ambience_for(setting, seed), None),
+        ("key", _trim(key_override) if key_override else key_for(subject, doing, seed), None),
+        ("accent", accent_for(bank, theme, seed), None),
+    ]
+    for item in (extra or []):
+        text = _clean(item.get("text"))
+        if not text:
+            continue
+        after = item.get("after", "accent")
+        index = next((i for i, (key, _t, _e) in enumerate(rows) if key == after), len(rows) - 1)
+        rows.insert(index + 1, (item.get("layer", "extra"), _trim(text), item))
+
     layers = []
-    for key, text in (
-        ("ambience", ambience_for(setting, seed)),
-        ("key", _trim(key_override) if key_override else key_for(subject, doing, seed)),
-        ("accent", accent_for(bank, theme, seed)),
-    ):
+    for key, text, item in rows:
         results = sl.lint(bank, text)
         got, total = sl.score(results)
-        cfg = roles(bank).get(key, {})
+        cfg = item if item is not None else roles(bank).get(key, {})
         layers.append({
             "layer": key,
             "label": cfg.get("label", key.title()),
@@ -197,13 +218,20 @@ def scene_sound(bank, setting, subject, doing, theme="comedy", seed=0, key_overr
     return layers
 
 
-def story_sound(bank, scenes, subject="the cat", theme="comedy", key_overrides=None):
+def story_sound(bank, scenes, subject="the cat", theme="comedy", key_overrides=None,
+                extra_for=None):
     """A sheet per scene, for a whole story. Scene index seeds the accent so two
     neighbouring scenes do not get the same one.
 
     `key_overrides`, when given, is a {scene_index: text} dict - a scene with
     no entry (or an empty one) falls back to the auto-composed key effect,
     exactly as before this parameter existed.
+
+    `extra_for`, when given, is a callable taking (index, scene) and returning
+    extra layers for that scene - the seam the sitcom format uses to add a cat
+    voice on every beat and a snap on the reset. A callable rather than a dict
+    because which layers a scene gets depends on its BEAT, which only the
+    caller knows; passing None leaves every existing caller untouched.
     """
     key_overrides = key_overrides or {}
     sheets = []
@@ -220,6 +248,7 @@ def story_sound(bank, scenes, subject="the cat", theme="comedy", key_overrides=N
                 theme=theme,
                 seed=index,
                 key_override=key_overrides.get(index),
+                extra=extra_for(index, scene) if extra_for else None,
             ),
         })
     return sheets

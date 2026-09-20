@@ -1111,6 +1111,116 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   all 5 sections composing - `tests/test_advisor.py` locks this down as a structural regression
   check (the app-side pipeline handles this input shape correctly), which is the most that can
   be unit-tested here since nothing can assert what a live model chooses to write.
+- **`tools/anatomy_bank.json` teaches prompt STRUCTURE and owns no vocabulary.** Five templates
+  (`beauty-macro`, `macro-insert`, `photoreal-portrait`, `video-sequence`, `video-shot`), read
+  and scored by `tools/prompt_anatomy.py` and shown on the Assistant tab's Anatomy section.
+  Three things about it are not guessable from the outside. (1) **A slot never keeps its own
+  copy of a keyword list another linter already owns**: `layer` borrows `realism_lint.DETECT`,
+  and `borrow: "motion-verbs"` borrows `motion_lint.MOTION_VERBS` - a slot may add its own
+  `detect` keys on top of a `borrow`, but those are searched FIRST, because the borrowed verbs
+  are bare words and "push" matches "sunglasses pushed on head" as happily as a push-in, so
+  letting them answer first fills the slot with a true verdict and a misleading quotation.
+  (2) **`scaffold: "inline"` is load-bearing, not cosmetic.** A template marked inline emits its
+  Copy-structure text as one flowing prompt with the slot names in a comment legend above it;
+  an unmarked one emits `LABEL: value` bands. `video-shot` MUST stay inline, because
+  `motion_lint.leads_with_camera()` reads the first ninety characters and a `CAMERA LEAD:`
+  prefix in front of the move is precisely what that rule exists to catch. `video-sequence` is
+  the one genuinely banded template - that is how the prompt it was reverse-engineered from is
+  actually written. (3) **Two facts about this app are baked into the video slots' `why` lines
+  because a prompt written elsewhere will trip over them**: `tools/sound_bank.json` is
+  effects-ONLY and `sound_lint.check_is_an_effect` rejects every word in that bank's own
+  `not_effects` list - `music`, `song`, `melody`, `soundtrack`, `background score`, `singing`,
+  `lyrics`, `instrumental`, `voiceover`, `narration` and five more (hence a `music` slot kept
+  separate from `sound`). Take the list from the bank, never from memory: an earlier version of
+  this very rule claimed `beat` was on it, and it is not - a line like "chic upbeat lounge
+  hip-hop beat" fails `check_event` ("names an object, not a sound") and sails past the music
+  gate entirely. `tests/test_sound.py` now pins the list to the bank so the next wrong claim
+  fails a test instead of shipping. Also, `tools/build_story.py` distinguishes
+  `clip_seconds` from `edit_seconds` (hence the shot-sequence slot's warning that two-second
+  beats are edit lengths, not generation lengths - most video models will not generate below
+  about five seconds). There is still no outfit lock or environment lock ANYWHERE in `tools/`;
+  `build_prompt.py` locks identity and `build_relight.py` locks scene, so the video template's
+  other two locks are written out by hand.
+- **`ui/views/anatomy.py` adds every label into `card.body`, never `QVBoxLayout(card)`.**
+  `ui/widgets.py`'s `Card` builds its own layout in `__init__`; Qt refuses to install a second
+  one, so a label added to that second layout is orphaned - never parented, never laid out,
+  never drawn. That shipped once: the whole tab rendered as empty rounded boxes. Nothing caught
+  it, because `tests/test_anatomy.py` exercises the tool rather than the view and
+  `tests/test_layout.py`'s clipped-label and overlap checks have nothing to measure when a card
+  contains zero labels - counting `Card`s is not enough either, since the cards themselves were
+  present and visible. `tests/test_anatomy_gui.py` now asserts the thing that actually matters:
+  every card CONTAINS labels carrying non-empty text. The same file's `_clear()` calls
+  `setParent(None)` before `deleteLater()`, because `deleteLater()` only schedules deletion and
+  a still-parented old card keeps its geometry and can paint over the new content.
+- **`ui/views/cats.py`'s `base_spec()` must never assign `spec["subject"]` a truthy fallback when
+  a cast can supply one.** Shipped once, caught only by hand: `base_spec()` set
+  `spec["subject"] = "a cat"` whenever the Subject field was blank, and `build_story.apply_cast()`
+  only fills that key when it is ABSENT or falsy - `"a cat"` is neither. So through the actual GUI,
+  with the field left blank exactly as its own placeholder instructs ("left blank - the cast fills
+  this in"), the whole cast mechanism was dead: every sitcom episode silently composed as a
+  generic, uncast cat, and `check_pair`/`check_cast` failed on a brand-new story before a user had
+  typed a word. Every test written against `build_story.compose_story()` directly missed this,
+  because none of them went through `base_spec()` - the bug lived entirely in the GUI's own glue
+  code. Fixed by `_cast_supplies_subject()`: the "a cat" fallback now applies only when the active
+  cast has no `subject` of its own to give. `tools/build_story.py`'s CLI had the mirror-image gap -
+  `--cast` and `--premise` were fully wired into `apply_cast()`/`compose_story()` but never added
+  to `argparse`, so the exact command this file's own plan named as a verification step
+  (`--format sitcom --cast tommy --premise ...`) could not run. Both are cautionary tales for the
+  same reason: a library function tested in isolation proves nothing about the caller that actually
+  reaches a user.
+- **`build_pet_sound.extra_layers()`'s `who` parameter must stay `None` by default, and no caller
+  should force it.** Shipped once: `who` defaulted to `"lead"` and nothing anywhere overrode it, so
+  every generated vocal layer played the kitten's voice - including on `discipline` and `lecture`,
+  the two beats where `story_bank.json`'s own `must_do` says the FOIL is the one acting ("one
+  economical correction from the foil"; "the mother says her piece" - the caption is HER line). Ten
+  phrases of foil/foil_offscreen vocabulary in `pet_sound_bank.json` were composed and never once
+  reachable. Fixed with `voice_by_beat` in the bank (`discipline`/`lecture` -> `foil`, the rest ->
+  `lead`) and `voice_for_beat()`, consulted only when the caller leaves `who` unset - which is what
+  every real caller (the CLI, `ui/views/cats.py`) now does.
+- **A story FORMAT is the extension seam - do not add a fourth pipeline.** `story_bank.json`'s
+  `formats` map holds `story`, `trade` and `sitcom`, and a format may override `default_arc`,
+  `default_clip`, `default_seconds`, `default_cast`, `brief`, `scene_fields`, `action_from`,
+  `camera`, `checks`, `beats`, `arcs`, `capcut` and `ui`. `story_lint.checks_for()` lets a
+  format's `checks` list REPLACE the default set, which is how `sitcom` runs sixteen checks
+  while `story` runs thirteen and `trade` twelve. Three things that used to be hardcoded are
+  now declared, because two formats fit in a boolean and three do not: the task/mishap join is
+  `action_from`, the brief choice is `brief`, and which rows the Cats form shows is `ui`. Adding
+  a format should be vocabulary, not branches.
+- **`story_bank.json` is where new vocabulary goes, because it is NOT hash-pinned.**
+  `tests/test_story.py`'s `HASHES` pins `prompt_bank.json`, `realism_lint.py` and
+  `motion_bank.json` only. `build_story.locked_camera`'s docstring states the precedent and it
+  holds for everything added since: the sitcom format, its casts, its premises and its safety
+  vocabulary all live outside those three files, so none of this session's work needed a hash
+  bump. Anything that WOULD need one is a signal you are widening the shared gate.
+- **Two characters ride ONE subject string; there is still no second-subject mechanism.**
+  `build_prompt.subject_clause()` renders exactly one subject and one action. `trade` proved the
+  workaround and `sitcom` reuses it: the subject starts with the word "two", which makes
+  `story_lint.check_pair` and `build_motion.DETECTORS["second_subject"]` agree for free because
+  they share a word list. Relative scale rides `spec["extra"]` as a sentence - verified to reach
+  every composed prompt at 8/8. A real `subject_2` key would leak into `brief.SPEC_KEYS`, the
+  Compose form, `autofill_spec`, `history.py` and `prompt_anatomy.py`: six surfaces re-risked to
+  buy a comma.
+- **`safety_lint.py` scans authored fields ONLY, and is opt-in per format.** Two rules, both
+  measured rather than assumed. (1) Pointed at a composed prompt it would fail clean photoreal
+  work: `crushing` is in `camera_angle_bank.json`, `squash and stretch` in `story_bank.json`'s
+  stylised style, `slap`/`smacked` in `sound_bank.json`'s own comedy examples. (2) The softener
+  rule is scoped per FIELD and only to staging fields - otherwise a "soft daylight" in the
+  setting vouches for an unsoftened swat in the action, and a caption is read by a viewer rather
+  than executed by a model (the source brief's own punchline caption is literally "bap bap!").
+  It is listed only in `sitcom`'s checks: `trade`'s own shipped mishap "one shoves the other and
+  it lands flat on its back" fails the softener rule, so widening the gate to content written
+  before it would make a correct linter a nuisance. `safety_lint.py --check-bank` audits the
+  vocabulary against every shipped bank, per phrase, with a reviewed `audit_allow` list for the
+  handful of real-but-harmless collisions ("Blade Runner" is not a knife). Stems are
+  start-anchored and words are whole-word, and where an inflection drops the stem's last letter
+  BOTH forms are listed - "shoving" does not contain "shove", and the shorter stem that would
+  catch it also catches "shovelling wet cement".
+- **Take a bank's contents FROM the bank, never from memory.** `sound_lint` rejects the fifteen
+  words in `sound_bank.json`'s `not_effects`. An earlier version of this file, and the `music`
+  slot in `anatomy_bank.json`, both claimed `beat` was one of them. It is not - "chic upbeat
+  lounge hip-hop beat" sails past the music gate and fails `check_event` instead, for naming an
+  object rather than a sound. `tests/test_sound.py` now pins the list both ways so the next
+  wrong claim fails a test instead of shipping.
 - **Run `python tests/run_all.py` before calling anything done.** 1718 checks, all green
   across 31 suites (`test_history.py`, `test_lighting_bank.py`, `test_elevenlabs.py`,
   `test_composition_bank.py`, `test_posing_bank.py`, `test_color_bank.py`,
@@ -1184,6 +1294,12 @@ and Assistant's nested Brief tabs are still layout-tested. Second rail map to ke
 sync: `tools/advisor.py` `NAV_MAP` (labels == rail labels; `test_advisor.py` checks it).
 
 This doc previously said clip generation and UGC ads/consistent characters were "not built
-yet" - that had gone stale against the code; all of it ships. Genuinely not built (later
-course phases, still stubs in `workflows/README.md`): `relight-and-angles.md` (Phase 2) and
-`static-ad.md` (Phase 7).
+yet" - that had gone stale against the code; all of it ships. It then said
+`relight-and-angles.md` and `static-ad.md` were the two remaining stubs - that has gone stale
+too. Both ship (`tools/build_relight.py` + `relight_lint.py` + `relight_bank.json`, and
+`tools/build_static_ad.py` + `static_ad_lint.py` + `static_ad_bank.json`), and so does a third
+workflow that was never a stub at all: `macro-insert.md` (`tools/build_macro_insert.py` +
+`macro_insert_lint.py` + `macro_insert_bank.json`), a beauty macro plus feature-scoped eye/
+mouth/cheek inserts built from community-supplied material rather than course content.
+**Every row in `workflows/README.md` is now `ready`**; that table, not this paragraph, is the
+one to trust - check it before repeating a "not built" claim from here.

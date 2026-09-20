@@ -92,6 +92,7 @@ class HistoryView(QWidget):
         detail_card.body.addWidget(self.detail, 1)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
+        splitter.setObjectName("history_table_detail")
         splitter.addWidget(table_card)
         splitter.addWidget(detail_card)
         splitter.setSizes([640, 520])

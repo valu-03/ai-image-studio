@@ -34,7 +34,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import build_prompt as bp  # noqa: E402
-import build_story as bs  # noqa: E402
+import build_story as bs
+import safety_lint as sfl  # noqa: E402
 import realism_lint as rl  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -187,7 +188,13 @@ def check_shot_repeats(bank, scenes):
     anyway would punish a beat for a movement choice that requires the
     repetition, not for forgetting to vary it.
     """
-    beats = bank.get("beats", {})
+    # The FORMAT's beats, not the top-level ones. Reading bank["beats"]
+    # directly meant a format defining its own beats was invisible here - every
+    # lookup missed, every repeat was skipped, and the check silently passed
+    # whatever it was given. Latent for `trade`, which has no repeatable beat
+    # with two shots; `sitcom`'s repeatable tantrum has two, so it was live.
+    fmt = scenes[0].get("format") if scenes else None
+    beats = bs.beats(bank, fmt)
     repeats = []
     for earlier, later in zip(scenes, scenes[1:]):
         beat_key = earlier.get("beat")
@@ -302,6 +309,30 @@ def check_costume(bank, scenes):
 PAIR_WORDS = ("two ", "three ", "pair", "couple", "both", "together")
 
 
+def _scene_cast(scenes):
+    """The cast name these scenes were composed with, or "" if none."""
+    for scene in scenes:
+        name = (scene.get("cast") or "").strip()
+        if name:
+            return name
+    return ""
+
+
+def _solo_cast(bank, scenes):
+    """The cast name when it puts fewer than two characters ON SCREEN, else "".
+
+    Only a DECLARED cast can relax a check. A format with no cast at all -
+    `trade`, which carries its pair in a free-text subject - falls through and
+    is judged exactly as strictly as before casts existed.
+    """
+    name = _scene_cast(scenes)
+    if not name:
+        return ""
+    if len(bs.cast_members(bank, name, onscreen_only=True)) < 2:
+        return name
+    return ""
+
+
 def check_pair(bank, scenes):
     """Two cats in frame, because the comedy is the relationship.
 
@@ -309,6 +340,9 @@ def check_pair(bank, scenes):
     for, so a subject that satisfies this satisfies that too rather than the two
     disagreeing about what "two cats" means.
     """
+    solo = _solo_cast(bank, scenes)
+    if solo:
+        return True, "the {} cast has one character on screen - nothing to pair".format(solo)
     alone = []
     for scene in scenes:
         text = "{} {}".format(scene.get("spec", {}).get("subject", ""),
@@ -359,6 +393,91 @@ def check_tasks_vary(bank, scenes):
     return True, "{} different jobs".format(len(seen))
 
 
+def check_cast(bank, scenes):
+    """Every on-screen cast member is actually named in the subject.
+
+    A series is only a series if the same characters turn up. The cast declares
+    a `token` per member - one distinctive word - and this asserts it survived
+    into the composed subject. An offscreen member (an unseen owner's hand) is
+    exempt by definition: it has an action to write but nothing to appear as.
+    """
+    name = _scene_cast(scenes)
+    if not name:
+        return True, "no cast declared - nothing to hold to"
+    members = bs.cast_members(bank, name, onscreen_only=True)
+    tokens = [(m.get("token") or "").lower() for m in members if m.get("token")]
+    if not tokens:
+        return True, "the {} cast declares no tokens".format(name)
+    missing = []
+    for scene in scenes:
+        subject = (scene.get("spec", {}).get("subject") or "").lower()
+        gone = [t for t in tokens if t not in subject]
+        if gone:
+            missing.append("scene {}: {}".format(scene.get("n"), ", ".join(gone)))
+    if missing:
+        return False, ("{} - the cast has to survive into every subject, or it is a "
+                       "different animal".format("; ".join(missing[:3])))
+    return True, "{} named in every scene".format(" and ".join(tokens))
+
+
+def check_scale(bank, scenes):
+    """Two characters of different sizes need their SIZES stated.
+
+    The visual joke is the contrast between a tiny ball of drama and a heavy
+    matriarch, and nothing in an identity lock carries relative scale - it
+    describes one subject, not the ratio between two. Passes trivially, and
+    says so, when the cast has only one character on screen.
+    """
+    name = _scene_cast(scenes)
+    if not name:
+        return True, "no cast declared - nothing to scale"
+    solo = _solo_cast(bank, scenes)
+    if solo:
+        return True, "one character on screen has nothing to be in scale with"
+    words = [w.lower() for w in bank.get("scale_words", [])]
+    if not words:
+        return True, "no scale vocabulary in the bank"
+    missing = []
+    for scene in scenes:
+        spec = scene.get("spec", {})
+        text = " ".join([spec.get("subject", "")] + list(spec.get("extra", []))).lower()
+        if not any(word in text for word in words):
+            missing.append(str(scene.get("n")))
+    if missing:
+        return False, ("scene(s) {} never say how big one is next to the other - the size "
+                       "gap IS the joke".format(", ".join(missing)))
+    return True, "relative scale stated in every scene"
+
+
+def check_captions(bank, scenes):
+    """Every scene carries its caption. Built to read on mute.
+
+    Narrower than `words`, which also demands narration - this format has none
+    by design, so it cannot borrow that check.
+    """
+    bare = [str(s.get("n")) for s in scenes if not (s.get("caption") or "").strip()]
+    if bare:
+        return False, ("scene(s) {} have no caption - this format is watched on mute, so a "
+                       "silent scene says nothing at all".format(", ".join(bare)))
+    return True, "{} captions".format(len(scenes))
+
+
+def check_safety(bank, scenes):
+    """Delegate to safety_lint - the app's content gate.
+
+    A thin delegate on purpose: this keeps NO copy of those tables, the same
+    way check_moves_fit defers to build_motion rather than restating what a
+    movement needs. safety_lint scans only human-authored fields; pointing it
+    at a composed prompt would fail clean photoreal work for words the
+    photographer put there.
+    """
+    results = sfl.lint(sfl.load_bank(), scenes)
+    bad = [(label, detail) for _k, label, ok, detail in results if not ok]
+    if bad:
+        return False, "; ".join("{}: {}".format(label, detail) for label, detail in bad[:2])
+    return True, "no injury, distress, hazards, or unsoftened contact"
+
+
 CHECKS = [
     ("arc", "Story shape", check_arc),
     ("clips", "Real clip lengths", check_clip_lengths),
@@ -377,6 +496,10 @@ CHECKS = [
     ("pair", "Two cats in frame", check_pair),
     ("locked_off", "The camera holds still", check_locked_off),
     ("tasks_vary", "A different job each take", check_tasks_vary),
+    ("cast", "The cast turns up", check_cast),
+    ("scale", "Relative size is stated", check_scale),
+    ("captions", "Every scene is captioned", check_captions),
+    ("safety", "Nothing depicted is harmful", check_safety),
 ]
 
 # Which checks a format is judged by. A format is not scored on rules that
@@ -384,7 +507,8 @@ CHECKS = [
 # full take, no varying camera because every take is locked off ON PURPOSE, and
 # no captions because these videos have none.
 DEFAULT_CHECKS = [key for key, _, _ in CHECKS
-                  if key not in ("costume", "pair", "locked_off", "tasks_vary")]
+                  if key not in ("costume", "pair", "locked_off", "tasks_vary",
+                                 "cast", "scale", "captions", "safety")]
 
 
 def checks_for(bank, fmt=None):

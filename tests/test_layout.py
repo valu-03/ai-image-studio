@@ -408,6 +408,44 @@ check("the form column is capped",
 win.close()
 app.processEvents()
 
+print("--- a moved splitter reopens where the user left it ---")
+from PyQt6.QtWidgets import QSplitter  # noqa: E402
+
+win = MainWindow(theme)
+win.show()
+app.processEvents()
+moved = win.compose_view.splitter
+before = moved.sizes()
+# A size the columns would never settle on by themselves, so restoring it back
+# is unambiguous evidence the save/restore path moved it, not layout chance.
+skewed = [before[0] + 40, max(before[1] - 40, moved.widget(1).minimumWidth()), before[2]]
+moved.setSizes(skewed)
+app.processEvents()
+named = [s for s in win.findChildren(QSplitter) if s.objectName()]
+check("every splitter in the window has an objectName to save state under",
+      len(named) >= 9, str(sorted(s.objectName() for s in named)))
+win.close()  # closeEvent() is what writes settings["splitter/<name>"]
+app.processEvents()
+
+reopened = MainWindow(theme)
+reopened.show()
+app.processEvents()
+check("the moved splitter comes back at the size it was left at",
+      reopened.compose_view.splitter.sizes() == moved.sizes(),
+      "{} != {}".format(reopened.compose_view.splitter.sizes(), moved.sizes()))
+reopened.close()
+app.processEvents()
+# closeEvent() just wrote the skewed size back to the real, persisted
+# Studio-Tests settings - left alone, every MainWindow the rest of this
+# suite (and the next run of it) opens would inherit a narrowed prompt
+# column, which is exactly what broke "the prompt is usable at the minimum
+# window" below the first time this test ran inside the full suite. Remove
+# the key rather than trying to write back an earlier "before" value, since
+# that value was itself only ever as clean as whatever ran before it.
+for splitter in named:
+    reopened.settings.remove("splitter/" + splitter.objectName())
+reopened.settings.sync()
+
 print("--- the variants grid is even, whatever shape the images are ---")
 from PyQt6.QtGui import QColor, QImage  # noqa: E402
 

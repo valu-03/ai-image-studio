@@ -173,6 +173,22 @@ LOCK_DETAILED = (
 )
 LOCK_TAIL = "identity locked to the reference image"
 
+# Prepended when a prompt must reproduce an existing PHOTO's scene rather than
+# invent a new one - the inverse of the identity lock above. There, the face is
+# fixed and everything else changes; here everything is fixed and only the
+# lighting and camera angle change. Used by tools/build_relight.py.
+RELIGHT_LOCK_COMPACT = (
+    "the exact same photo as the reference image — identical subject, pose, "
+    "wardrobe, setting and framing — with only the lighting and camera angle "
+    "changed as directed"
+)
+RELIGHT_LOCK_DETAILED = (
+    "This is the exact same subject, pose, wardrobe, setting and framing as the "
+    "reference image. Do not invent a new scene, outfit or pose. Only the "
+    "lighting and the camera angle change, exactly as directed below."
+)
+RELIGHT_LOCK_TAIL = "locked to the reference photo's scene and framing"
+
 
 def apply_variation(spec):
     """Fold spec['variation'] over the base spec for a new shot of one character.
@@ -211,6 +227,8 @@ def build_compact(bank, spec, selected, preset):
     head = ", ".join(selected["core"]) + " of "
     if spec.get("lock_identity"):
         head += LOCK_COMPACT + ", "
+    if spec.get("lock_scene"):
+        head += RELIGHT_LOCK_COMPACT + ", "
     segments.append(head + subject_clause(spec))
     for name in ["camera", "lens", "lighting", "texture", "colour", "composition", "grain"]:
         segments.append(", ".join(selected[name]))
@@ -222,6 +240,8 @@ def build_compact(bank, spec, selected, preset):
 
     if spec.get("lock_identity"):
         segments.append(LOCK_TAIL)
+    if spec.get("lock_scene"):
+        segments.append(RELIGHT_LOCK_TAIL)
     segments.append(", ".join(bank["negatives"]))
     return ", ".join(segments)
 
@@ -233,6 +253,8 @@ def build_detailed(bank, spec, selected, preset):
     ]
     if spec.get("lock_identity"):
         sentences.append(LOCK_DETAILED)
+    if spec.get("lock_scene"):
+        sentences.append(RELIGHT_LOCK_DETAILED)
     sentences += [
         "Captured as if on {camera}, {lens}, producing authentic optical depth with natural "
         "lens falloff and gentle edge softness while the subject stays razor-sharp.".format(
@@ -432,6 +454,11 @@ def parse_args(argv):
         "--lock-identity", action="store_true",
         help="prepend the reference-image identity lock (for consistent characters)",
     )
+    p.add_argument(
+        "--lock-scene", action="store_true",
+        help="prepend the reference-photo scene lock (for relighting/re-angling "
+             "an existing photo) - the inverse of --lock-identity",
+    )
     p.add_argument("--log", action="store_true", help="record each prompt in history.jsonl")
     return p.parse_args(argv)
 
@@ -460,6 +487,8 @@ def spec_from_args(args):
         spec["seed"] = args.seed
     if args.lock_identity:
         spec["lock_identity"] = True
+    if args.lock_scene:
+        spec["lock_scene"] = True
     return spec
 
 

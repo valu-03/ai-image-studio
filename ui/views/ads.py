@@ -304,6 +304,7 @@ class AdsView(QWidget):
         form_scroll.setMaximumWidth(430)
 
         split = QSplitter(Qt.Orientation.Horizontal)
+        split.setObjectName("ads_form_copy")
         split.addWidget(form_scroll)
         split.addWidget(copy_card)
         split.setChildrenCollapsible(False)

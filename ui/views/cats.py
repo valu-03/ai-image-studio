@@ -46,6 +46,8 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 import build_motion as bm  # noqa: E402
 import build_prompt as bp  # noqa: E402
+import build_pet_sound as bps  # noqa: E402
+import build_social as bsoc  # noqa: E402
 import build_sound as bsd  # noqa: E402
 import build_story as bs  # noqa: E402
 import generate_image as gi  # noqa: E402  (key-presence check only)
@@ -55,6 +57,7 @@ import generate_video as gv  # noqa: E402
 import history as hist  # noqa: E402
 import render_video as rv  # noqa: E402
 import sound_lint as sl  # noqa: E402
+import social_lint as socl  # noqa: E402
 import story_lint as stl  # noqa: E402
 
 from .. import assets, tokens as T  # noqa: E402
@@ -64,7 +67,8 @@ from .cats_custom import CustomPromptTab  # noqa: E402
 
 # Every field any format asks for. The parser accepts them all and each format
 # takes what it wants, rather than there being one parser per format.
-SCRIPT_FIELDS = {"caption", "narration", "action", "setting", "task", "mishap"}
+SCRIPT_FIELDS = {"caption", "narration", "action", "setting", "task", "mishap",
+                 "lead_action", "foil_action"}
 
 
 class ClipTimeline(QWidget):
@@ -180,6 +184,8 @@ class CatsView(QWidget):
         self.bank = bank                     # the image/realism bank
         self.story_bank = bs.load_bank()
         self.sound_bank = bsd.load_bank()
+        self.pet_sound_bank = bps.load_bank()
+        self.social_bank = bsoc.load_bank()
         self.motion_bank = bm.load_bank()
         self._palette = palette or {}
         self.scenes = []
@@ -227,6 +233,20 @@ class CatsView(QWidget):
         "One block per take, headed [setup], [task], [task-2]… Each takes a task "
         "and a mishap - no caption, no narration, nobody speaks. The tasks must "
         "differ - two takes of the same job is padding.")
+    SITCOM_PLACEHOLDER = (
+        "[hook]\ncaption: He has done this before.\n"
+        "lead_action: clutching a tiny rubber phone to his chest\n"
+        "foil_action: watching from the arm of the sofa\n\n[tantrum]\ncaption: ...")
+    SITCOM_HELP = (
+        "One block per stage, headed [hook], [tantrum], [discipline], [reset], "
+        "[lecture]. Each takes a caption and one action per character - no "
+        "narration, this reads on mute. Whenever the mother makes contact, say it "
+        "is soft and the claws are in: the safety gate rejects the scene otherwise.")
+
+    # Keyed by format, not chosen by a boolean - see ui_cfg().
+    PLACEHOLDERS = {"story": STORY_PLACEHOLDER, "trade": TRADE_PLACEHOLDER,
+                    "sitcom": SITCOM_PLACEHOLDER}
+    HELP = {"story": STORY_HELP, "trade": TRADE_HELP, "sitcom": SITCOM_HELP}
 
     def setup_ui(self):
         self.tabs = QTabWidget()
@@ -235,6 +255,7 @@ class CatsView(QWidget):
         self.tabs.addTab(self._build_prompts_tab(), "Prompts")
         self.tabs.addTab(self._build_custom_tab(), "Custom Prompt")
         self.tabs.addTab(self._build_capcut_tab(), "CapCut")
+        self.tabs.addTab(self._build_social_tab(), "Social")
         self.tabs.currentChanged.connect(self.on_tab_changed)
 
         layout = QVBoxLayout(self)
@@ -251,6 +272,10 @@ class CatsView(QWidget):
         # form described. `idea` is only used for the AI call, so it stays out.
         self.subject.textChanged.connect(self.rebuild)
         self.setting.textChanged.connect(self.rebuild)
+        # Not rebuild - see above, `idea` only feeds the AI call and re-planning
+        # the story per keystroke is the bug that comment describes. The post is
+        # composed FROM the idea and is cheap, so it alone follows the typing.
+        self.idea.textChanged.connect(self.refresh_social)
 
         # The format decides almost everything else on this tab: which arcs
         # exist, what the script box asks for, whether there is a camera move at
@@ -276,6 +301,31 @@ class CatsView(QWidget):
             "- everything the reference videos put on screen before anything "
             "happens. Anything you have typed yourself is kept.")
         self.trade.currentIndexChanged.connect(self.rebuild)
+
+        # Who the series is about. A cast fills the subject, the setting and -
+        # for a pair - the relative-scale sentence, all of which story_lint
+        # then checks survived into every scene.
+        self.cast = QComboBox()
+        for key, cfg in bs.casts(self.story_bank).items():
+            self.cast.addItem(cfg["label"], key)
+            self.cast.setItemData(self.cast.count() - 1, cfg.get("note", ""),
+                                  Qt.ItemDataRole.ToolTipRole)
+        self.cast.setToolTip(
+            "The recurring cast. It fills the cats, the room and - when there are two "
+            "of them - how big one is next to the other, which is the whole visual "
+            "joke. Anything you have typed yourself is kept.")
+        self.cast.currentIndexChanged.connect(self.rebuild)
+
+        # One line that says what this episode is about. It fills the Idea box
+        # rather than the script: the words are still written and still gated.
+        self.premise = QComboBox()
+        self.premise.addItem("(write your own)", "")
+        for key, row in bs.premises(self.story_bank).items():
+            self.premise.addItem(row["seed"], key)
+        self.premise.setToolTip(
+            "Fifty episode seeds. Picking one fills the Idea box above - it is a "
+            "starting point for the auto-fill, not a script.")
+        self.premise.currentIndexChanged.connect(self.on_premise_picked)
 
         self.style = QComboBox()
         for key, cfg in bs.styles(self.story_bank).items():
@@ -327,7 +377,8 @@ class CatsView(QWidget):
         form = Card()
         form.body.addWidget(TitleLabel("The story"))
         self.form_rows = {}
-        for label, widget in [("Format", self.format), ("Idea", self.idea),
+        for label, widget in [("Format", self.format), ("Cast", self.cast),
+                              ("Premise", self.premise), ("Idea", self.idea),
                               ("The cat", self.subject), ("Where", self.setting),
                               ("Job", self.trade), ("Look", self.style),
                               ("Shape", self.arc), ("Length (s)", self.seconds),
@@ -387,6 +438,7 @@ class CatsView(QWidget):
         form_scroll.setMaximumWidth(430)
 
         split = QSplitter(Qt.Orientation.Horizontal)
+        split.setObjectName("cats_story_form_script")
         split.addWidget(form_scroll)
         split.addWidget(script_card)
         split.setChildrenCollapsible(False)
@@ -513,6 +565,7 @@ class CatsView(QWidget):
         # row, which is worse than useless for a checklist. Across, each gets
         # the full height, and the splitter still lets you favour one.
         split = QSplitter(Qt.Orientation.Horizontal)
+        split.setObjectName("cats_scenes_board_gate")
         split.addWidget(board)
         split.addWidget(gate)
         split.setChildrenCollapsible(False)
@@ -848,10 +901,36 @@ class CatsView(QWidget):
     def _sound_subject(self):
         return (self.scenes[0]["spec"].get("subject") if self.scenes else None) or "the cat"
 
+    def _extra_sound_layers(self, index, scene):
+        """The sitcom format's two extra layers: a cat voice, and the reset snap.
+
+        Returns nothing for every other format, so `story` and `trade` keep the
+        three layers sound_bank defines. Each layer is still scored by
+        sound_lint inside build_sound - going through this seam rather than
+        appending afterwards is what keeps an extra layer from reaching a sheet
+        ungated.
+
+        Which character voices a beat is the bank's call (voice_for_beat), not
+        this view's - `who` is left unset so discipline and lecture correctly
+        play the foil rather than always defaulting to the lead.
+        """
+        if self.format_key() != "sitcom":
+            return None
+        cast = bs.cast_members(self.story_bank, self.cast_key())
+        foil = next((m for m in cast if m.get("role") == "foil"), {})
+        return bps.extra_layers(self.pet_sound_bank, self.sound_bank,
+                                scene.get("beat", ""), seed=index,
+                                offscreen_foil=bool(foil.get("offscreen")))
+
     def _scene_sound_layers(self, index):
-        """The same three-layer sheet refresh_sheet() prints for CapCut, for
-        just this one scene - the single source both the button tooltips and
-        the actual generation call read from, so they can never disagree."""
+        """The same sheet refresh_sheet() prints for CapCut, for just this one
+        scene - the single source both the button tooltips and the actual
+        generation call read from, so they can never disagree.
+
+        Three layers for most formats, five for `sitcom`; the difference comes
+        from _extra_sound_layers, which is passed here as well as to the sheet
+        for exactly that reason.
+        """
         if not (0 <= index < len(self.scenes)):
             return []
         scene = self.scenes[index]
@@ -861,7 +940,8 @@ class CatsView(QWidget):
             setting=spec.get("setting") or scene.get("setting", ""),
             subject=self._sound_subject(),
             doing=spec.get("action") or scene.get("action", ""),
-            seed=index, key_override=self._audio_cue_overrides().get(index))
+            seed=index, key_override=self._audio_cue_overrides().get(index),
+            extra=self._extra_sound_layers(index, scene))
 
     def generate_scene_sfx(self, index, layer):
         if not gi.env_value(gsnd.KEY_VAR):
@@ -1011,6 +1091,7 @@ class CatsView(QWidget):
         # An even vertical split gave the reference as much room as the thing
         # you actually work from, and left the sheet showing three lines.
         split = QSplitter(Qt.Orientation.Horizontal)
+        split.setObjectName("cats_capcut_sheet_steps")
         split.addWidget(sheet_card)
         split.addWidget(steps_card)
         split.setChildrenCollapsible(False)
@@ -1035,6 +1116,32 @@ class CatsView(QWidget):
 
     def is_trade(self):
         return bs.scene_fields(self.story_bank, self.format_key()) == ["task", "mishap"]
+
+    def is_sitcom(self):
+        return self.format_key() == "sitcom"
+
+    def cast_key(self):
+        """The cast this format uses, or None for a format that has no casts."""
+        if not self.ui_cfg().get("rows", {}).get("Cast"):
+            return bs.default_cast(self.story_bank, self.format_key())
+        return self.cast.currentData() or bs.default_cast(self.story_bank, self.format_key())
+
+    def ui_cfg(self, fmt=None):
+        """The format's own form description - which rows, what they are called.
+
+        This used to be an `is_trade()` boolean read at five separate places.
+        Two formats fit in a boolean; three do not, and every one of those
+        branches would have had to be re-read as "trade, or sitcom, or both?"
+        individually. The format declares its own form instead.
+        """
+        return bs.format_cfg(self.story_bank, fmt or self.format_key()).get("ui", {})
+
+    def on_premise_picked(self):
+        """A premise seed fills the Idea box. It is a starting point, not a script."""
+        seed = self.premise.currentText()
+        if self.premise.currentData() and seed:
+            self.idea.setText(seed)
+        self.refresh_social()
 
     def on_format_changed(self):
         """Switching format re-plans everything, because everything changes.
@@ -1065,19 +1172,19 @@ class CatsView(QWidget):
         self.seconds.setValue(bs.default_seconds(self.story_bank, fmt))
         self.seconds.blockSignals(False)
 
-        for label, visible in (("Job", trade), ("Look", not trade)):
-            caption, widget = self.form_rows[label]
-            caption.setVisible(visible)
-            widget.setVisible(visible)
+        ui = self.ui_cfg(fmt)
+        for label, visible in ui.get("rows", {}).items():
+            if label in self.form_rows:
+                caption, widget = self.form_rows[label]
+                caption.setVisible(bool(visible))
+                widget.setVisible(bool(visible))
         caption, _ = self.form_rows["The cat"]
-        caption.setText("The cats" if trade else "The cat")
-        self.subject.setPlaceholderText(
-            "two cats - a broad grey tabby and a lean ginger tom" if trade
-            else "a ginger tabby cat with one torn ear")
-        self.script_box.setPlaceholderText(
-            self.TRADE_PLACEHOLDER if trade else self.STORY_PLACEHOLDER)
-        self.script_help.setText(self.TRADE_HELP if trade else self.STORY_HELP)
-        self.timeline.set_hook(not trade, self.story_bank.get("hook_seconds", 3.0))
+        caption.setText(ui.get("cast_label", "The cat"))
+        self.subject.setPlaceholderText(ui.get("subject_placeholder", ""))
+        self.script_box.setPlaceholderText(self.PLACEHOLDERS.get(fmt, self.STORY_PLACEHOLDER))
+        self.script_help.setText(self.HELP.get(fmt, self.STORY_HELP))
+        self.timeline.set_hook(bool(ui.get("show_hook", True)),
+                               self.story_bank.get("hook_seconds", 3.0))
         self.refresh_capcut_steps(fmt)
         self.rebuild()
 
@@ -1107,11 +1214,27 @@ class CatsView(QWidget):
     def clip_length(self):
         return int(self.clip.value())
 
+    def _cast_supplies_subject(self):
+        """True when the active cast has its own subject to fill the blank with.
+
+        Only sitcom's casts declare one today. Checked rather than assumed, so
+        this stays correct if story or trade ever gain a cast of their own.
+        """
+        return bool(bs.casts(self.story_bank).get(self.cast_key() or "", {}).get("subject"))
+
     def base_spec(self):
         spec = {"seed": 0}
-        if self.subject.text().strip():
-            spec["subject"] = self.subject.text().strip()
-        else:
+        subject = self.subject.text().strip()
+        if subject:
+            spec["subject"] = subject
+        elif not self._cast_supplies_subject():
+            # A REAL bug this line exists to avoid repeating: apply_cast() in
+            # build_story.py only fills spec["subject"] when the key is absent
+            # or falsy - "a cat" is neither, so setting it unconditionally here
+            # meant the whole cast mechanism was dead through the GUI. Leaving
+            # the key unset when a cast can supply it lets apply_cast do its
+            # job; every other format keeps its old "a cat" fallback exactly
+            # as before, since none of their casts declare a subject.
             spec["subject"] = "a cat"
         if self.setting.text().strip():
             spec["setting"] = self.setting.text().strip()
@@ -1174,7 +1297,7 @@ class CatsView(QWidget):
             self.story_bank, self.base_spec(), arc=arc, seconds=seconds,
             clip_length=self.clip_length(), style=self.style_key(),
             script=self.script, reference="scene-1.png", image_bank=self.bank,
-            fmt=fmt, trade=self.trade_key())
+            fmt=fmt, trade=self.trade_key(), cast=self.cast_key())
 
         cfg = bs.arcs(self.story_bank, fmt).get(arc, {})
         self.arc_note.setText("{}  -  {}".format(cfg.get("label", arc), cfg.get("note", "")))
@@ -1257,9 +1380,11 @@ class CatsView(QWidget):
         # cement" over a two-cat scene. The real subject is on every scene's
         # own spec, so use it rather than the placeholder.
         sheets = bsd.story_sound(self.sound_bank, self.scenes, subject=self._sound_subject(),
-                                 key_overrides=self._audio_cue_overrides())
+                                 key_overrides=self._audio_cue_overrides(),
+                                 extra_for=self._extra_sound_layers)
         self.sheet_box.setPlainText(
             bs.edit_sheet_text(self.story_bank, self.scenes, sheets))
+        self.refresh_social()
 
     def copy_sheet(self):
         text = self.sheet_box.toPlainText()
@@ -1268,6 +1393,106 @@ class CatsView(QWidget):
             return
         QGuiApplication.clipboard().setText(text)
         self.status.emit("Edit sheet copied")
+
+    # -- the post ----------------------------------------------------------- #
+    def _build_social_tab(self):
+        """Titles, a caption and hashtags for the finished episode.
+
+        The only tab here whose output goes to a platform rather than to a
+        model. Composed deterministically by build_social and gated by
+        social_lint, shown with the same GateTree every other gate in this app
+        uses, so a failing pack looks like a failing prompt rather than like a
+        different kind of thing.
+        """
+        self.social_box = QPlainTextEdit()
+        self.social_box.setReadOnly(True)
+        self.social_box.setProperty("class", "mono")
+
+        self.social_gate = GateTree()
+        self.social_note = MutedLabel("")
+        self.social_note.setWordWrap(True)
+
+        copy_all = QPushButton("Copy the post")
+        copy_all.setIcon(assets.icon("copy"))
+        copy_all.setIconSize(assets.ICON_SIZE)
+        copy_all.clicked.connect(self.copy_social)
+
+        copy_tags = QPushButton("Copy hashtags only")
+        copy_tags.setIcon(assets.icon("copy"))
+        copy_tags.setIconSize(assets.ICON_SIZE)
+        copy_tags.clicked.connect(self.copy_hashtags)
+
+        card = Card()
+        card.body.addWidget(TitleLabel("The post"))
+        card.body.addWidget(MutedLabel(
+            "Composed from the premise and the episode's own captions - no model "
+            "involved, and gated like everything else here."))
+        card.body.addWidget(self.social_box, 1)
+        row = QHBoxLayout()
+        row.addWidget(copy_all)
+        row.addWidget(copy_tags)
+        row.addStretch(1)
+        card.body.addLayout(row)
+        card.body.addWidget(self.social_gate)
+        card.body.addWidget(self.social_note)
+
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(card)
+        return page
+
+    def social_pack(self):
+        """The pack for the current episode, or None when there is nothing yet."""
+        premise = (self.idea.text() or "").strip()
+        if not premise and self.scenes:
+            premise = (self.scenes[0].get("caption") or "").strip()
+        if not premise:
+            return None
+        captions = [s.get("caption", "") for s in self.scenes]
+        # The picked premise carries its own hand-written short form; a
+        # premise typed by hand falls back to build_social deriving one.
+        short = bs.premise_short(self.story_bank, self.premise.currentData())
+        return bsoc.compose_social(self.social_bank, premise, captions, short=short or None)
+
+    def refresh_social(self):
+        if not hasattr(self, "social_box"):
+            return
+        pack = self.social_pack()
+        if pack is None:
+            self.social_box.setPlainText("")
+            self.social_gate.set_checks([])
+            self.social_note.setText(
+                "Type an idea (or pick a premise) on the Story tab and this fills in.")
+            return
+        self.social_box.setPlainText(bsoc.social_text(pack))
+        results = socl.lint(self.social_bank, pack)
+        self.social_gate.set_checks([
+            {"key": key, "label": label, "passed": passed,
+             "fix": "To fix - {}: {}".format(label, detail),
+             "ok_text": "The post passes every check."}
+            for key, label, passed, detail in results])
+        conflict = self.social_bank.get("hashtag_conflict", {})
+        self.social_note.setText(
+            "{} hashtags, per the series brief. This app's own course notes disagree: "
+            "\"{}\" ({})".format(len(pack["hashtags"]), conflict.get("course_advice", ""),
+                                 conflict.get("course_source", "")))
+
+    def copy_social(self):
+        text = self.social_box.toPlainText()
+        if not text.strip():
+            self.status.emit("Nothing to copy yet")
+            return
+        QGuiApplication.clipboard().setText(text)
+        self.status.emit("Post copied")
+
+    def copy_hashtags(self):
+        pack = self.social_pack()
+        if not pack:
+            self.status.emit("Nothing to copy yet")
+            return
+        QGuiApplication.clipboard().setText(" ".join(pack["hashtags"]))
+        self.status.emit("{} hashtags copied".format(len(pack["hashtags"])))
 
     # -- the optional text model -------------------------------------------- #
     def write_story(self):

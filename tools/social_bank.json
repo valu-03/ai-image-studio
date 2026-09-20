@@ -1,0 +1,92 @@
+{
+  "source": "Written for this app, from the titles/captions/hashtags section of a user-supplied pet-comedy series brief. NOT AI Video Bootcamp course material. The course's own publishing advice is transcribed in ugc_bank.json's `publishing` block and is quoted below where the two disagree.",
+  "version": 1,
+  "note": "The first thing in this app that writes words for a PLATFORM rather than for a model. It is deterministic like every other tool here - it composes from patterns and the story's own captions rather than calling a language model - and it is gated by social_lint.py, because a generator with nothing deciding whether its output is good is the one thing this project does not ship.",
+  "hashtag_conflict": {
+    "note": "The two sources disagree, and this bank records both rather than quietly picking one. The series brief asks for 15-20 hashtags per post. This app's own ugc_bank.json, transcribed from the AI Video Bootcamp, says the opposite: 'Four at most. More than that and the algorithm gets a confused signal about the topic.' social_lint enforces the BRIEF's range, because that is what was asked for. The course's advice is not deleted - it ships as `course_advice` below and is printed by build_social.py on every run.",
+    "brief_range": [
+      15,
+      20
+    ],
+    "course_advice": "Four at most. More than that and the algorithm gets a confused signal about the topic.",
+    "course_source": "tools/ugc_bank.json -> publishing -> Hashtags"
+  },
+  "limits": {
+    "title_max_chars": 70,
+    "title_min_chars": 12,
+    "titles_wanted": 3,
+    "caption_max_chars": 300,
+    "caption_min_chars": 40,
+    "hashtag_min": 15,
+    "hashtag_max": 20
+  },
+  "title_patterns": [
+    "{premise_short}... STOP ACTING LIKE A HUMAN",
+    "Last warning, little one: {premise_short_lower}",
+    "He really thought {premise_short_lower} would work",
+    "{premise_title}? Absolutely not.",
+    "Mum said no. {premise_short_lower} anyway.",
+    "The sheer audacity of {premise_short_lower}",
+    "{premise_short} - and then the paw came down",
+    "Nobody warned him about {premise_short_lower}"
+  ],
+  "caption_patterns": [
+    "Every single day with this one. {premise_sentence} Tell me your cat does this too.",
+    "{premise_sentence} The face afterwards is what gets me every time.",
+    "Parenting a toddler and parenting this cat are the same job. {premise_sentence}",
+    "{premise_sentence} He was not sorry. He is never sorry."
+  ],
+  "hashtags": {
+    "note": "Three tiers, drawn in order until the count is met: `core` always, then `niche`, then `broad`. Tiering rather than one flat list so the first tags - the ones that carry the most weight - are the ones that actually describe the video.",
+    "core": [
+      "cat",
+      "cats",
+      "kitten",
+      "catmom",
+      "catsoftiktok",
+      "funnycats",
+      "catlife",
+      "catlovers",
+      "cutecat",
+      "catvideos"
+    ],
+    "niche": [
+      "parentinghumor",
+      "toddlerlife",
+      "stubborn",
+      "dramaqueen",
+      "strictmom",
+      "catbehavior",
+      "kittenlife",
+      "gingercat"
+    ],
+    "broad": [
+      "funny",
+      "cute",
+      "viral",
+      "fyp",
+      "relatable",
+      "comedy",
+      "petsoftiktok",
+      "animals"
+    ]
+  },
+  "banned_claims": {
+    "note": "Words that turn a joke caption into a claim somebody could act on, or into bait a platform demotes. Short and concrete on purpose - this is not a tone police.",
+    "words": [
+      "guaranteed",
+      "guarantee",
+      "cure",
+      "cures",
+      "miracle",
+      "get rich",
+      "click the link",
+      "dm me for",
+      "free money",
+      "must buy",
+      "100% real",
+      "not clickbait",
+      "you won't believe"
+    ]
+  }
+}

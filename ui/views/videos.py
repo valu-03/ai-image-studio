@@ -412,11 +412,13 @@ class VideosView(QWidget):
         checks_card.body.addWidget(self.checks, 1)
 
         right = QSplitter(Qt.Orientation.Vertical)
+        right.setObjectName("videos_prompt_checks")
         right.addWidget(prompt_card)
         right.addWidget(checks_card)
         right.setSizes([420, 260])
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
+        splitter.setObjectName("videos_picker_right")
         splitter.addWidget(picker)
         splitter.addWidget(right)
         splitter.setSizes([380, 720])
