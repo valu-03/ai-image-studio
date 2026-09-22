@@ -303,6 +303,29 @@ check("a repeated beat is visible to check_shot_repeats",
       len([s for s in double if s["beat"] == "tantrum"]) == 2,
       str([s["beat"] for s in double]))
 
+# story_script()/write_story()/edit_sheet() all branched on
+# scene["fields"] == ["task", "mishap"] (trade) and fell through to
+# caption/narration for everything else - correct when only two formats
+# existed, but sitcom's real content is lead_action/foil_action and it has
+# no narration at all, so every one of these text renderers silently
+# dropped the entire physical-comedy description of each beat. Fixed by
+# driving all three off the scene's own "fields" list / the format's own
+# action_recipe(), generically - not a third hardcoded branch.
+script_text = bs.story_script(scenes)
+check("story_script() prints lead_action, not just the caption",
+      all(s["lead_action"] in script_text for s in scenes), script_text[:200])
+check("story_script() prints foil_action too",
+      all(s["foil_action"] in script_text for s in scenes))
+check("story_script() never claims a caption-only scene has narration",
+      "narration" not in script_text)
+
+sheets = bsd.story_sound(bsd.load_bank(), scenes)
+sheet_text = bs.edit_sheet_text(bank, scenes, sheets)
+check("edit_sheet_text()'s 'shows' line carries the actual actions, joined 'while'",
+      all("{} while {}".format(s["lead_action"], s["foil_action"]) in sheet_text
+          for s in scenes),
+      sheet_text[:300])
+
 print()
 print("=== the CLI: --cast and --premise actually exist ===")
 # Real bug, caught by hand: I built apply_cast()/casts()/premises() into the

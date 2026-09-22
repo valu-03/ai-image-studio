@@ -62,6 +62,14 @@ check("'bite' catches 'biting'", "injury" in scan("biting the other cat"))
 check("'swat' catches 'swatting'",
       bool(sfl.contact_unsoftened(bank, "swatting the kitten off the table")))
 check("'shove' catches 'shoving'", bool(sfl.contact_unsoftened(bank, "shoving him aside")))
+# Real bug, caught by hand: the hazard stem was "boiling" itself rather than
+# the root "boil", so it only ever matched the literal word "boiling" - "the
+# cat knocks over a pan of boiled water" and "a pot that boils over" both
+# scanned clean. Fixed by shortening the stem to "boil"; checked against
+# every shipped bank first, same as every other stem here.
+check("'boil' catches 'boiling'", "hazard" in scan("a pan of boiling water on the stove"))
+check("'boil' catches 'boiled'", "hazard" in scan("the cat knocks over a pan of boiled water"))
+check("'boil' catches 'boils'", "hazard" in scan("a pot that boils over on the stove"))
 
 print()
 print("=== negation reads as safe, in both directions ===")

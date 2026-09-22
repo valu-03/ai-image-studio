@@ -688,6 +688,17 @@ def edit_sheet(bank, scenes, sound_sheets=None):
     for index, scene in enumerate(scenes):
         later = scenes[index + 1] if index + 1 < len(scenes) else None
         sound = sound_by_n.get(scene["n"], {})
+        # A format with no caption to lean on needs its own reminder of what
+        # the take shows, or the CapCut panel names nothing but timings -
+        # built from the format's OWN action_recipe() rather than a
+        # hardcoded task/mishap join, so sitcom's lead_action/foil_action
+        # reach this sheet too. Before this, sitcom fell through the
+        # trade-only special case and this row was always blank - the whole
+        # physical-comedy content of the beat was invisible on the one sheet
+        # meant to describe it during editing.
+        recipe = action_recipe(bank, scene.get("format"))
+        brief = recipe.get("join", " until ").join(
+            part for part in (scene.get(name) for name in recipe.get("fields", [])) if part)
         rows.append({
             "n": scene["n"],
             "label": scene["label"],
@@ -697,11 +708,7 @@ def edit_sheet(bank, scenes, sound_sheets=None):
             "timeline": "{:.1f}s - {:.1f}s".format(scene["start"], scene["end"]),
             "caption": scene.get("caption", ""),
             "narration": scene.get("narration", ""),
-            # `trade` has no caption to lean on, so the sheet needs its own
-            # reminder of what the take shows - without this the CapCut panel
-            # for a one-take gag named nothing but timings.
-            "brief": " until ".join(part for part in
-                                    (scene.get("task"), scene.get("mishap")) if part),
+            "brief": brief,
             "cut_out": cut_between(bank, scene, later),
             "sound": [
                 {"layer": layer["layer"], "text": layer["text"]}
@@ -757,21 +764,24 @@ def write_edit_sheet(base_spec, scenes, bank, sound_sheets=None):
 def story_script(scenes):
     """The words alone, as something readable.
 
-    Per format: `trade` scenes carry no caption or narration at all - printing
-    "(none yet)" for two fields that will never be filled would read as a
-    story missing its words, when the format simply has none.
+    Prints each scene's OWN declared fields, by name - not a hardcoded
+    caption/narration pair. This used to special-case only `trade`'s
+    task/mishap and fall through to caption/narration for anything else,
+    which was correct when only two formats existed but silently swallowed
+    `sitcom`'s lead_action/foil_action: since sitcom has no narration at all
+    ("the captions carry every word" - see brief.sitcom_brief), the only
+    description of what actually happens in the beat never appeared here.
     """
     lines = []
     for scene in scenes:
         lines.append("[{:.1f}-{:.1f}s] {}. {}  (clip {}s, keep {:.1f}s)".format(
             scene["start"], scene["end"], scene["n"], scene["label"],
             scene["clip_seconds"], scene["edit_seconds"]))
-        if scene.get("fields") == ["task", "mishap"]:
-            lines.append("    task:   " + (scene.get("task") or "(none yet)"))
-            lines.append("    mishap: " + (scene.get("mishap") or "(none yet)"))
-        else:
-            lines.append("    caption:   " + (scene["caption"] or "(none yet)"))
-            lines.append("    narration: " + (scene["narration"] or "(none yet)"))
+        fields = scene.get("fields") or ["caption", "narration"]
+        width = max(len(name) for name in fields) + 1
+        for name in fields:
+            lines.append("    {:<{width}} {}".format(
+                name + ":", scene.get(name) or "(none yet)", width=width))
     return "\n".join(lines)
 
 
@@ -784,12 +794,12 @@ def write_story(base_spec, arc, scenes):
 
     blocks = []
     for scene in scenes:
-        if scene.get("fields") == ["task", "mishap"]:
-            words = "task:      {}\nmishap:    {}\n".format(
-                scene.get("task") or "(none)", scene.get("mishap") or "(none)")
-        else:
-            words = "caption:   {}\nnarration: {}\n".format(
-                scene["caption"] or "(none)", scene["narration"] or "(none)")
+        # Same fix as story_script(): the format's own declared fields, not a
+        # hardcoded task/mishap-or-else-caption/narration guess.
+        fields = scene.get("fields") or ["caption", "narration"]
+        width = max(len(name) for name in fields) + 1
+        words = "".join("{:<{width}} {}\n".format(
+            name + ":", scene.get(name) or "(none)", width=width) for name in fields)
         blocks.append(
             "=== {}. {}   clip {}s, keep {:.1f}s  [{:.1f}-{:.1f}s]\n{}"
             "still:     {}\n"

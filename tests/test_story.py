@@ -1002,6 +1002,37 @@ check("but the hand edit is restored the next time the Prompts tab renders",
       view.scenes[0]["motion_prompt"].startswith("slow orbit around the cat"),
       view.scenes[0]["motion_prompt"])
 
+# Real bug, caught by hand: custom_motion was keyed by scene INDEX alone, with
+# no record of which beat that index was edited for. "classic"'s index 1 is
+# "setup"; "short"'s index 1 is "escalation" - completely different beats.
+# Before this fix, a hand edit made to index 1 while on "classic" silently
+# reappeared on whatever beat "short" put at index 1 after switching arcs,
+# because _build_motion_card_section() only ever checked `index in
+# self.custom_motion`, never whether the SCENE there was still the one that
+# was edited. Fixed by tagging each entry with the scene's own "key" at edit
+# time and pruning any entry whose tag no longer matches in rebuild().
+check("classic's beat 2 is 'setup'", view.scenes[1]["beat"] == "setup",
+      view.scenes[1]["beat"])
+setup_key = view.scenes[1]["key"]
+view.rebuild_prompts()
+view._on_motion_field_edited(1, "action", "MARKER a very specific setup-only action")
+check("the marker edit is stored, tagged to the setup scene",
+      view.custom_motion[1]["_scene_key"] == setup_key,
+      str(view.custom_motion.get(1)))
+
+view.arc.setCurrentIndex(view.arc.findData("short"))
+check("short's beat 2 is a different beat entirely", view.scenes[1]["beat"] == "escalation",
+      view.scenes[1]["beat"])
+check("the stale edit is dropped by rebuild(), not carried onto the new beat",
+      1 not in view.custom_motion, str(view.custom_motion.get(1)))
+view.rebuild_prompts()
+check("the escalation scene's card gets its OWN default, not the setup marker",
+      "MARKER" not in view.scenes[1]["motion_prompt"], view.scenes[1]["motion_prompt"])
+
+view.arc.setCurrentIndex(view.arc.findData("classic"))
+view.clip.setValue(5)
+view.set_script(SCRIPT)
+
 print()
 if fails:
     print("FAILURES: " + ", ".join(fails))

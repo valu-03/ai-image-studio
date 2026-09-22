@@ -1196,6 +1196,31 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   now declared, because two formats fit in a boolean and three do not: the task/mishap join is
   `action_from`, the brief choice is `brief`, and which rows the Cats form shows is `ui`. Adding
   a format should be vocabulary, not branches.
+- **Every TEXT-RENDERING function must read a scene's fields generically, not by hardcoded
+  format branches.** `build_story.py`'s `story_script()`, `write_story()` and `edit_sheet()` all
+  special-cased `scene.get("fields") == ["task", "mishap"]` for `trade` and fell through to
+  `caption`/`narration` for anything else - correct while only two formats existed, but `sitcom`
+  has no narration at all ("the captions carry every word" - `sitcom_brief`), so its real
+  content, `lead_action`/`foil_action`, silently never appeared in the printed script, the
+  written story file, or the CapCut sheet's "shows" line, even though `compose_story()` had
+  already set both fields correctly on every scene. Not one test caught it: `test_sitcom.py`
+  checked that the fields reached the brief and the composed spec, never that they reached the
+  RENDERED text. Fixed by driving all three off each scene's own `"fields"` list (already stored
+  per scene) and `action_recipe(bank, fmt)` (already existed for `compose_story()`'s own action
+  join) instead of a third hardcoded branch - which, as a side effect, also fixed the SAME gap
+  for the original `story` format's own `action` field, which had been silently unprinted the
+  whole time too.
+- **`ui/views/cats.py`'s `self.custom_motion` dict is keyed by scene INDEX, so it must be pruned
+  whenever `rebuild()` can change which BEAT sits at an index - which arc, cast, trade and style
+  all can.** A hand edit to a scene's video-prompt fields is deliberately meant to survive a
+  `rebuild()` triggered by re-editing the script text (see `_build_motion_card_section`'s own
+  "a stored hand edit has to win back over that" comment) - but nothing distinguished THAT case
+  from an arc/cast switch that reshuffles the beats entirely: `"classic"`'s scene 2 is `setup`,
+  `"short"`'s scene 2 is `escalation`, and an edit typed for one silently reappeared, unlabelled,
+  on the other. Fixed by tagging each `custom_motion` entry with the scene's own `"key"` at the
+  moment it is created, and pruning any entry whose tag no longer matches in `rebuild()` - one
+  place, so every reader (`_build_motion_card_section`, `_audio_cue_overrides`,
+  `generate_scene_voiceover`) is correct for free rather than needing its own check.
 - **`story_bank.json` is where new vocabulary goes, because it is NOT hash-pinned.**
   `tests/test_story.py`'s `HASHES` pins `prompt_bank.json`, `realism_lint.py` and
   `motion_bank.json` only. `build_story.locked_camera`'s docstring states the precedent and it
@@ -1224,7 +1249,12 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   handful of real-but-harmless collisions ("Blade Runner" is not a knife). Stems are
   start-anchored and words are whole-word, and where an inflection drops the stem's last letter
   BOTH forms are listed - "shoving" does not contain "shove", and the shorter stem that would
-  catch it also catches "shovelling wet cement".
+  catch it also catches "shovelling wet cement". The same inflection trap bit a second stem
+  later and shipped: the hazard category listed `"boiling"` itself rather than the root `"boil"`,
+  so it matched only the literal word "boiling" - "the cat knocks over a pan of **boiled** water"
+  and "a pot that **boils** over" both scanned clean. `tests/test_safety_lint.py` now pins all
+  three inflections (`boiling`/`boiled`/`boils`), the same way it already pinned `shove`/`shoving`.
+  When adding a stem, check what it looks like conjugated, not just what it looks like as written.
 - **Take a bank's contents FROM the bank, never from memory.** `sound_lint` rejects the fifteen
   words in `sound_bank.json`'s `not_effects`. An earlier version of this file, and the `music`
   slot in `anatomy_bank.json`, both claimed `beat` was one of them. It is not - "chic upbeat

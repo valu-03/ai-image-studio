@@ -729,6 +729,10 @@ class CatsView(QWidget):
     def _build_motion_card_section(self, card, index, scene):
         is_stored = index in self.custom_motion
         fields = self.custom_motion.setdefault(index, self._default_motion_fields(index, scene))
+        # Tagged with the scene it was edited for, so rebuild() can tell a
+        # real hand edit apart from a stale one left behind at the same
+        # index by a DIFFERENT beat - see rebuild()'s own pruning.
+        fields.setdefault("_scene_key", scene.get("key"))
         if is_stored:
             # rebuild() recomposes scene["motion_prompt"] from scratch on
             # every story change; a stored hand edit has to win back over
@@ -1298,6 +1302,18 @@ class CatsView(QWidget):
             clip_length=self.clip_length(), style=self.style_key(),
             script=self.script, reference="scene-1.png", image_bank=self.bank,
             fmt=fmt, trade=self.trade_key(), cast=self.cast_key())
+
+        # A hand edit in custom_motion is tagged with the scene KEY it was
+        # made for (_build_motion_card_section). Arc/cast/trade/style/format
+        # all rebuild here too, and any of them can reshuffle which beat
+        # lands on which index - so an edit typed for "the meltdown" must not
+        # silently relabel whatever beat now sits at that same index. Prune
+        # here, once, rather than in every reader of custom_motion (the
+        # motion-prompt card, the audio-cue overrides, the voiceover text).
+        for index in list(self.custom_motion):
+            current = self.scenes[index].get("key") if index < len(self.scenes) else None
+            if self.custom_motion[index].get("_scene_key") != current:
+                del self.custom_motion[index]
 
         cfg = bs.arcs(self.story_bank, fmt).get(arc, {})
         self.arc_note.setText("{}  -  {}".format(cfg.get("label", arc), cfg.get("note", "")))
