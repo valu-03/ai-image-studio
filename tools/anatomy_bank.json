@@ -993,7 +993,12 @@
             "almond-shaped",
             "middle part",
             "subtle waves",
-            "features"
+            "features",
+            "brown eyes",
+            "blue eyes",
+            "green eyes",
+            "hazel eyes",
+            "skin tone"
           ],
           "example": "Ultra-realistic photorealistic portrait, true-to-life, of a woman in her early 20s with Mediterranean features, a tanned skin tone, defined cheekbones, almond-shaped brown eyes and long dark brown hair in subtle waves with a middle part"
         },
@@ -1057,8 +1062,8 @@
           "label": "Capture",
           "layer": "camera",
           "does": "What took the photograph, and the artefacts that body actually produces.",
-          "why": "The register of the whole set. A phone selfie and a 50mm portrait are not interchangeable: the phone brings a wider perspective, a small amount of barrel distortion at the edges and its own contrast curve, and a set that mixes the two registers reads as two different people's photographs. Naming the device also earns the imperfections that sell it, which is why the dynamic-range clause sits here rather than in the grade.",
-          "example": "shot on a smartphone front camera from a phone-selfie perspective with the mild lens distortion that perspective really has, high dynamic range held in check, not overly polished"
+          "why": "The register of the whole set. A phone selfie and a 50mm portrait are not interchangeable: the phone brings a wider perspective, a small amount of barrel distortion at the edges and its own contrast curve, and a set that mixes the two registers reads as two different people's photographs. Naming the device also earns the imperfections that sell it, which is why the dynamic-range clause sits here rather than in the grade. The cheapest of those imperfections is a trace of motion softness: a real phone frame of somebody mid-sentence is very slightly smeared, and unlike grain that is not something a model adds unasked or a filter can fake afterwards.",
+          "example": "shot on a smartphone front camera from a phone-selfie perspective with the mild lens distortion that perspective really has, high dynamic range held in check, a slight motion softness as though caught mid-sentence, not overly polished"
         },
         {
           "key": "expression",
