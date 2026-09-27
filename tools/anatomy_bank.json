@@ -1,6 +1,6 @@
 {
   "source": "This app's own 8-layer prompt system (tools/prompt_bank.json + tools/realism_lint.py), plus slot structure reverse-engineered from worked prompts - the `beauty-macro` and `macro-insert` templates from a community-supplied macro/beauty-portrait prompt contributed by the user (the same prompt tools/macro_insert_bank.json harvests its vocabulary from), and `photoreal-portrait` from this app's own build_prompt.py compose order. The `video-sequence` template is reverse-engineered from a community-supplied luxury-vlog video prompt contributed by the user, and `video-shot` from this app's own tools/motion_lint.py rules (which DO transcribe the bootcamp's Kling camera-movement toolkit, via tools/motion_bank.json). The `action-commercial` template is reverse-engineered from a second, different community-supplied video prompt contributed by the user (a high-action car commercial) - see its own `source_note` for how its shape differs from video-sequence. The `product-campaign` template is reverse-engineered from a THIRD community-supplied prompt contributed by the user (a confectionery campaign portrait), and is the image-side sibling of `action-commercial`: the same banded-brief house style, but one still frame with a person and a package in it. Everything else here is NOT AI Video Bootcamp course material.",
-  "version": 6,
+  "version": 8,
   "note": "A template is an ORDERED list of slots - the skeleton of a prompt, not its words. This bank teaches structure; the vocabulary banks (prompt_bank, lighting_bank, style_bank, macro_insert_bank, ...) supply what goes in each slot. Every template also declares `kind` - 'image' or 'video' - so the Anatomy tab's picker can group them instead of listing all five as one undifferentiated list; a template produces exactly one kind of prompt, never both, so this is a fixed fact about the template rather than a per-run choice. Detection is deliberately split: a slot that maps onto one of the eight gated realism layers declares `layer` and is detected by tools/realism_lint.py's OWN DETECT table - never a second copy of those keywords, the same no-duplication rule tools/relight_bank.json follows for lighting and camera-angle phrases. Only slots the eight layers do not cover carry their own `detect` list - and a slot whose vocabulary already lives in ANOTHER linter borrows it by name instead: a `borrow` of 'motion-verbs' takes tools/motion_lint.py's own MOTION_VERBS, so the camera-movement slots cannot drift away from what that linter actually gates on. The video templates also record two facts about this app that a prompt written elsewhere will trip over: tools/sound_bank.json is effects-only and its linter rejects music vocabulary outright (hence a separate `music` slot), and tools/build_story.py distinguishes clip_seconds from edit_seconds (hence the shot-sequence slot's warning that two-second beats are edit lengths, not generation lengths). `analyse()` is keyword presence, not parsing: it answers 'which slots does this prompt appear to fill', which is honest, rather than pretending to segment free prose into semantic regions.",
 
   "templates": {
@@ -703,6 +703,590 @@
             "no beauty filter"
           ],
           "example": "no studio backdrop, no glamour lighting, no artificial glow, no fake bokeh, no beauty filter"
+        }
+      ]
+    },
+    "selfie-monologue": {
+      "label": "Selfie monologue (one handheld take)",
+      "kind": "video",
+      "summary": "The longest prompt kind this app has a skeleton for: one unbroken front-facing phone recording of somebody talking to their followers. Eighteen slots, banded. Almost none of them describe the picture - they describe what must never stop moving, because a selfie video fails in a way a still never can. It goes wrong by being too STABLE: perfect framing, perfect focus, one held expression, an even voice. So most of these slots buy back an imperfection the model would otherwise smooth away, and two of them exist purely to forbid the device filming itself.",
+      "source_note": "Reverse-engineered from two community-supplied video prompts contributed by the user, both 30-second vertical selfie monologues. NOT AI Video Bootcamp course material. They are ONE template rather than two on the authors' own evidence: twelve of their bands are identical word for word, and the second prompt says outright that 'the body roll replaces the separate phone-slip event' - that is one control set two ways, not two skeletons. The `event` slot carries both settings, and its `why` says when to pick which. Folded in from the second prompt only: the `pacing` band (a word count measured against the runtime), which the first prompt has no equivalent of and which is the one band in either source that can be checked with arithmetic. Two things were dropped. The source's reference syntax (@Image1) is one provider's spelling and not this app's, so the frame slot names a reference image without dictating how it is addressed. And the first source's 'British-style' qualifier on overcast daylight was cut: it names no property a model can act on that 'bright, diffuse, no direct sunlight' does not already name.",
+      "slots": [
+        {
+          "key": "frame",
+          "label": "Format and take",
+          "does": "The length, the aspect, the reference image, and the fact that this is one unbroken recording carrying its own sound.",
+          "why": "Everything below is a constraint on a shape that has to exist first. The clause doing the most work is the take: given a thirty-second brief and no instruction about cuts, a model will cut - and a cut is the one thing a selfie recording cannot contain. Naming native audio in the same breath stops a silent clip arriving with music laid over it.",
+          "detect": [
+            "9:16",
+            "vertical",
+            "one continuous take",
+            "one uninterrupted",
+            "native audio",
+            "front-facing smartphone",
+            "reference image"
+          ],
+          "example": "Create a 30-second ultra-realistic vertical 9:16 front-facing smartphone selfie video, using the reference image as the exact visual reference for the woman, her appearance, the bedroom and the close framing - one continuous take with native audio, no added music, captions or graphic overlays"
+        },
+        {
+          "key": "camera-ownership",
+          "label": "Camera ownership lock",
+          "does": "States that the camera IS the phone in her hand, so the phone itself can never appear - and names which hand is allowed on screen.",
+          "why": "The commonest failure in generated selfie video, and the one nobody thinks to forbid. Asked for a woman filming herself on a phone, a model puts a phone in her hand and then films her from somewhere else - so the shot contains two phones and two hands, and reads as footage of someone being filmed rather than footage they took. Say the viewpoint IS the device, and say which single hand may enter the frame.",
+          "detect": [
+            "the camera itself is the smartphone",
+            "no physical smartphone visible",
+            "front-facing camera",
+            "outside the crop",
+            "filming device",
+            "only hand allowed",
+            "two hands"
+          ],
+          "example": "The camera itself is the smartphone she is holding and the viewer sees the image directly from its front-facing camera, so there is no physical smartphone visible anywhere in the video - do not put a phone in her visible hand, do not show one lying on the bed, and do not show the edge, back, reflection or screen of the filming device; one arm extends naturally toward the camera because that hand is holding it, but the hand and the phone stay outside the crop, and her other, free hand is the only hand allowed on screen - at no point may two hands be visible"
+        },
+        {
+          "key": "framing",
+          "label": "Framing and distance",
+          "layer": "composition",
+          "does": "How close the lens sits, what is in frame besides her face, and how much the composition is allowed to move.",
+          "why": "Selfie framing is a distance, not a shot size, and the distance is what makes it read as a selfie. State it as a range the camera may wander inside rather than a fixed composition - a framing held to the millimetre for thirty seconds is a tripod, and this whole template exists to say there is no tripod.",
+          "example": "intimate close-up selfie framing with the phone kept very near her face, her face occupying most of the frame with some shoulders and upper chest visible, the angle broadly consistent but free to drift off-centre and move nearer or further as her arm gets comfortable - never pulling back to a medium shot, never switching to an external camera, never changing location"
+        },
+        {
+          "key": "body",
+          "label": "Body position",
+          "does": "The pose she holds, and the constant small movement inside it that stops the pose becoming a freeze.",
+          "why": "A pose named once is a pose held rigidly. This slot is really two instructions - where she is, and the fact that she never stops adjusting - and the second one is longer than the first for a reason. Shoulders shifting, weight moving through the forearms, the chest rising, the head tilting a few degrees: none of that is visible as an action, and all of it is what separates a person from a photograph with a talking mouth.",
+          "detect": [
+            "lying on her stomach",
+            "never feel frozen",
+            "repositions",
+            "redistributes weight",
+            "shoulders subtly shift",
+            "constant tiny human movement",
+            "rises and falls from breathing"
+          ],
+          "example": "She stays lying on the bed for the entire thirty seconds but must never feel frozen: she repositions continuously, her shoulders subtly shift, her neck angle changes, she redistributes weight through her forearms, her head tilts a few degrees side to side, she moves fractionally closer when making a point and relaxes back, her hair shifts against her shoulders and the bedding, and her upper body rises and falls from breathing - the same overall pose, with constant tiny human movement"
+        },
+        {
+          "key": "handheld",
+          "label": "Handheld motion",
+          "borrow": "motion-verbs",
+          "does": "The one-handed instability that runs the whole length of the clip - and the ceiling on it.",
+          "why": "Both halves matter equally. Without the floor, the frame is mathematically stationary and the illusion dies in the first second; without the ceiling, the model delivers shaky-cam, which is just as unreal in the other direction. Name the specific mechanisms - wrist tremor, rotational wobble, grip fatigue - rather than asking for 'handheld', because a named cause produces a motion the model can actually generate.",
+          "detect": [
+            "handheld",
+            "never perfectly stable",
+            "never tripod-like",
+            "wrist tremor",
+            "rotational wobble",
+            "micro-corrections",
+            "grip fatigue",
+            "subconscious"
+          ],
+          "example": "The camera is unmistakably handheld for the entire clip - never perfectly stable, never locked, never tripod-like: constant subtle instability from one-handed filming, tiny wrist tremor, small vertical floating, slight rotational wobble, tiny accidental tilts, minor framing mistakes and micro-corrections, small movements from breathing, more movement as she becomes animated, subtle changes from grip fatigue - but not aggressive shaky-cam; the movement stays small, natural and subconscious"
+        },
+        {
+          "key": "event",
+          "label": "Imperfection events",
+          "does": "One larger, timed thing that goes wrong with the filming, plus a smaller second correction later - and how she recovers from each without stopping.",
+          "why": "The slot that buys the most realism per word, and the one both source prompts build their timeline around. Continuous tremor alone still reads as a smooth clip; an actual mistake at a named second reads as a recording. Pick ONE larger event: a grip slip (the camera drops and tilts ten to fifteen degrees, then overshoots and settles) suits a fixed pose, while a body roll (she turns from her stomach onto her back and the viewpoint goes with her arm) suits a pose that changes - the second source says plainly that the roll REPLACES the slip, and having both is one accident too many. The recovery is where prompts fail: the correction must be made by the invisible filming hand, the visible hand must not reach for the camera, and she must not restart her sentence.",
+          "detect": [
+            "grip naturally slips",
+            "tilts approximately",
+            "overshoots",
+            "grip correction",
+            "focus recovers",
+            "rolls through her side",
+            "without restarting",
+            "briefly loses perfect sharpness"
+          ],
+          "example": "Around 7-10 seconds her grip naturally slips: the camera drops downward and tilts approximately 10-15 degrees as if gravity pulled it, her face briefly leaves ideal framing, and she does not stop speaking - the smallest natural response, an eyebrow flick or a tiny amused expression, while the invisible filming hand immediately corrects it; the camera wobbles, slightly overshoots the original composition and settles back over roughly one to two seconds, with realistic motion blur and a momentary autofocus loss, and the visible free hand never reaches for the camera. Around 19-23 seconds add a second, smaller one-handed correction - the camera rotates slightly to one side and moves a few centimetres closer, then settles, retaining a slight new offset rather than snapping back - with no visible phone, no visible filming hand and no interruption to the dialogue"
+        },
+        {
+          "key": "optics",
+          "label": "Phone optics",
+          "does": "How a phone's front camera actually behaves: focus that hunts, exposure that breathes, compression, and the cinema look it must not have.",
+          "why": "This is the band that decides whether the footage was shot on a phone or on a camera pretending to be one, and no linter in this app owns the vocabulary for it - realism_lint's lens layer knows apertures and bokeh but nothing about autofocus hesitating when a hand comes near the lens, so these keywords are the slot's own. The strongest single instruction is that focus is allowed to be wrong: perfect permanent sharpness is a tell no amount of grain covers.",
+          "detect": [
+            "autofocus",
+            "exposure breathing",
+            "digital compression",
+            "smartphone sharpening",
+            "motion blur",
+            "focus recovers",
+            "favours her fingertips"
+          ],
+          "example": "Authentic front-facing smartphone behaviour, not perfect permanent focus: occasional tiny autofocus breathing, and when her visible free hand comes near the lens the autofocus briefly hesitates and her face goes fractionally soft while the phone favours her fingertips before returning to her eyes; subtle automatic exposure breathing with tiny brightness changes as her head and hand move, realistic smartphone sharpening, mild digital compression, natural motion blur - no cinema-camera bokeh, no perfect commercial clarity, no artificial rack focus"
+        },
+        {
+          "key": "lighting",
+          "label": "Light",
+          "layer": "lighting",
+          "does": "One light source, named as a real condition in a real room, and the dramatic treatments it rules out.",
+          "why": "A selfie is lit by whatever the room has. The refusals carry this slot because every one of them is a thing a model adds unasked to make an image look good - a key light, a rim light, a golden glow - and each of them is the moment the clip stops being footage somebody took. Overcast daylight is the most forgiving choice for a face that has to stay legible while it moves.",
+          "example": "bright natural overcast daylight filling the bedroom, soft diffuse window light with no direct sunlight, no visible sun patches, no golden glow, no hard shadows, no dramatic lighting, no studio key light and no artificial rim light - the room simply feels naturally bright from a cloudy daytime sky"
+        },
+        {
+          "key": "skin",
+          "label": "Skin",
+          "layer": "texture",
+          "does": "The face at close range, held to real texture - and the four smoothing artefacts named individually.",
+          "why": "The lens is inches from her face for thirty seconds, so skin is most of the picture, and video is where smoothing is hardest to escape: a model that renders one clean frame renders thirty of them. Naming the failures separately - plastic, filtered, glossy, waxy - works better than one blanket 'realistic skin', because they are four different things a generator does.",
+          "example": "highly realistic skin throughout: visible pores, subtle freckles and small imperfections, natural tonal variation, slight cheek and nose redness, tiny facial hairs, peach fuzz, realistic under-eye detail, natural lip texture and tiny forehead texture - absolutely no plastic skin, no beauty filter, no glossy influencer complexion, no waxy AI face"
+        },
+        {
+          "key": "performance",
+          "label": "Performance register",
+          "does": "Who she is being - a person telling a friend something, not a presenter - and the fact that her voice and body are one performance rather than two layers.",
+          "why": "Register has to be named by what it is NOT, because the default is a spokesperson: asked for someone talking to camera, a model produces an actress delivering lines. The second half of this slot is subtler and it is the giveaway that survives everything else being right - lip-sync animated separately from body animation, so the mouth moves correctly while the face and shoulders belong to a different take. Saying the smile has to change the voice is what binds them.",
+          "detect": [
+            "not an actress",
+            "not a lip-sync avatar",
+            "spontaneous",
+            "animated and responsive",
+            "one human performance",
+            "not separate lip-sync"
+          ],
+          "example": "Her performance feels like an actual woman telling a friend something she genuinely finds interesting - not an actress, not a presenter, not a lip-sync avatar, not a UGC spokesperson: animated and responsive throughout, head moving, face reacting, eyebrows and eyes moving, shoulders moving, mouth making tiny expressions between words, leaning fractionally toward the phone and pulling back, changing expression frequently but subtly, slightly messy rather than choreographed. Her voice reacts to her body as one human performance and not separate lip-sync and body animation layers: a smile changes the voice, leaning closer makes it more intimate, looking away changes its direction, gesturing more animatedly quickens the pace"
+        },
+        {
+          "key": "eyes",
+          "label": "Eye behaviour",
+          "does": "Where the eyes go over thirty seconds, and how they blink.",
+          "why": "The single most-cited AI tell, and a slot of its own because it fails differently from the rest of the face: a model given no eye instruction produces a continuous unblinking stare into the lens. Two details do most of the work - that she looks at herself on the screen as well as into the lens, which is a thing only a real selfie-taker does, and that her eyes glance away while she is thinking.",
+          "detect": [
+            "gaze naturally alternates",
+            "looking at herself on the phone screen",
+            "glancing upward",
+            "natural blinking",
+            "complete blinks",
+            "eye widening",
+            "faster blink"
+          ],
+          "example": "She does not stare continuously into the lens: her gaze naturally alternates between looking into the camera lens, looking at herself on the phone screen, briefly glancing upward while remembering something, tiny side glances and looking down for a fraction of a second before returning - natural blinking with complete blinks, an occasional faster blink when thinking, tiny eye widening when incredulous, a subtle squint when amused, and if she pauses to think her eyes, head or hand keep moving"
+        },
+        {
+          "key": "face",
+          "label": "Head and micro-expressions",
+          "does": "The small head movements and the expressions that cross her face between words.",
+          "why": "Separate from the eyes because the failure is different: eyes fail by being dead, the face fails by being held. The instruction that matters most is the last one - that the expressions OVERLAP speech rather than arriving one at a time. A model given a list of micro-expressions will play them in order like a scripted animation, which reads worse than no expression at all.",
+          "detect": [
+            "micro-expressions",
+            "half-smile",
+            "nose scrunch",
+            "one eyebrow raised",
+            "chin lift",
+            "lip press",
+            "overlap naturally with speech"
+          ],
+          "example": "Her head makes frequent subtle movements - a tiny tilt, a small chin lift, a slight turn, a fractional lean closer, a small pullback, a brief upward glance, a tiny sideways angle, a return to centre - with natural micro-expressions throughout: half-smile, small nose scrunch, one eyebrow raised, momentary confusion, slight lip press, tiny amused exhale, almost-laugh, brief eye roll, none of them exaggerated, all of them overlapping naturally with speech rather than happening one at a time like scripted animation"
+        },
+        {
+          "key": "free-hand",
+          "label": "The visible hand",
+          "does": "What her one free hand does, roughly how often, and everything it must not do.",
+          "why": "Counted, because 'gesturing naturally' produces either a hand that never appears or one that waves for thirty seconds; a number - seven to ten moments - produces a hand that comes and goes. The refusals repeat the ownership lock on purpose: this is the slot where a second phone appears, because the model has a free hand and nothing to put in it.",
+          "detect": [
+            "free hand",
+            "gesture moments",
+            "palm-up",
+            "fingertips",
+            "out of frame",
+            "subconscious",
+            "lower foreground"
+          ],
+          "example": "Her one visible free hand is naturally active, roughly 7-10 small gesture moments across the thirty seconds: a small palm-up gesture, fingers loosely opening, a tiny point, light movement near her chin, fingertips brushing the bedding, a small outward motion, the hand entering the lower foreground, fingers briefly moving near the lens, then the hand falling back out of frame - subconscious and slightly messy, never synchronised perfectly to a specific word, never permanently visible, never two hands, and never holding a phone or any other object"
+        },
+        {
+          "key": "pacing",
+          "label": "Words against runtime",
+          "does": "The word count of the dialogue measured against the length of the clip, and where the speech starts and ends inside it.",
+          "why": "The only band in either source prompt that can be checked with arithmetic, and the one that decides whether the clip is watchable. Thirty seconds and a script the model finds short produces stretched phrases, long sentence-end pauses and a silent reaction hold at each end; too long produces a rush that outruns the runtime. Count the words, state the rate, and forbid the two ways a model pads - the opening pose and the closing stare.",
+          "detect": [
+            "words within",
+            "words per minute",
+            "start immediately",
+            "finish close to the end",
+            "do not stretch phrases",
+            "reaction holds"
+          ],
+          "example": "Speak all 79 words within the 30-second clip with lively connected conversation - approximately 158 words per minute across the whole clip, with local changes of speed and short natural breaths: start immediately and let the final phrase finish close to the end, do not stretch phrases to occupy the runtime, and do not add prolonged sentence-end pauses, blank reaction holds or an opening or closing silent pose"
+        },
+        {
+          "key": "voice",
+          "label": "Voice and prosody",
+          "does": "The accent, the fact that nothing about the delivery stays constant, and the difference between forming a thought and reading one.",
+          "why": "An accent named alone arrives as a caricature, so the slot spends as long on what to avoid as on what to ask for. The longer half is prosody, and it is the reason a technically perfect voice still sounds generated: models hold pitch, pace and volume flat across a whole take. Ask for them to change, and say what changes them - excitement speeds phrases up, thinking slows them, turning the head takes the voice off-axis. The last clause is the cheapest win in the whole template: a line that sounds formed while spoken rather than read is mostly a matter of allowing contractions and tiny hesitations.",
+          "detect": [
+            "australian accent",
+            "vowel shape",
+            "speech rhythm constantly changes",
+            "pitch naturally rises",
+            "vocal fry",
+            "breathiness",
+            "volume fluctuations",
+            "forming the thought while talking",
+            "contractions"
+          ],
+          "example": "A natural young Australian accent, early-to-mid 20s, modern and urban - clearly Australian in vowel shape and conversational melody but not exaggerated or stereotypical, no forced slang, no broad outback accent; youthful, warm, slightly airy. Most importantly the voice does not hold the same pitch, speed, volume or energy: her speech rhythm constantly changes like real conversation, some phrases quick because she is excited, others slowing because she is thinking, pitch naturally rises when she is incredulous and falls on throwaway comments, some words emphasised and others softened, slightly louder when she leans closer and fractionally off-axis and softer when she turns her head - natural breathiness, small breaths between phrases, tiny audible smiles, an occasional almost-laugh, occasional vocal fry at the end of a thought. She sounds as though she is forming the thought while talking rather than reading it: words blend, contractions come fast and genuine, tiny hesitations last fractions of a second, no clean punctuation-like gaps and no narrator diction"
+        },
+        {
+          "key": "audio-path",
+          "label": "Audio path",
+          "does": "Which microphone this was recorded on, and the room it was recorded in.",
+          "why": "A slot of its own because the picture and the sound are generated by different parts of the model, and nothing ties them together unless you say so: a phone-shot image arrives with broadcast-clean voice-over over silence. Naming the phone mic as the source also earns the small things that sell it - proximity changing as the camera moves, a breath close to the mic, room tone that never drops to nothing.",
+          "detect": [
+            "phone microphone",
+            "room tone",
+            "smartphone compression",
+            "proximity changes",
+            "breath sound near the microphone"
+          ],
+          "example": "The audio is recorded through the same smartphone being used as the camera: natural close phone-microphone sound, very subtle bedroom room tone, tiny proximity changes as the camera position changes, slight natural smartphone compression, an occasional breath sound near the microphone - no studio microphone, no podcast clarity, no perfectly isolated voice, no aggressive noise gate and no completely silent room between words"
+        },
+        {
+          "key": "dialogue",
+          "label": "Dialogue",
+          "does": "The actual words she says, quoted verbatim.",
+          "why": "Quoted rather than summarised, because a described topic comes back as a model's idea of that topic in fluent written English. The copy itself has to be written the way it will be spoken - fillers, a trailing thought, a question mark that is really a shrug - since anything polished on the page is read aloud as prose. Count these words for the pacing slot above; this is the script that has to fit.",
+          "detect": [
+            "says naturally",
+            "conversational rhythm",
+            "messy"
+          ],
+          "example": "She says naturally, with messy conversational rhythm: 'Okay, this is gonna sound so dumb, but I literally spent, like, an hour last night scrolling through videos trying to work out which ones were AI. And I genuinely thought I was good at it. Like, you know when the skin's way too smooth, or the hands do something weird, or they just have that... I dunno, kinda dead look in their eyes? Yeah. Apparently that means absolutely nothing anymore.'"
+        },
+        {
+          "key": "flow",
+          "label": "Performance flow",
+          "does": "The timeline: which line gets which movement, where the timed event lands inside the speech, and how the clip ends.",
+          "why": "The band that turns every slot above from a property into a schedule, and the reason these prompts work at all. Each instruction elsewhere says what may happen; this says WHEN, pinned to a phrase of the dialogue rather than to a second - which is what keeps the gesture and the word together when the model's own timing drifts. It is also the only place to say how the clip stops: without an instruction, a model ends on a held pose looking into the lens, which undoes thirty seconds of work in the last half-second.",
+          "detect": [
+            "begins speaking immediately",
+            "no introductory stare",
+            "trigger the camera slip",
+            "breaks character",
+            "final result should feel",
+            "no frozen end pose"
+          ],
+          "example": "She begins speaking immediately - no introductory stare, no waiting, no pose before starting. On 'this is gonna sound so dumb' a tiny embarrassed half-smile and slight head tilt; on 'literally spent, like, an hour' her free hand enters frame with a loose palm-up gesture and she lightly rolls her eyes at herself; during 'scrolling through videos' the camera drifts slightly, and around 7-10 seconds trigger the camera slip while she keeps talking, her expression acknowledging the accident without breaking the sentence. On 'I genuinely thought I was good at it' she leans slightly closer with a tiny eyebrow raise; on 'hands do something weird' her fingertips come near the lens and cause a small autofocus shift; on 'they just have that... I dunno' she genuinely searches for the phrase, eyes glancing up, speech slowing. Then on 'kinda dead look in their eyes' she mimics a blank stare for less than half a second and immediately breaks character with an amused expression - do not let the blank expression linger. On the last line her tone turns lightly incredulous, almost laughing, with a small free-hand flick. The final result should feel like a real woman who grabbed her phone, flopped onto the bed and started talking without planning it - finishing close to the end of the clip with small irregular handheld motion continuing, no frozen end pose and no added words"
+        }
+      ]
+    },
+    "influencer-series": {
+      "label": "Influencer series (one look, many shots)",
+      "kind": "image",
+      "scaffold": "inline",
+      "summary": "A prompt built to be run MORE THAN ONCE. Thirteen slots, flowing prose, ending in the band none of the other image templates has: an instruction that the room, the light and the camera stay identical across every shot in the set. Where the editorial templates each aim at one best frame, this one aims at a series that cuts together - which changes what the slots are for. The look is written to be repeatable rather than perfect, and the last slot is the only thing standing between a set of shots and twelve unrelated photographs of the same face.",
+      "source_note": "Reverse-engineered from two community-supplied image prompts contributed by the user - a hotel-bathroom close-up and a modern-kitchen phone-selfie. NOT AI Video Bootcamp course material. They are one template because they are one skeleton: identity, look, setting, light, camera, then a consistency lock. THREE editorial calls, each held by an assertion in tests/test_anatomy.py. First, both sources name TWO lighting setups - the first establishes warm sconces behind the subject plus indoor cinematic light and then appends 'ring lighting', and the second says 'no dramatic shadows' and then appends 'moody lighting' four clauses later. Both contradictions were resolved to one setup, and the `light` slot's `why` is about why this is the commonest way a good prompt goes muddy. Second, the second source's 'sexy' and its chest description were dropped: a judgement is not a description, it is the same class of token as the '8k' and 'award-winning' that tools/prompt_bank.json already lists in `warn` - it asks the model to flatter rather than to render, and it spends a word that could have named a real property like fabric stretch or how a neckline sits. Third, 'right light' in the first source is a typo for rim light; rather than guess, that clause is gone and the slot names the source it can actually place.",
+      "slots": [
+        {
+          "key": "identity",
+          "label": "Identity",
+          "does": "Age, features, hair and eyes - the facts that have to come back unchanged in every shot of the set.",
+          "why": "In a one-off portrait this slot is scene-setting; in a series it is the whole job. Anything vague here is re-rolled on the next shot: 'a pretty woman' returns a different woman each time, while an age, a face shape, an eye colour and a named hair part return approximately the same one. Write it as a list of settings rather than a description, because that is how it will be reused.",
+          "detect": [
+            "year-old",
+            "early 20s",
+            "mid-20s",
+            "almond-shaped",
+            "middle part",
+            "subtle waves",
+            "features"
+          ],
+          "example": "Ultra-realistic photorealistic portrait, true-to-life, of a woman in her early 20s with Mediterranean features, a tanned skin tone, defined cheekbones, almond-shaped brown eyes and long dark brown hair in subtle waves with a middle part"
+        },
+        {
+          "key": "wardrobe",
+          "label": "Wardrobe",
+          "does": "The garment: cut, colour, and how the fabric actually behaves on a body.",
+          "why": "Name the cloth, not the impression. A colour and a cut are reproducible across a set; an adjective about how the outfit looks is re-interpreted every shot. The clause that earns the most is the one about fabric - stretch, drape, how a neckline sits - because cloth that does not respond to the body underneath it is one of the few tells that survives perfect skin.",
+          "detect": [
+            "wearing",
+            "low-cut",
+            "long-sleeve",
+            "high-waisted",
+            "fabric stretch",
+            "half-unzipped",
+            "ribbed"
+          ],
+          "example": "wearing a deep wine-red low-cut long-sleeve top with natural fabric stretch across the shoulders and a neckline that sits where the weight of the knit puts it"
+        },
+        {
+          "key": "setting",
+          "label": "Setting",
+          "does": "The room, named as a specific place rather than a category.",
+          "why": "A category returns stock: 'a kitchen' returns the same show kitchen every time. A named place with two or three fixtures in it returns a room, and - the reason it matters here more than anywhere else - a room with fixtures is a room the next shot in the series can be recognisably set in.",
+          "detect": [
+            "set in",
+            "modern kitchen",
+            "hotel bathroom",
+            "behind her",
+            "wall sconces",
+            "under-cabinet"
+          ],
+          "example": "set in a modern kitchen with pale cabinetry and a run of under-cabinet lights, worktop clutter left where it actually falls"
+        },
+        {
+          "key": "light",
+          "label": "Light",
+          "layer": "lighting",
+          "does": "ONE lighting setup, named as the sources that are physically in the room.",
+          "why": "The slot both source prompts got wrong, in the same way, and the most valuable lesson in this template. Each named a setup and then appended a second, contradicting one - warm sconces behind the subject and then 'ring lighting'; 'no dramatic shadows' and then 'moody lighting'. A model cannot honour both, so it averages them, and averaged light is the flat, sourceless glow that makes a generated image look generated. One setup. If a second sounds tempting, it belongs in a different shot of the series, not in this prompt.",
+          "example": "lit by soft warm overhead light with a run of under-cabinet practical lighting filling the shadows, neutral colour temperature, realistic shadows with no hard edges and no second light source competing with it"
+        },
+        {
+          "key": "viewpoint",
+          "label": "Viewpoint",
+          "layer": "composition",
+          "does": "Where the camera is: its height relative to her eyes, its angle, and how tight the frame is.",
+          "why": "Locked with the light and the room by the last slot, so it has to be stated as a measurable thing rather than a feeling - a height and a direction, not 'a flattering angle'. Chest height looking slightly up and eye level looking slightly down are different photographs of the same person, and a series that wanders between them does not cut together.",
+          "example": "camera at chest height, a little below eye level and angled very slightly up, intimate framing that holds her head and shoulders with a hand's width of room above"
+        },
+        {
+          "key": "lens",
+          "label": "Lens",
+          "layer": "lens",
+          "does": "Focal length and aperture - what the background does as a consequence.",
+          "why": "The background blur belongs here rather than in the setting slot, because it is an effect with a cause: a 50mm at a wide aperture produces it, and asking for 'creamy blur' without a lens asks for the effect and not the cause. Keep the same focal length across the series or the room appears to change size between shots.",
+          "example": "50mm lens at a wide aperture, shallow depth of field, the kitchen behind her falling into a soft creamy blur"
+        },
+        {
+          "key": "capture",
+          "label": "Capture",
+          "layer": "camera",
+          "does": "What took the photograph, and the artefacts that body actually produces.",
+          "why": "The register of the whole set. A phone selfie and a 50mm portrait are not interchangeable: the phone brings a wider perspective, a small amount of barrel distortion at the edges and its own contrast curve, and a set that mixes the two registers reads as two different people's photographs. Naming the device also earns the imperfections that sell it, which is why the dynamic-range clause sits here rather than in the grade.",
+          "example": "shot on a smartphone front camera from a phone-selfie perspective with the mild lens distortion that perspective really has, high dynamic range held in check, not overly polished"
+        },
+        {
+          "key": "expression",
+          "label": "Expression",
+          "does": "The face mid-something rather than held - and where the eyes are looking.",
+          "why": "A posed smile is the fastest way to make a series look like a catalogue. Catching her mid-sentence, or looking at her own screen rather than into the lens, gives every shot in the set a different moment while the look stays fixed - which is exactly the variation a series wants and the variation the lock above must not remove.",
+          "detect": [
+            "mid-sentence",
+            "relaxed expression",
+            "closed-mouth smile",
+            "head tilted",
+            "eyes on the phone screen",
+            "unposed"
+          ],
+          "example": "a relaxed expression caught mid-sentence, head tilted slightly, unposed, her eyes on the phone screen rather than the lens"
+        },
+        {
+          "key": "skin",
+          "label": "Skin",
+          "layer": "texture",
+          "does": "Real skin at this distance: pores, tonal variation, and makeup named as the little there is.",
+          "why": "The layer a close-up lives or dies on, and the one the sources both protected properly. 'Minimal makeup' does more work than it looks like: it licenses the redness, unevenness and visible pores that a model otherwise treats as flaws to be cleaned up, and it is easier to honour consistently across a set than a full face of makeup is.",
+          "example": "natural skin texture with visible pores across the nose and cheeks, real tonal variation, a faint flush over the cheekbones, minimal makeup beyond a tinted balm and a brow gel"
+        },
+        {
+          "key": "features",
+          "label": "Features",
+          "does": "Eyes, lips and lashes at close range - and the catchlight that proves there was a light.",
+          "why": "Separate from skin because they fail differently: skin fails by being smoothed, features fail by being drawn. The catchlight is the highest-value detail in the slot and the one most often missing - a reflection of the actual source in the actual eye is the difference between eyes and glass beads, and it is also a free consistency check, because the wrong catchlight shape gives away a shot lit differently from the rest of the set.",
+          "detect": [
+            "glossy lips",
+            "catchlight",
+            "eyelashes",
+            "lip balm",
+            "iris",
+            "brow"
+          ],
+          "example": "slightly fuller lips with a natural gloss, individual eyelashes, brows with visible hair, and a clear catchlight in each iris that matches the shape of the light above her"
+        },
+        {
+          "key": "grade",
+          "label": "Grade",
+          "layer": "colour",
+          "does": "The colour treatment: temperature, contrast, and where the highlights sit.",
+          "why": "The band that makes a set look like one set. Two shots with identical lighting and different grades still will not cut together, and the grade is the cheapest of the locked properties to state precisely - a temperature and a highlight character are two short clauses that carry across every shot.",
+          "example": "natural colour grading, warm oat-and-cream highlights rolling off gently, realistic contrast, soft shadow falloff, natural skin tones"
+        },
+        {
+          "key": "series-lock",
+          "label": "Series lock",
+          "does": "The instruction that the light, the background and the camera angle stay identical across every shot in the set.",
+          "why": "The slot this template exists for, and it goes LAST so it governs everything above it. Be precise about what it locks, because locking too much is as bad as locking nothing: the light, the room and the camera are fixed, while the pose, the expression and the gesture are exactly what must change from shot to shot. A lock written as 'keep everything the same' returns the same photograph twelve times, which is not a series either. This is the prompt-side companion to what this app does with a reference image and lock_identity - see tools/build_prompt.py's own lock clauses, which fix the face while leaving the frame free.",
+          "detect": [
+            "must remain identical",
+            "across all shots",
+            "identical across",
+            "consistent across",
+            "every shot in this set"
+          ],
+          "example": "lighting, background and camera angle must remain identical across all shots in this set, while pose, expression and gesture are free to change between them"
+        }
+      ]
+    },
+    "inventory-selfie": {
+      "label": "Inventory selfie (realism by named detail)",
+      "kind": "image",
+      "scaffold": "inline",
+      "summary": "Thirteen slots that between them name about forty specific things. This template's method is the opposite of every other one in the bank: it barely argues with the camera at all, and buys its realism by committing to particulars - a clock time, named brands, six objects in the background, a mark on the bridge of the nose from a pair of sunglasses. Nothing here is a quality word. Every slot is a decision that could have gone another way, and that is precisely why the result reads as a photograph of one real morning rather than a rendering of a type of person.",
+      "source_note": "Reverse-engineered from a fifth community-supplied image prompt contributed by the user - a Reformer Pilates changing-room mirror selfie. NOT AI Video Bootcamp course material. Kept as its own template rather than folded into the influencer series because the method is genuinely different and in one respect opposite: that template fixes a look so it can be repeated, while this one spends everything on detail that could only be true once, and it has no lock at all. It is also the only template in this bank where the phone is IN the picture rather than being the camera - the exact inverse of the selfie-monologue video template's ownership lock, and worth reading next to it. Nothing was dropped from the source; the brand names were kept, with the `jewellery` slot's `why` explaining what they are actually buying and where they stop working.",
+      "slots": [
+        {
+          "key": "frame",
+          "label": "Frame and hour",
+          "does": "The kind of photograph, who is in it, where, and what time it is.",
+          "why": "The clock time is the most undervalued clause in the whole prompt. It is not a lighting instruction - the light gets named later - it is a commitment, and it decides things the prompt never says: how full the room is, what state she is in, what has already happened that day. A mid-morning weekday changing room is nearly empty and everyone in it has finished a class. 'Daytime' buys none of that.",
+          "detect": [
+            "mirror selfie",
+            "full-length",
+            "angled down at the mirror",
+            "weekday morning",
+            "year-old"
+          ],
+          "example": "Ultra-realistic photorealistic full-length mirror selfie, true-to-life, of a 26-year-old blonde woman in the changing-room corridor of a Reformer Pilates studio at 11:05am on an ordinary weekday morning, candid, phone angled down at the mirror at eye level"
+        },
+        {
+          "key": "hair",
+          "label": "Hair",
+          "does": "How it is worn, and the thing holding it.",
+          "why": "Worth a slot of its own because it carries the hour: hair slicked back and tied is hair that has just been worked in, and it reads that way without the prompt ever saying she exercised. Naming what holds it - a specific scrunchie rather than 'a hair tie' - is the same trick as the jewellery slot below, one object standing in for a whole level of care.",
+          "detect": [
+            "slicked-back",
+            "ponytail",
+            "scrunchie",
+            "middle part",
+            "tied back",
+            "flyaway"
+          ],
+          "example": "hair slicked back into a low ponytail held with a black silk scrunchie, a few flyaway strands escaping at the temples"
+        },
+        {
+          "key": "jewellery",
+          "label": "Jewellery",
+          "does": "The small metal, named piece by piece.",
+          "why": "A named piece has a shape the model already knows: a huggie, a paperclip chain and a hinged bangle are three specific silhouettes, where 'gold jewellery' is none. Brand names work as shorthand for those silhouettes plus a price bracket, and that is all they are buying - so lean on them for the shape and expect nothing more. Where they stop working is logos: ask for a brand whose mark is its identity and the model will try to render the mark, badly. If the piece is only recognisable by its logo, describe the object instead.",
+          "detect": [
+            "huggie",
+            "paperclip necklace",
+            "bracelet",
+            "anklet",
+            "in each ear",
+            "yellow gold"
+          ],
+          "example": "a single small gold huggie in each ear, a slim gold paperclip necklace, a hinged love bracelet in yellow gold on one wrist, a thin gold anklet"
+        },
+        {
+          "key": "wardrobe",
+          "label": "Wardrobe",
+          "does": "Every garment, with its colour, finish and how it is being worn right now.",
+          "why": "The finish is what stops this reading as a catalogue: matte black photographs nothing like the same black in a technical knit, and 'half-unzipped' is a state rather than a garment, which is what makes it look like something she is wearing rather than something she is modelling. Bone-white socks with white trainers is the level of specificity this template runs at - two whites that are not the same white.",
+          "detect": [
+            "cropped",
+            "half-unzipped",
+            "high-waisted",
+            "leggings",
+            "zip-up",
+            "ribbed",
+            "socks"
+          ],
+          "example": "wearing a matte-black cropped long-sleeve zip-up, half-unzipped over a white ribbed bra, matching high-waisted black leggings, white suede trainers with bone-white socks"
+        },
+        {
+          "key": "props",
+          "label": "What she is holding",
+          "does": "The objects in her hands and on her shoulder, including the phone taking the picture.",
+          "why": "Hands with something in them are hands that behave. This is also the one template where the phone is deliberately IN frame and held at a stated angle - the exact opposite of the selfie-monologue video template, where the whole clip depends on the device never appearing. Naming the cup, the straw and the bag is what fills the second hand and stops it drifting into the generic open palm a model reaches for when a hand has no job.",
+          "detect": [
+            "holding",
+            "reusable cup",
+            "silicone straw",
+            "bucket bag",
+            "slung on one shoulder",
+            "phone in the other hand"
+          ],
+          "example": "holding an iced oat-milk matcha in a hard plastic reusable cup with a pink silicone straw, a tan leather bucket bag slung on one shoulder, the phone in the other hand angled down at the mirror"
+        },
+        {
+          "key": "pose",
+          "label": "Pose and eyeline",
+          "does": "What her body is doing, her expression, and where she is actually looking.",
+          "why": "The eyeline is the slot. In a mirror selfie she is looking at her screen, not at herself and not at the lens - and that small wrongness is what makes the photograph read as taken rather than posed for. A closed-mouth smile is the other half: it is what a face does when it is checking a frame, not performing for one.",
+          "detect": [
+            "head tilted",
+            "closed-mouth smile",
+            "eyes on the phone screen",
+            "weight on one hip",
+            "unposed"
+          ],
+          "example": "head tilted slightly, weight settled on one hip, a small closed-mouth smile, unposed, her eyes on the phone screen rather than her own reflection"
+        },
+        {
+          "key": "marks",
+          "label": "Evidence of a life",
+          "does": "The marks a body carries from things that happened before the photograph.",
+          "why": "The best idea in this prompt, and the one no generator adds unasked. A faint dent on the bridge of the nose means she wore sunglasses here; a tan line at the shoulder means a swimsuit, somewhere else, weeks ago; a small tattoo on the inner wrist means a decision. None of these describe how she looks - they are evidence, and evidence is what a photograph has and a rendering does not. This is the same instinct as asking for flyaway hairs, one level deeper: not imperfection for its own sake, but imperfection with a cause.",
+          "detect": [
+            "small geometric tattoo",
+            "inner wrist",
+            "tan line",
+            "faint mark",
+            "where sunglasses sat",
+            "indentation"
+          ],
+          "example": "a small geometric tattoo on the inner wrist, a faint mark on the bridge of the nose where sunglasses sat earlier, a barely-there tan line from a swimsuit strap at the shoulder"
+        },
+        {
+          "key": "background",
+          "label": "Background inventory",
+          "does": "Everything visible in the mirror behind her, counted out - including another person who is not the subject.",
+          "why": "Six named objects instead of one named place. 'A Pilates changing room' returns a stock interior; lockers with brass fobs, rolled towels, a reed diffuser and a eucalyptus wreath return a room somebody works in. The second woman, out of focus and doing something unrelated, is the single strongest clause here - a room with one person in it is a set, and a room with somebody incidentally tying a shoelace is a place. Note also the small pink sign reading one word: this is the one time these prompts ask for rendered TEXT, and it works precisely because it is a short word, in a known object, at a small size - which is the same conclusion tools/typography_bank.json reaches from the other direction with its `whisper` ratio.",
+          "detect": [
+            "behind her in the mirror",
+            "lockers",
+            "rolled white towels",
+            "reed diffuser",
+            "out of focus",
+            "sign reading"
+          ],
+          "example": "behind her in the mirror: a row of small wooden lockers with brass key-fobs, a shelf of rolled white towels, a reed diffuser on a low cabinet, a soft-pink sign reading 'breathe', a eucalyptus wreath on a door, and another woman out of focus tying her shoelaces on a bench"
+        },
+        {
+          "key": "capture",
+          "label": "Capture",
+          "layer": "camera",
+          "does": "The device, and the honest artefacts of shooting a mirror with it.",
+          "why": "The fingerprint smear on the mirror edge is the detail to copy out of this prompt. It is not about the subject at all - it is about the surface between the camera and the subject, and a smudge on glass is something no one would invent and everyone's mirror has. Naming the device without naming its flaws gets you a clean render of a phone photograph; naming one flaw gets you a phone photograph.",
+          "example": "shot on an iPhone 15 Pro front camera, no flash, a slight fingerprint smear on the mirror edge catching the light, very mild HDR holding the dynamic range, not overly polished"
+        },
+        {
+          "key": "lens",
+          "label": "Lens",
+          "layer": "lens",
+          "does": "The focal length, and how much of the room behind her stays sharp.",
+          "why": "A front camera is wide, and wide is why a mirror selfie looks like a mirror selfie: the corridor stretches away behind her and her nearer hand reads slightly larger. Saying so stops the model delivering a flattering portrait-length rendering of a scene that a phone would have shown much wider.",
+          "example": "24mm-wide front camera perspective, deep enough depth of field to keep the lockers legible while the woman further down the bench falls gently out of focus"
+        },
+        {
+          "key": "light",
+          "label": "Light",
+          "layer": "lighting",
+          "does": "The building's own light, named as the fittings that make it.",
+          "why": "Warm LED cove lighting is a specific, unglamorous, entirely real way a room like this is lit - hidden strips bouncing off a ceiling, no visible source, nothing dramatic. It is worth naming exactly because it is not a photographer's setup: the whole premise is that nobody lit this, and 'soft warm light' would invite the model to light it anyway.",
+          "example": "soft warm LED cove lighting bounced off the ceiling with no visible source and no flash, gentle realistic shadows under the shelf, even daylight-neutral fill along the corridor"
+        },
+        {
+          "key": "skin",
+          "label": "Skin",
+          "layer": "texture",
+          "does": "Skin twenty minutes after exercise, described as what it is doing rather than how good it looks.",
+          "why": "'Post-workout glow' is doing real work: it names a state - warm, slightly damp, flushed unevenly - where 'glowing skin' names a wish. Pairing it with visible pores and no makeup beyond a balm is what keeps a model from resolving the glow into a sheen it airbrushes everything else to match.",
+          "example": "clean post-workout skin, faintly damp at the hairline, an uneven pink flush across the cheekbones, visible pores across the nose, real tonal variation, no makeup beyond a tinted lip balm and a brow gel"
+        },
+        {
+          "key": "grade",
+          "label": "Grade",
+          "layer": "colour",
+          "does": "The colour treatment, in the vocabulary of a phone rather than a film.",
+          "why": "Last, and deliberately restrained. Everything above has been specific, so the grade's job is only to not undo it: warm highlights, soft falloff, mild processing. A strong grade on a prompt this detailed flattens the forty decisions above into a look, which is the one way this method can still fail.",
+          "example": "warm oat-and-cream highlights, soft shadow falloff, realistic contrast, natural skin tones, clean modern editorial colour grading with nothing pushed"
         }
       ]
     }

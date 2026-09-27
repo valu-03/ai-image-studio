@@ -1111,11 +1111,12 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   all 5 sections composing - `tests/test_advisor.py` locks this down as a structural regression
   check (the app-side pipeline handles this input shape correctly), which is the most that can
   be unit-tested here since nothing can assert what a live model chooses to write.
-- **`tools/anatomy_bank.json` teaches prompt STRUCTURE and owns no vocabulary.** Six templates
-  (`beauty-macro`, `macro-insert`, `photoreal-portrait`, `video-sequence`, `video-shot`,
-  `action-commercial`), read and scored by `tools/prompt_anatomy.py` and shown on the Anatomy
-  tab. Every template declares `kind` (`image` or `video`) and the picker groups the two apart
-  rather than listing all six as one flat dropdown - `pa.image_templates()`/`video_templates()`,
+- **`tools/anatomy_bank.json` teaches prompt STRUCTURE and owns no vocabulary.** Eleven
+  templates - seven `image`, four `video` - read and scored by `tools/prompt_anatomy.py` and
+  shown on the Anatomy tab. Do not repeat a count from this file; `python tools/prompt_anatomy.py
+  --list` is the one to trust, and `tests/test_anatomy.py` pins it. Every template declares
+  `kind` (`image` or `video`) and the picker groups the two apart
+  rather than listing them as one flat dropdown - `pa.image_templates()`/`video_templates()`,
   mirroring `ui/views/style.py`'s existing photoreal/stylised combo precedent rather than
   inventing a new grouping mechanism. Four things about it are not guessable from the outside.
   (1) **A slot never keeps its own
@@ -1430,6 +1431,53 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   studio macro paired with a Hasselblad and beauty-box lighting. Both worked examples are pinned
   at a full 8/8 with **no warn terms**, which is what holds the decision to drop "8K" from both
   sources - a resolution number does nothing a named body and aperture do not do better.
+- **Five more user-supplied prompts became THREE templates, not five.** The merge rule that
+  produced that: two prompts are one template when they share a skeleton, and the strongest
+  evidence is the sources' own words. The two selfie-video prompts share twelve bands verbatim
+  and the second says outright that "the body roll replaces the separate phone-slip event" -
+  that is one control set two ways, so `selfie-monologue`'s `event` slot carries both settings
+  and its `why` records the decision (`tests/test_anatomy.py` asserts the word "replaces" is
+  still there, so nobody later adds the near-duplicate). The two influencer prompts share
+  identity -> look -> setting -> light -> camera -> lock, so they are `influencer-series`. The
+  mirror-selfie prompt stayed its own template because its METHOD differs rather than its
+  subject: it argues with the camera barely at all and buys realism by committing to about
+  forty named particulars.
+- **`selfie-monologue` is the bank's largest template (18 slots) because a video fails by being
+  too STABLE.** Almost none of its slots describe the picture; they buy back an imperfection a
+  model would otherwise smooth away. Two are worth copying anywhere else: the **camera-ownership
+  lock** (the camera IS the phone she is holding, so no phone may appear and only the free hand
+  may enter frame - without it a model puts a second phone in the visible hand and films from
+  across the room), and **`pacing`**, the one band in either source that arithmetic can check -
+  79 words across 30 seconds is ~158 wpm, and without the count a model pads with stretched
+  phrases and a silent pose at each end. `optics` (autofocus hunting, exposure breathing) keeps
+  its OWN `detect` keys rather than claiming `lens`, because **`realism_lint` owns no
+  phone-behaviour vocabulary at all** - its lens layer knows apertures and bokeh and nothing
+  about focus favouring a fingertip. Convert that slot to `layer` only if those keys are ever
+  added to the gate.
+- **`inventory-selfie` and `selfie-monologue` hold the exact OPPOSITE rule about the phone, one
+  bank apart, on purpose.** The mirror selfie puts the device in frame at a stated angle; the
+  video forbids it appearing in its own image. Both are asserted, because either one read alone
+  looks like a general rule about phones and is not.
+- **A prompt that names two lighting setups is the commonest way a good prompt goes muddy.**
+  Both influencer sources did it: one established warm sconces behind the subject plus indoor
+  cinematic light and then appended "ring lighting"; the other said "no dramatic shadows" and
+  appended "moody lighting" four clauses later. A model cannot honour both, so it averages them,
+  and averaged light is the flat sourceless glow that makes an image look generated. Resolved to
+  one setup in the worked example, with the lesson in the slot's `why` and a test on it.
+- **A judgement is not a description, and it costs a token that could have named a property.**
+  The second influencer source opened with "sexy" and described a chest; both were dropped for
+  the same reason "8K" was dropped from `product-campaign` and `candid-editorial` - they are the
+  class of token `prompt_bank.json` already lists in `warn` ("masterpiece", "award-winning"):
+  they ask the model to flatter rather than to render. What replaced them is what those words
+  were standing in for - fabric stretch, where a neckline sits under the weight of the knit.
+  Also dropped: "right light" (a typo for rim light - the clause was cut rather than guessed at)
+  and "British-style" on overcast daylight, which names nothing "bright, diffuse, no direct
+  sunlight" does not already name.
+- **The highest-value idea in any of the five prompts was `marks`: evidence, not imperfection.**
+  A faint dent on the bridge of the nose means she wore sunglasses; a tan line means a swimsuit,
+  weeks ago; a fingerprint smear on the mirror edge is about the surface between camera and
+  subject. None of them describe how she looks. This is the flyaway-hair instinct one level
+  deeper - imperfection with a CAUSE - and no generator adds any of it unasked.
 - **Run `python tests/run_all.py` before calling anything done.** 1718 checks, all green
   across 31 suites (`test_history.py`, `test_lighting_bank.py`, `test_elevenlabs.py`,
   `test_composition_bank.py`, `test_posing_bank.py`, `test_color_bank.py`,

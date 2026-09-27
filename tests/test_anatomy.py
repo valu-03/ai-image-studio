@@ -29,7 +29,7 @@ def check(name, cond, detail=""):
 bank = pa.load_bank()
 
 print("=== the bank is well-formed ===")
-check("eight templates", len(pa.templates(bank)) == 8, str(sorted(pa.templates(bank))))
+check("eleven templates", len(pa.templates(bank)) == 11, str(sorted(pa.templates(bank))))
 for name, cfg in pa.templates(bank).items():
     check("'{}' has label and summary".format(name), bool(cfg.get("label")) and bool(cfg.get("summary")))
     check("'{}' has slots".format(name), bool(cfg.get("slots")))
@@ -64,12 +64,14 @@ check("image_templates() and video_templates() partition every template, no over
       set(pa.image_templates(bank)) | set(pa.video_templates(bank)) == set(pa.templates(bank))
       and not set(pa.image_templates(bank)) & set(pa.video_templates(bank)),
       "{} / {}".format(sorted(pa.image_templates(bank)), sorted(pa.video_templates(bank))))
-check("the five still-image templates are grouped as 'image'",
+check("the seven still-image templates are grouped as 'image'",
       set(pa.image_templates(bank)) == {"beauty-macro", "macro-insert", "photoreal-portrait",
-                                        "product-campaign", "candid-editorial"},
+                                        "product-campaign", "candid-editorial",
+                                        "influencer-series", "inventory-selfie"},
       str(sorted(pa.image_templates(bank))))
-check("the three video templates are grouped as 'video'",
-      set(pa.video_templates(bank)) == {"video-sequence", "video-shot", "action-commercial"},
+check("the four video templates are grouped as 'video'",
+      set(pa.video_templates(bank)) == {"video-sequence", "video-shot", "action-commercial",
+                                        "selfie-monologue"},
       str(sorted(pa.video_templates(bank))))
 
 print()
@@ -207,6 +209,107 @@ check("...and its negatives refuse the studio look specifically",
 check("product-campaign is the only template with a product band",
       [n for n, c in pa.templates(bank).items()
        if any(sl["key"] == "product" for sl in c["slots"])] == ["product-campaign"])
+
+# The two newest image templates are INLINE, so the same obligation
+# candid-editorial carries applies to both: a filled scaffold is a real prompt
+# somebody is told to paste, so it has to clear the gate this app would apply
+# to its own output - 8/8, nothing banned, and no soft warn term either.
+for name, lines_wanted in [("influencer-series", 1), ("inventory-selfie", 1)]:
+    lines = [line for line in pa.scaffold_lines(bank, name, filled=True)
+             if not line.startswith("#") and line.strip()]
+    check("the {} scaffold is one flowing line".format(name),
+          len(lines) == lines_wanted, str(len(lines)))
+    got, _m, bad, soft, _n = rl.lint(lines[0].lower(), rl.json.load(
+        (ROOT / "tools" / "prompt_bank.json").open(encoding="utf-8")))
+    check("the {} prompt scores a full 8/8".format(name), len(got) == 8,
+          "{}/8 missing {}".format(len(got), [x[0] for x in _m]))
+    check("...{} trips no banned term".format(name), not bad, str(bad))
+    check("...{} trips no warn term either".format(name), not soft, str(soft))
+
+# influencer-series exists for ONE band the other six image templates have no
+# equivalent of: an instruction that the light, the room and the camera come
+# back identical on the next shot. If that slot is ever dropped, the template
+# is just a seventh portrait recipe.
+lock = [s for s in pa.slots(bank, "influencer-series") if s["key"] == "series-lock"]
+check("influencer-series carries a series lock", len(lock) == 1)
+check("...and it is the only template that does",
+      [n for n, c in pa.templates(bank).items()
+       if any(sl["key"] == "series-lock" for sl in c["slots"])] == ["influencer-series"])
+check("...it comes last, so it governs every slot above it",
+      pa.slots(bank, "influencer-series")[-1]["key"] == "series-lock")
+# It locks the frame and frees the performance. A lock that froze the pose too
+# would return the same photograph N times, which is not a series either, and
+# that distinction is the only thing making the slot useful rather than harmful.
+check("...and it says what it does NOT lock",
+      all(w in lock[0]["example"].lower() for w in ("identical", "free to change")),
+      lock[0]["example"][:70])
+# Both source prompts named a second, contradicting lighting setup. Resolving
+# that to one setup was an editorial call; this is what records it.
+light_why = next(s for s in pa.slots(bank, "influencer-series")
+                 if s["key"] == "light")["why"].lower()
+check("...and its light slot teaches the one-setup rule",
+      "one setup" in light_why and "contradict" in light_why)
+
+# inventory-selfie's method is named detail, not camera argument - so it must
+# NOT read as a second copy of the editorial templates' slot list.
+inv_keys = [s["key"] for s in pa.slots(bank, "inventory-selfie")]
+check("inventory-selfie keeps its own slot vocabulary",
+      {"props", "marks", "jewellery"} <= set(inv_keys), str(inv_keys))
+check("...and no other template carries an evidence band",
+      [n for n, c in pa.templates(bank).items()
+       if any(sl["key"] == "marks" for sl in c["slots"])] == ["inventory-selfie"])
+
+print()
+print("=== the selfie video template: the two locks it lives on ===")
+selfie = pa.slots(bank, "selfie-monologue")
+selfie_keys = [s["key"] for s in selfie]
+check("it is the largest template in the bank",
+      len(selfie) == max(len(c["slots"]) for c in pa.templates(bank).values()),
+      "{} slots".format(len(selfie)))
+# The band no other template in this bank needs: the device filming cannot
+# appear inside its own image. Without it a model renders a second phone in
+# the visible hand and films the whole thing from across the room.
+own = next(s for s in selfie if s["key"] == "camera-ownership")
+check("it forbids the filming device appearing in its own image",
+      "no physical smartphone visible" in own["example"].lower())
+check("...and names which single hand may enter frame",
+      "only hand allowed on screen" in own["example"].lower())
+check("...and the only-one-hand rule is repeated where it actually breaks",
+      "never two hands" in next(s for s in selfie
+                                if s["key"] == "free-hand")["example"].lower())
+
+# The two source prompts are ONE template because their own authors said the
+# body roll replaces the phone slip. That merge is a judgement call, so the
+# slot carrying both settings has to say so - otherwise the next reader adds
+# a second template and the bank grows a near-duplicate.
+event = next(s for s in selfie if s["key"] == "event")
+check("the event slot carries both settings, slip and roll",
+      "slip" in event["why"].lower() and "roll" in event["why"].lower())
+check("...and records that one replaces the other",
+      "replaces" in event["why"].lower())
+
+# The one band in either source that arithmetic can check.
+pacing = next(s for s in selfie if s["key"] == "pacing")
+check("the pacing slot names a word count AND a rate",
+      "79 words" in pacing["example"] and "words per minute" in pacing["example"])
+
+# Phone-camera behaviour - autofocus hunting, exposure breathing - is
+# vocabulary no linter in this repo owns, so this slot uses its own keys
+# rather than claiming a realism layer. If someone later adds those keys to
+# realism_lint, this is the slot to convert.
+optics = next(s for s in selfie if s["key"] == "optics")
+check("the optics slot owns its keywords rather than claiming a layer",
+      optics.get("detect") and not optics.get("layer"))
+check("...and says why no layer fits", "realism_lint" in optics["why"])
+
+# The exact inverse of the ownership lock, one bank apart: the mirror-selfie
+# template deliberately puts the phone IN the frame. Holding both is what
+# stops either being read as a general rule about phones.
+props = next(s for s in pa.slots(bank, "inventory-selfie") if s["key"] == "props")
+check("the mirror selfie puts the phone in frame on purpose",
+      "phone in the other hand" in props["example"].lower())
+check("...and says it is the opposite of the video lock",
+      "selfie-monologue" in props["why"])
 
 print()
 print("=== analyse: an empty-ish prompt fills almost nothing ===")
