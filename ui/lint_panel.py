@@ -25,6 +25,7 @@ class LintPanel(QWidget):
         self._palette = palette or T.PALETTES[T.DEFAULT_THEME]
         self._text = ""
         self._bank = None
+        self._selected = None
         self.score = 0
         self.passed = False
 
@@ -55,7 +56,10 @@ class LintPanel(QWidget):
     def set_palette_tokens(self, palette):
         self._palette = palette
         if self._bank is not None:
-            self.update_result(self._text, self._bank)
+            # Repaint with the SAME selected-terms dict the panel was last
+            # given; dropping it here would silently re-score the open gate off
+            # the rendered prose on a theme toggle.
+            self.update_result(self._text, self._bank, self._selected)
 
     def _row(self, mark, layer, detail, color_key):
         item = QTreeWidgetItem([mark, layer, detail])
@@ -64,12 +68,20 @@ class LintPanel(QWidget):
             item.setForeground(column, brush)
         self.tree.addTopLevelItem(item)
 
-    def update_result(self, text, bank):
-        """Re-run the linter and repaint. Returns True when the prompt passes."""
-        self._text, self._bank = text, bank
+    def update_result(self, text, bank, selected=None):
+        """Re-run the linter and repaint. Returns True when the prompt passes.
+
+        `selected` is build_prompt.compose()'s chosen-terms dict. Passing it
+        scores the layers from the terms the user actually selected instead of
+        from the rendered prompt - which matters in detailed mode, where
+        build_detailed() wraps those terms in fixed prose that itself says
+        "bounce light", "micro-texture", "color grading", "separation" and
+        "sensor noise", enough to score five of the eight layers on its own.
+        """
+        self._text, self._bank, self._selected = text, bank, selected
         self.tree.clear()
 
-        present, missing, banned, warns, negatives_present = rl.lint(text.lower(), bank)
+        present, missing, banned, warns, negatives_present = rl.lint(text.lower(), bank, selected)
 
         for _, cfg, hit in present:
             self._row("✓", cfg["label"], '"{}"'.format(hit), "success")

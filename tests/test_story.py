@@ -242,7 +242,85 @@ HASHES = {
     # term (both new keys were checked for overlap against every other layer's
     # key list first - zero collisions). tools/prompt_bank.json is still NOT
     # touched; the preset text was already correct, the detector was not.
-    "tools/realism_lint.py": "f0375cfe0f708b77",
+    #
+    # Bumped again to CLOSE three holes in the gate, every one of them
+    # reproduced by running lint() before it was touched - this pin exists to
+    # catch loosening, and all three changes tighten:
+    #   1. is_negated() was wired into find_terms() (banned/warn) and never
+    #      into the layer loop, so "no bokeh, avoid film grain, no texture"
+    #      scored lens, grain AND texture - 8/8 PASS on a prompt that ruled
+    #      out three layers. Layer keys are negation-checked now, via
+    #      _key_positions(), moved down from prompt_anatomy.py, which had
+    #      already solved this same bug for its own slots.
+    #   2. A plain single-word key was anchored only at its START, so "wear"
+    #      fired inside "wearing" - and build_prompt.subject_clause() writes
+    #      "wearing <wardrobe>" into nearly every prompt this app composes,
+    #      meaning the texture layer was auto-satisfied almost everywhere.
+    #      Keys are anchored at both ends with an inflection tail now, and
+    #      "wear" is dropped outright ("scratches" already earns its term).
+    #      This also stopped "hazel eyes" scoring COMPOSITION on "haze".
+    #   3. One keyword was one point, so eight unrelated words - "lifelike
+    #      iphone aperture sunlight texture high contrast close-up sharp
+    #      focus" - scored 8/8 and exited 0. core and texture now need 3 and 2
+    #      distinct keys, counts MEASURED against 300 seeds of compose() so
+    #      the gate cannot reject this app's own output.
+    # Also: lint() takes an optional `selected` so build_detailed()'s fixed
+    # prose stops scoring five of the eight layers by itself, checks_for()
+    # gained a tenth non-blocking `warn` row, and NEGATION now treats ":" as a
+    # clause end. prompt_bank.json is NOT touched - its version stays 10, so
+    # no rated history entry is invalidated.
+    #
+    # Bumped once more to make the gate SPECIES-AWARE, which is the one change
+    # here that this pin should be read most carefully against - and it
+    # switches keys rather than widening them. DETECT_BY_KIND["animal"] swaps
+    # the core and texture layers for coat vocabulary and adds ANIMAL_BANNED;
+    # the HUMAN key lists are byte-for-byte what they were, so no human prompt
+    # can score differently because of this bump. It is opt-in through a new
+    # `kind` parameter that defaults to "human", and an unknown kind falls back
+    # to human rather than to something more permissive.
+    #
+    # Why it was needed, measured before it existed: a cat prompt naming guard
+    # hairs, vibrissae and nose leather scored 7/8 and FAILED, while this app's
+    # own photoreal cat scene - "realistic skin textures of a ginger tabby
+    # cat" - passed 8/8, and deleting all four of story_bank.json's fur
+    # phrases left that 8/8 unchanged because none of them scored anything.
+    # The gate was rejecting fur and rewarding skin.
+    #
+    # Bumped a third time for the Capture section's DETECT keys
+    # (tools/capture_bank.json): chromatic aberration / halation / vignetting /
+    # veiling glare / barrel distortion / plane of focus on `lens`, film stock
+    # names + ISO + shutter + luminance noise + dust speck on `grain`, rolling
+    # off + short of clipping on `colour`, handheld framing + off level +
+    # imperfect crop on `composition`. Purely ADDITIVE, on layers that could
+    # not see this vocabulary at all - a repo-wide grep found none of these
+    # words in any bank OR in this table, so the app could neither write them
+    # nor score them. Every key was checked for collisions against the other
+    # layers' lists first (tools/capture_lint.py does it as a standing check,
+    # and tests/test_capture_bank.py asserts per phrase that the layer each
+    # option CLAIMS is the layer that actually sees it). prompt_bank.json is
+    # again untouched: capture vocabulary lives in its own bank precisely so
+    # its `version` need not move and no rated history entry is invalidated.
+    #
+    # Bumped a fourth time for the Typography section's DETECT keys
+    # (tools/typography_bank.json) - the first vocabulary in this app for text
+    # INSIDE an image, as opposed to build_social.py's copy ABOUT a post. Eleven
+    # keys added to `composition` only: visual hierarchy, dominant element,
+    # focal point, typographic block, type occupying, logo lockup, reading
+    # order, one idea per frame, clear of the subject, reads at a glance,
+    # carrying the brand. Purely ADDITIVE, and on a layer that could not see any
+    # of it - a repo-wide grep for typography/headline/logo/lockup/type
+    # hierarchy found nothing about text in an image anywhere in tools/, and
+    # "logo" had zero hits there at all. Landing them on `composition` rather
+    # than inventing a layer is deliberate: reserving an even-toned region of
+    # the frame for type IS a compositional instruction, and it is the one that
+    # decides whether the type ends up legible. Audited per phrase by
+    # tools/typography_lint.py, which also checks something capture_lint.py does
+    # not - that a phrase's keyword is not sitting inside a NEGATION. Two
+    # options were written as "no brand logo in the frame" / "no small print or
+    # legal line" and were silently invisible until that check caught them.
+    # prompt_bank.json is untouched again: its version stays 10, no rated
+    # history entry is invalidated.
+    "tools/realism_lint.py": "26a74202ba52c785",
     # Bumped for a larger style_presets list (version 2 -> 3) - ten more
     # camera/lighting/grade combinations drawn from the same PDF vocabulary
     # the image side already had, cycled by seed the same way the original
@@ -440,14 +518,36 @@ check("mixing the two looks fails", failed, detail[:50])
 print()
 print("=== BOTH LOOKS, JUDGED BY THE RIGHT GATE ===")
 photoreal = build(style="photoreal")
+# A cat is judged as an ANIMAL. Scored in the gate's default human mode this
+# pipeline was inverted: it passed "realistic skin textures of a ginger tabby
+# cat" at a full 8/8 and failed a prompt that named guard hairs and nose
+# leather. The style carries subject_kind, and that is what routes the gate.
 for scene in photoreal:
-    present, _, banned, _, _ = rl.lint(scene["prompt"].lower(), image_bank)
+    present, _, banned, _, _ = rl.lint(scene["prompt"].lower(), image_bank, kind="animal")
     if len(present) != 8 or banned:
         check("photoreal scene {} is 8/8".format(scene["n"]), False,
               "{}/8 {}".format(len(present), banned))
         break
 else:
-    check("every photoreal scene is 8/8 on the untouched realism_lint", True)
+    check("every photoreal scene is 8/8 on the animal gate", True)
+
+# The coat vocabulary is what earns the texture layer now, not a borrowed skin
+# word. Strip it and the layer must drop - the four phrases that used to sit in
+# story_bank's photoreal `extra` could all be deleted with no effect at all.
+coat_stripped = photoreal[0]["prompt"]
+for phrase in bs.pet_realism_phrases("natural")[0]:
+    coat_stripped = coat_stripped.replace(phrase, "")
+present_stripped, _, _, _, _ = rl.lint(coat_stripped.lower(), image_bank, kind="animal")
+check("without the coat vocabulary the texture layer drops",
+      "texture" not in [n for n, _, _ in present_stripped],
+      str([n for n, _, _ in present_stripped]))
+
+# ...and no scene may describe a cat as a person or as having skin.
+for word in ("same person", "hairline", "skin tone", "skin texture", "bone structure"):
+    guilty = [s["n"] for s in photoreal if word in s["prompt"].lower()]
+    check("no photoreal cat scene says '{}'".format(word), not guilty, str(guilty))
+check("scenes 2..N carry the ANIMAL identity lock",
+      all("the exact same animal" in s["prompt"].lower() for s in photoreal[1:]))
 
 stylised = build(style="stylised")
 present, _, _, _, _ = rl.lint(stylised[0]["prompt"].lower(), image_bank)

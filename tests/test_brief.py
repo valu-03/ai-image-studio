@@ -77,9 +77,16 @@ check("original kept", r["prompt"] == GOOD)
 
 # A rewrite that drops every real texture word but happens to say "streetwear"
 # used to score the texture layer on the bare "wear" substring and slip
-# through at a fake 8/8. The layer check is start-anchored now.
+# through at a fake 8/8. The layer check is anchored at both ends now, and
+# "wear" is no longer a key at all.
+#
+# The core terms below are carried at full strength on purpose: core needs
+# three distinct keys now, so a one-word "a photorealistic model" fixture would
+# fail core as well and this check could no longer tell us anything about
+# TEXTURE, which is the loophole it exists to guard.
 present = [n for n, _, _ in rl.lint(
-    "a photorealistic model in luxury streetwear and footwear, DSLR photography, "
+    "a photorealistic, ultra-realistic, lifelike model in luxury streetwear and "
+    "footwear, DSLR photography, "
     "shot on an 85mm lens with shallow depth of field, soft natural daylight, "
     "rule of thirds, earthy colour grading, subtle film grain", bank)[0]]
 check("'streetwear'/'footwear' do NOT satisfy the texture layer",

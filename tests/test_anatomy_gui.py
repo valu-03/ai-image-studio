@@ -30,7 +30,7 @@ import prompt_anatomy as pa  # noqa: E402
 
 app = QApplication.instance() or QApplication([])
 
-from ui.views.anatomy import AnatomyView  # noqa: E402
+from ui.views.anatomy import AnatomyContainer, AnatomyView  # noqa: E402
 from ui.widgets import Card  # noqa: E402
 
 fails = []
@@ -152,6 +152,62 @@ check("card count is stable after switching back",
       len(cards) == len(pa.slots(bank, "beauty-macro")), str(len(cards)))
 check("no orphaned leftovers from the other template",
       len(view.findChildren(Card)) == len(cards), str(len(view.findChildren(Card))))
+
+print()
+print("=== Anatomy splits into two sub-sections, one per kind ===")
+container = AnatomyContainer()
+container.resize(900, 700)
+container.show()
+app.processEvents()
+check("two sub-tabs", container.tabs.count() == 2, str(container.tabs.count()))
+check("named for the kind of prompt each holds",
+      [container.tabs.tabText(i) for i in range(2)] == ["Image prompts", "Video prompts"])
+
+# The whole point of the split: each half lists ONLY its own kind, so you are
+# not reading a suffix on every row to find where your half of the list starts.
+image_keys = [container.image.picker.itemData(i)
+              for i in range(container.image.picker.count())]
+video_keys = [container.video.picker.itemData(i)
+              for i in range(container.video.picker.count())]
+check("the image half lists every image template and nothing else",
+      set(image_keys) == set(pa.image_templates(bank)), str(image_keys))
+check("the video half lists every video template and nothing else",
+      set(video_keys) == set(pa.video_templates(bank)), str(video_keys))
+check("between them they cover the bank exactly",
+      set(image_keys) | set(video_keys) == set(pa.templates(bank))
+      and not set(image_keys) & set(video_keys))
+
+# A scoped picker drops the "(Image prompt)" suffix - the tab above already
+# says it, and repeating it eats the combo width setMinimumContentsLength
+# exists to protect. An unscoped one keeps it, because then nothing else says.
+check("a scoped picker carries no redundant kind suffix",
+      not any("prompt)" in container.image.picker.itemText(i)
+              for i in range(container.image.picker.count())))
+check("an unscoped picker still says which kind each row is",
+      all("prompt)" in view.picker.itemText(i) for i in range(view.picker.count())))
+
+check("each half renders its own skeleton independently",
+      container.image.current_template() in pa.image_templates(bank)
+      and container.video.current_template() in pa.video_templates(bank))
+
+container.show_video()
+app.processEvents()
+check("show_video selects the video half", container.tabs.currentWidget() is container.video)
+container.show_image()
+app.processEvents()
+check("show_image selects the image half", container.tabs.currentWidget() is container.image)
+
+print()
+print("=== the new product-campaign template reaches the image half ===")
+index = container.image.picker.findData("product-campaign")
+check("it is in the picker", index >= 0, str(index))
+container.image.picker.setCurrentIndex(index)
+app.processEvents()
+cards = [c for c in container.image.findChildren(Card)]
+check("all twelve bands render as cards",
+      len(cards) == len(pa.slots(bank, "product-campaign")), str(len(cards)))
+check("the product band is one of them",
+      any("Product" in " ".join(card_text(c)) for c in cards))
 
 print()
 if fails:

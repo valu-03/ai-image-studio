@@ -29,7 +29,7 @@ def check(name, cond, detail=""):
 bank = pa.load_bank()
 
 print("=== the bank is well-formed ===")
-check("six templates", len(pa.templates(bank)) == 6, str(sorted(pa.templates(bank))))
+check("eight templates", len(pa.templates(bank)) == 8, str(sorted(pa.templates(bank))))
 for name, cfg in pa.templates(bank).items():
     check("'{}' has label and summary".format(name), bool(cfg.get("label")) and bool(cfg.get("summary")))
     check("'{}' has slots".format(name), bool(cfg.get("slots")))
@@ -64,8 +64,9 @@ check("image_templates() and video_templates() partition every template, no over
       set(pa.image_templates(bank)) | set(pa.video_templates(bank)) == set(pa.templates(bank))
       and not set(pa.image_templates(bank)) & set(pa.video_templates(bank)),
       "{} / {}".format(sorted(pa.image_templates(bank)), sorted(pa.video_templates(bank))))
-check("the three still-image templates are grouped as 'image'",
-      set(pa.image_templates(bank)) == {"beauty-macro", "macro-insert", "photoreal-portrait"},
+check("the five still-image templates are grouped as 'image'",
+      set(pa.image_templates(bank)) == {"beauty-macro", "macro-insert", "photoreal-portrait",
+                                        "product-campaign", "candid-editorial"},
       str(sorted(pa.image_templates(bank))))
 check("the three video templates are grouped as 'video'",
       set(pa.video_templates(bank)) == {"video-sequence", "video-shot", "action-commercial"},
@@ -159,6 +160,53 @@ present, _m, banned, _w, _n = rl.lint(text.lower(), rl.json.load(
 check("the photoreal scaffold still scores 8/8", len(present) == 8,
       "{}/8".format(len(present)))
 check("the photoreal scaffold trips no banned term", not banned, str(banned))
+
+# The product-campaign template is BANDED, so its filled scaffold is twelve
+# lines rather than one - but every one of them is meant to be pasted, so the
+# whole brief has to clear the same gate a composed prompt does. An example a
+# reader is told to use should not be one the app would refuse to generate.
+pc_lines = [line for line in pa.scaffold_lines(bank, "product-campaign", filled=True)
+            if not line.startswith("#") and line.strip()]
+pc_text = " ".join(pc_lines)
+pc_present, _m, pc_banned, pc_warn, _n = rl.lint(pc_text.lower(), rl.json.load(
+    (ROOT / "tools" / "prompt_bank.json").open(encoding="utf-8")))
+check("the product-campaign brief scores a full 8/8", len(pc_present) == 8,
+      "{}/8 missing {}".format(len(pc_present), [x[0] for x in _m]))
+check("...trips no banned term", not pc_banned, str(pc_banned))
+# The source prompt asked for "8K quality"; prompt_bank lists "8k" in warn.
+# Dropping it was a deliberate editorial call and this is what holds it.
+check("...and no soft warn term either, 8K included", not pc_warn, str(pc_warn))
+check("the brief is one line per band", len(pc_lines) == 12, str(len(pc_lines)))
+
+# Its PRODUCT band is the only one of its kind in the bank, and the reason the
+# template exists - a static ad lives or dies on whether the pack is legible.
+# candid-editorial is INLINE, so its filled scaffold is one flowing prompt -
+# the same shape photoreal-portrait's is, and the same obligation follows. Its
+# source asked for "8K, ultra-high resolution"; that was dropped because
+# prompt_bank lists "8k" in warn, and the no-warn assertion is what holds it.
+ce_lines = [line for line in pa.scaffold_lines(bank, "candid-editorial", filled=True)
+            if not line.startswith("#") and line.strip()]
+check("the candid-editorial scaffold is one flowing line", len(ce_lines) == 1, str(len(ce_lines)))
+ce_present, _m2, ce_banned, ce_warn, _n2 = rl.lint(ce_lines[0].lower(), rl.json.load(
+    (ROOT / "tools" / "prompt_bank.json").open(encoding="utf-8")))
+check("the candid-editorial prompt scores a full 8/8", len(ce_present) == 8,
+      "{}/8 missing {}".format(len(ce_present), [x[0] for x in _m2]))
+check("...trips no banned term", not ce_banned, str(ce_banned))
+check("...and no warn term either, 8K included", not ce_warn, str(ce_warn))
+
+# It is NOT a second beauty-macro. That one is a studio macro; this one is
+# explicitly anti-studio, and the two slots that prove it are found light and a
+# real background - neither of which a studio has.
+ce_keys = [s["key"] for s in pa.slots(bank, "candid-editorial")]
+bm_keys = [s["key"] for s in pa.slots(bank, "beauty-macro")]
+check("candid-editorial keeps its own slot vocabulary", set(ce_keys) != set(bm_keys))
+check("...and its negatives refuse the studio look specifically",
+      any("studio" in k for s in pa.slots(bank, "candid-editorial")
+          if s["key"] == "negatives" for k in s["detect"]))
+
+check("product-campaign is the only template with a product band",
+      [n for n, c in pa.templates(bank).items()
+       if any(sl["key"] == "product" for sl in c["slots"])] == ["product-campaign"])
 
 print()
 print("=== analyse: an empty-ish prompt fills almost nothing ===")

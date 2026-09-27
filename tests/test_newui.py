@@ -205,6 +205,13 @@ before_rows = len(hist.load())
 bv.apply_upgrade()
 app.processEvents()
 check("adopted into compose", "visible skin pores on the nose" in cv.prompt_text())
+# A pending debounced rebuild used to wipe the adopted prompt the moment it
+# fired: schedule_rebuild() arms a 180ms single-shot and rebuild() opens by
+# clearing _override_prompt. Pump well past that window - if the override
+# does not survive an idle beat, it never really landed.
+pump(1.0, lambda: False)
+check("and survives the debounce window",
+      "visible skin pores on the nose" in cv.prompt_text())
 check("logged for diffing", len(hist.load()) > before_rows)
 check("override survives until an edit", cv.prompt_text().endswith("on the nose"))
 ed.mood.setText("weary")

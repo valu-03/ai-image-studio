@@ -73,10 +73,32 @@ The number in that table is the shape's *minimum*. The runtime and the clip leng
 many scenes it actually becomes — see the rule above.
 
 **Pick the look.** *Photoreal* is a real-looking cat committing completely to a human goal —
-it reuses the 8/8 realism gate exactly as the rest of the app does. *Stylised* is a 3D
+it reuses the 8/8 realism gate, **scored as an animal**. *Stylised* is a 3D
 animated short-film look, and it is judged by its own check, because every word of it
 (`3d render`, `animation`, `cartoon`) is on `realism_lint`'s banned list and correctly so.
 **One look per story.** A photoreal cut next to an animated one reads as a mistake.
+
+**Why "as an animal" is a separate mode.** `realism_lint` is a human-portrait detector, and
+pointed at a cat it was *inverted*: a prompt naming guard hairs, vibrissae and nose leather
+scored 7/8 and failed, while this app's own cat scenes — which opened with "realistic skin
+textures of a ginger tabby cat" — passed at a full 8/8. Deleting every fur phrase from the
+photoreal style changed that score by nothing, because none of them scored anything. The
+photoreal style now declares `subject_kind: animal`, which routes two things:
+
+- **The gate** swaps its `core` and `texture` layers for coat vocabulary (`guard hair`,
+  `undercoat`, `vibrissae`, `nose leather`, `tapetum`) and *bans* the human-anatomy words
+  that are simply wrong on an animal — `skin pores`, `hairline`, `skin tone`. The human key
+  lists are untouched, so no human prompt scores differently. Switching, not widening.
+- **The identity lock** becomes `LOCK_ANIMAL_COMPACT`. Every locked cat scene this app built
+  before used to say *"the exact same **person** … identical face, bone structure, eye colour,
+  **hairline**, **skin tone**"*. It now names what actually holds a cat together across shots:
+  coat pattern and markings, eye colour, ear shape and notches, tail length and kink, muzzle
+  and chin colouring.
+
+The coat vocabulary itself lives in `tools/pet_realism_bank.json` and is **keyed into**, never
+copied — the same rule `macro_insert_bank.json` follows for lighting. `tests/test_pet_realism.py`
+checks every phrase is visible to the gate, per phrase, because a bank the gate cannot see is
+decoration, which is exactly what the four phrases it replaced turned out to be.
 
 ### Working cats
 

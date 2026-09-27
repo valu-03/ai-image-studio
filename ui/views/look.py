@@ -16,13 +16,14 @@ from PyQt6.QtWidgets import QTabWidget, QVBoxLayout, QWidget
 from .. import tokens as T
 from ..widgets import MutedLabel
 from .camera_angle import CameraAngleView
+from .capture import CaptureView
 from .color_grading import ColorGradingView
 from .composition import CompositionView
 from .lighting import LightingView
 from .posing import PosingView
 from .style import StyleView
 
-_TABS = ("Lighting", "Composition", "Camera", "Color", "Posing", "Style")
+_TABS = ("Lighting", "Composition", "Camera", "Color", "Posing", "Style", "Capture")
 
 
 class LookView(QWidget):
@@ -38,8 +39,9 @@ class LookView(QWidget):
         self.color = ColorGradingView(palette)
         self.posing = PosingView(palette)
         self.style = StyleView(palette)
+        self.capture = CaptureView(palette)
         self._children = (self.lighting, self.composition, self.camera,
-                          self.color, self.posing, self.style)
+                          self.color, self.posing, self.style, self.capture)
 
         self.tabs = QTabWidget()
         for child, label in zip(self._children, _TABS):
@@ -50,8 +52,9 @@ class LookView(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(T.SPACE["sm"])
         layout.addWidget(MutedLabel(
-            "Tune how the image looks — light, framing, camera angle, colour "
-            "and pose. Each one builds a phrase you Apply into the Images prompt."))
+            "Tune how the image looks — light, framing, camera angle, colour, "
+            "pose and the camera itself. Each one builds a phrase you Apply into "
+            "the Images prompt."))
         layout.addWidget(self.tabs)
 
     # -- the setters MainWindow's redirect table calls ---------------------- #
@@ -72,6 +75,9 @@ class LookView(QWidget):
 
     def show_style(self):
         self.tabs.setCurrentIndex(5)
+
+    def show_capture(self):
+        self.tabs.setCurrentIndex(6)
 
     def refresh(self):
         current = self.tabs.currentWidget()

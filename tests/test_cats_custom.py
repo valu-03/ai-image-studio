@@ -63,7 +63,8 @@ GOPRO_PROMPT = (
 )
 
 PASSING_STYLE = (
-    "photorealistic, DSLR photography, 35mm lens, shallow depth of field, "
+    "photorealistic, ultra-realistic, lifelike details, DSLR photography, "
+    "35mm lens, shallow depth of field, "
     "natural daylight with realistic shadows, visible skin pores, natural "
     "fabric grain, film grain, sharp focus, eye-level shot, natural color "
     "grading, realistic contrast, no cgi"
@@ -88,19 +89,29 @@ def two_replies(first, second):
 # --------------------------------------------------------------------------- #
 print("--- realism_lint.checks_for ---")
 checks = rl.checks_for("nothing realistic here", bank)
-check("nine rows - eight layers plus banned terms", len(checks) == 9, str(len(checks)))
+check("ten rows - eight layers, banned terms, and the soft warn list",
+      len(checks) == 10, str(len(checks)))
 check("every row has the GateTree shape",
-      all(set(c) == {"key", "label", "passed", "fix", "ok_text"} for c in checks))
+      all({"key", "label", "passed", "fix", "ok_text"} <= set(c) for c in checks))
+check("only the warn row carries the extra state key",
+      [c["key"] for c in checks if "state" in c] == ["warn"])
 check("an empty prompt fails every layer", not any(c["passed"] for c in checks[:8]))
 
 full_pass = "Subject: a cat. Background: a park. Style & Atmosphere: " + PASSING_STYLE
 checks2 = rl.checks_for(full_pass, bank)
-check("a prompt with every layer's language passes all nine",
+check("a prompt with every layer's language passes all ten",
       all(c["passed"] for c in checks2), str([c["key"] for c in checks2 if not c["passed"]]))
 
 banned = rl.checks_for(full_pass + ", 3d render", bank)
 check("a positively-used banned term fails only the banned-terms row",
-      not banned[-1]["passed"] and all(c["passed"] for c in banned[:8]))
+      not banned[8]["passed"] and all(c["passed"] for c in banned[:8]))
+
+# The warn row never fails - it reports. A prompt stuffed with empty
+# superlatives still passes, and that is the point: these were invisible in the
+# GUI before, riding along inside a green 8/8.
+warned = rl.checks_for(full_pass + ", 8k masterpiece, award-winning", bank)
+check("warn terms are reported, not failed", warned[9]["passed"])
+check("and the row names them", warned[9]["state"] == "warn" and "8k" in warned[9]["fix"])
 
 # --------------------------------------------------------------------------- #
 print("--- assemble_prompt ---")

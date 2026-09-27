@@ -1,0 +1,69 @@
+{
+  "source": "Written for this app, to fill the visual half of a gap its own flagship format had. tools/pet_sound_bank.json's `source` records the same audit having been run once already for AUDIO - 'a repo-wide grep for meow, purr, chirp, hiss, yowl or trill returned ZERO hits anywhere in tools/'. The identical grep on the VISUAL side returned zero for guard hair, undercoat, nose leather, slit pupil, tapetum, vibrissae, dander and tortoiseshell. The cat-story pipeline could describe a cat doing anything except looking like a cat: its photoreal style contributed four decorative phrases ('visible individual fur strands', 'whisker detail', 'wet nose texture', 'natural animal anatomy') that scored NOTHING on realism_lint, while the gate itself passed the scene at a full 8/8 on the words 'realistic skin textures of a ginger tabby cat' - crediting an animal for human skin. NOT AI Video Bootcamp course material: the course teaches human avatar photography. This is feline/canine anatomy and coat structure, the same honesty convention tools/macro_insert_bank.json and tools/style_bank.json's `tilt-shift` entry already use.",
+  "version": 1,
+  "note": "Named pet_, not cat_, to match tools/pet_sound_bank.json: `cat` is the filled-in species and `dog` is a later key in the same shape, with no rename and no second bank. Phrases are comma-joinable fragments with no terminal full stop, because build_prompt.build_compact() comma-joins them and build_detailed() wraps them in 'Surfaces carry real-world micro-texture including {}'. Every phrase in `coat` and `face` is checked against realism_lint's ANIMAL texture keys by tests/test_pet_realism.py - a phrase this bank can write but the gate cannot see is the exact failure mode the four old decorative phrases had, and the test exists so it cannot happen again silently. `anatomy` and `extremities` ride spec['extra'] as free direction rather than the texture layer, but for two different reasons, and only one of them is a rule. `anatomy` is STRUCTURE - skeletal proportion, stance, how the shoulder blades move - and must never score the texture layer, or a prompt could clear the coat check without describing the coat; tests/test_pet_realism.py asserts that it does not. `extremities` is surface, and does read as texture vocabulary ('leathery paw pads', 'fur tufting between the toes') - it sits in `extra` only because it describes specific body parts rather than the coat as a whole, so it belongs to the macro level rather than to every photograph of an animal. It scoring the layer as well is harmless and correct.",
+  "levels": {
+    "natural": {
+      "label": "Natural coat",
+      "of": "an ordinary photograph of an animal",
+      "groups": ["coat", "face"]
+    },
+    "macro": {
+      "label": "Macro coat detail",
+      "of": "a close portrait where individual hairs read",
+      "groups": ["coat", "face", "extremities", "anatomy"]
+    }
+  },
+  "groups": {
+    "coat": {
+      "label": "Coat and fur",
+      "layer": "texture",
+      "phrases": [
+        "a dense double coat with visible guard hairs lying over a softer undercoat",
+        "individual fur strands catching the light along the rim of the body",
+        "fur direction following the contours of the body, breaking where the limbs fold",
+        "a slight cowlick where the coat changes direction at the chest",
+        "a few loose hairs standing out of the coat, not a sealed surface"
+      ]
+    },
+    "face": {
+      "label": "Face and eyes",
+      "layer": "texture",
+      "phrases": [
+        "long vibrissae with natural curve and asymmetry, not a symmetrical fan",
+        "moist, finely pitted nose leather",
+        "slit pupils with a faint tapetum sheen deep in the eye",
+        "fur shortening to fine down around the eye rim and muzzle"
+      ]
+    },
+    "extremities": {
+      "label": "Paws and tail",
+      "layer": "extra",
+      "phrases": [
+        "leathery paw pads with fur tufting between the toes",
+        "claws sheathed and only faintly visible",
+        "tail fur longer and denser than the body coat"
+      ]
+    },
+    "anatomy": {
+      "label": "Anatomy",
+      "layer": "extra",
+      "phrases": [
+        "correct feline skeletal proportions",
+        "a digitigrade stance carrying the weight on the toes",
+        "shoulder blades rising above the line of the spine mid-stride"
+      ]
+    }
+  },
+  "species": {
+    "cat": {
+      "label": "Cat",
+      "groups": ["coat", "face", "extremities", "anatomy"]
+    },
+    "dog": {
+      "label": "Dog",
+      "groups": ["coat", "extremities", "anatomy"],
+      "note": "`face` is excluded: slit pupils and a tapetum sheen are feline. A dog-specific face group is the natural next addition, and the shape is already here for it."
+    }
+  }
+}

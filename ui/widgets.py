@@ -408,19 +408,29 @@ class GateTree(QWidget):
         self.set_checks(self._checks)
 
     def set_checks(self, checks):
-        """checks: list of {key, label, passed, fix, ok_text}."""
+        """checks: list of {key, label, passed, fix, ok_text}, and optionally
+        "state": "warn" - a row that PASSED but still has something to say.
+
+        A warn row is amber and keeps passed=True, so all_passed() and every
+        Generate button wired to it are unaffected. It exists because
+        realism_lint's soft list ("8k", "masterpiece", "award-winning") only
+        ever printed to the CLI: in the GUI those words rode along invisibly
+        inside a green 8/8.
+        """
         self._checks = list(checks)
         self.tree.clear()
         tokens = self._tokens or {}
         ok_color = QColor(tokens.get("success", "#34D399"))
         bad_color = QColor(tokens.get("error", "#F87171"))
+        warn_color = QColor(tokens.get("warning", "#FBBF24"))
         first_fail = None
         for check in self._checks:
             passed = bool(check.get("passed"))
-            mark = "✓  " if passed else "✕  "
+            warned = passed and check.get("state") == "warn"
+            mark = ("!  " if warned else "✓  ") if passed else "✕  "
             item = QTreeWidgetItem([mark + check.get("label", check.get("key", ""))])
             item.setData(0, Qt.ItemDataRole.UserRole, check)
-            item.setForeground(0, ok_color if passed else bad_color)
+            item.setForeground(0, (warn_color if warned else ok_color) if passed else bad_color)
             self.tree.addTopLevelItem(item)
             if not passed and first_fail is None:
                 first_fail = item
@@ -437,7 +447,13 @@ class GateTree(QWidget):
             return
         check = items[0].data(0, Qt.ItemDataRole.UserRole) or {}
         if check.get("passed"):
-            self.detail.setText(check.get("ok_text") or "")
+            # A warn row passed, but its `fix` is the whole point of showing
+            # it - falling through to ok_text would say "no empty superlatives
+            # found" on the row that just found some.
+            if check.get("state") == "warn" and check.get("fix"):
+                self.detail.setText(check["fix"])
+            else:
+                self.detail.setText(check.get("ok_text") or "")
         else:
             self.detail.setText(check.get("fix") or "")
 

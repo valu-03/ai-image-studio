@@ -173,6 +173,42 @@ LOCK_DETAILED = (
 )
 LOCK_TAIL = "identity locked to the reference image"
 
+# The same mechanism for a subject that is not a person. Cats' story formats
+# reference-lock every scene after the first, and they did it through
+# LOCK_COMPACT verbatim - so every locked cat scene this app has ever built
+# opened with "the exact same PERSON as in the reference image — identical
+# face, bone structure, eye colour, HAIRLINE, SKIN TONE and distinguishing
+# marks", followed by "a ginger tabby cat". Three of those five identity
+# anchors do not exist on a cat, and none of the ones that actually hold a cat
+# together across shots - coat pattern, ear notches, tail - were named at all.
+#
+# A separate constant rather than a parameterised one, for the same reason
+# RELIGHT_LOCK_* is separate: it encodes a different set of invariants, not a
+# reworded version of the same one.
+LOCK_ANIMAL_COMPACT = (
+    "the exact same animal as in the reference image — identical coat pattern and "
+    "markings, eye colour, ear shape and notches, tail length and kink, and muzzle "
+    "and chin colouring"
+)
+LOCK_ANIMAL_DETAILED = (
+    "The subject is the exact same animal as in the reference image: identical coat "
+    "pattern and markings, eye colour, ear shape and notches, tail length and kink, "
+    "and muzzle and chin colouring. Only the scene, pose and camera change — the "
+    "animal must not be restyled, idealised or made younger."
+)
+LOCK_ANIMAL_TAIL = "identity locked to the reference animal"
+
+
+def locks_for(spec):
+    """(compact, detailed, tail) identity-lock text for this spec's subject kind.
+
+    Unknown kinds fall back to the human lock, which is what every caller that
+    has never heard of subject_kind already gets.
+    """
+    if spec.get("subject_kind") == "animal":
+        return LOCK_ANIMAL_COMPACT, LOCK_ANIMAL_DETAILED, LOCK_ANIMAL_TAIL
+    return LOCK_COMPACT, LOCK_DETAILED, LOCK_TAIL
+
 # Prepended when a prompt must reproduce an existing PHOTO's scene rather than
 # invent a new one - the inverse of the identity lock above. There, the face is
 # fixed and everything else changes; here everything is fixed and only the
@@ -224,9 +260,10 @@ def subject_clause(spec):
 
 def build_compact(bank, spec, selected, preset):
     segments = []
+    lock_compact, _lock_detailed, lock_tail = locks_for(spec)
     head = ", ".join(selected["core"]) + " of "
     if spec.get("lock_identity"):
-        head += LOCK_COMPACT + ", "
+        head += lock_compact + ", "
     if spec.get("lock_scene"):
         head += RELIGHT_LOCK_COMPACT + ", "
     segments.append(head + subject_clause(spec))
@@ -239,7 +276,7 @@ def build_compact(bank, spec, selected, preset):
         segments.append(", ".join(extra))
 
     if spec.get("lock_identity"):
-        segments.append(LOCK_TAIL)
+        segments.append(lock_tail)
     if spec.get("lock_scene"):
         segments.append(RELIGHT_LOCK_TAIL)
     segments.append(", ".join(bank["negatives"]))
@@ -247,12 +284,13 @@ def build_compact(bank, spec, selected, preset):
 
 
 def build_detailed(bank, spec, selected, preset):
+    _lock_compact, lock_detailed, _lock_tail = locks_for(spec)
     core = ", ".join(selected["core"])
     sentences = [
         "{core} of {subject}.".format(core=core[0].upper() + core[1:], subject=subject_clause(spec)),
     ]
     if spec.get("lock_identity"):
-        sentences.append(LOCK_DETAILED)
+        sentences.append(lock_detailed)
     if spec.get("lock_scene"):
         sentences.append(RELIGHT_LOCK_DETAILED)
     sentences += [

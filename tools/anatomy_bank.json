@@ -1,6 +1,6 @@
 {
-  "source": "This app's own 8-layer prompt system (tools/prompt_bank.json + tools/realism_lint.py), plus slot structure reverse-engineered from worked prompts - the `beauty-macro` and `macro-insert` templates from a community-supplied macro/beauty-portrait prompt contributed by the user (the same prompt tools/macro_insert_bank.json harvests its vocabulary from), and `photoreal-portrait` from this app's own build_prompt.py compose order. The `video-sequence` template is reverse-engineered from a community-supplied luxury-vlog video prompt contributed by the user, and `video-shot` from this app's own tools/motion_lint.py rules (which DO transcribe the bootcamp's Kling camera-movement toolkit, via tools/motion_bank.json). The `action-commercial` template is reverse-engineered from a second, different community-supplied video prompt contributed by the user (a high-action car commercial) - see its own `source_note` for how its shape differs from video-sequence. Everything else here is NOT AI Video Bootcamp course material.",
-  "version": 4,
+  "source": "This app's own 8-layer prompt system (tools/prompt_bank.json + tools/realism_lint.py), plus slot structure reverse-engineered from worked prompts - the `beauty-macro` and `macro-insert` templates from a community-supplied macro/beauty-portrait prompt contributed by the user (the same prompt tools/macro_insert_bank.json harvests its vocabulary from), and `photoreal-portrait` from this app's own build_prompt.py compose order. The `video-sequence` template is reverse-engineered from a community-supplied luxury-vlog video prompt contributed by the user, and `video-shot` from this app's own tools/motion_lint.py rules (which DO transcribe the bootcamp's Kling camera-movement toolkit, via tools/motion_bank.json). The `action-commercial` template is reverse-engineered from a second, different community-supplied video prompt contributed by the user (a high-action car commercial) - see its own `source_note` for how its shape differs from video-sequence. The `product-campaign` template is reverse-engineered from a THIRD community-supplied prompt contributed by the user (a confectionery campaign portrait), and is the image-side sibling of `action-commercial`: the same banded-brief house style, but one still frame with a person and a package in it. Everything else here is NOT AI Video Bootcamp course material.",
+  "version": 6,
   "note": "A template is an ORDERED list of slots - the skeleton of a prompt, not its words. This bank teaches structure; the vocabulary banks (prompt_bank, lighting_bank, style_bank, macro_insert_bank, ...) supply what goes in each slot. Every template also declares `kind` - 'image' or 'video' - so the Anatomy tab's picker can group them instead of listing all five as one undifferentiated list; a template produces exactly one kind of prompt, never both, so this is a fixed fact about the template rather than a per-run choice. Detection is deliberately split: a slot that maps onto one of the eight gated realism layers declares `layer` and is detected by tools/realism_lint.py's OWN DETECT table - never a second copy of those keywords, the same no-duplication rule tools/relight_bank.json follows for lighting and camera-angle phrases. Only slots the eight layers do not cover carry their own `detect` list - and a slot whose vocabulary already lives in ANOTHER linter borrows it by name instead: a `borrow` of 'motion-verbs' takes tools/motion_lint.py's own MOTION_VERBS, so the camera-movement slots cannot drift away from what that linter actually gates on. The video templates also record two facts about this app that a prompt written elsewhere will trip over: tools/sound_bank.json is effects-only and its linter rejects music vocabulary outright (hence a separate `music` slot), and tools/build_story.py distinguishes clip_seconds from edit_seconds (hence the shot-sequence slot's warning that two-second beats are edit lengths, not generation lengths). `analyse()` is keyword presence, not parsing: it answers 'which slots does this prompt appear to fill', which is honest, rather than pretending to segment free prose into semantic regions.",
 
   "templates": {
@@ -143,9 +143,9 @@
       "source_note": "This app's own build_prompt.py LAYER_ORDER and tools/prompt_bank.json.",
       "slots": [
         {"key": "core", "label": "Core realism triggers", "layer": "core",
-         "does": "Two or three words asserting photorealism up front.",
+         "does": "Three words or phrases asserting photorealism up front.",
          "why": "Cheap and load-bearing; the rest of the prompt is read in this frame.",
-         "example": "ultra-realistic, true-to-life textures"},
+         "example": "ultra-realistic, photorealistic, true-to-life textures"},
         {"key": "camera", "label": "Camera", "layer": "camera",
          "does": "Names a capture device.",
          "why": "Implies a whole optical rendering in two words.",
@@ -368,6 +368,342 @@
          "why": "Every shot in the reference prompt ends with an explicit 'Cut: <type>' line - naming the edit is as load-bearing as naming the camera move, because an unstated cut defaults to a straight cut and the model has no way to know a smash cut or a whip pan was wanted.",
          "detect": ["cut:", "smash cut", "hard cut", "whip pan", "fade to black", "jump cut"],
          "example": "Cut: smash cut."}
+      ]
+    },
+    "product-campaign": {
+      "label": "Product campaign portrait",
+      "kind": "image",
+      "summary": "A banded commercial brief for one still: a talent portrait built around a product the subject is holding, written as twelve labelled slots rather than one flowing sentence. This is the image-side sibling of the High-action commercial template listed under video prompts - the same house style of a labelled brief, but a single frame with a person and a package in it instead of a timed shot list. Use it for a confectionery, drinks or beauty campaign frame where the pack has to stay legible and the talent has to carry an expression.",
+      "source_note": "Reverse-engineered from a third community-supplied prompt contributed by the user - a confectionery campaign portrait. NOT AI Video Bootcamp course material. Two things in the source are deliberately NOT carried across, the same editorial call tools/macro_insert_bank.json already made about its own source: the '8K quality' claim, because tools/prompt_bank.json lists '8k' in `warn` as a phrase that does nothing on its own, and 'no text overlay, no watermark', which is already in prompt_bank's own `negatives` and rides every composed prompt for free. What IS carried across is the shape: a role line that sets the photographer's specialism before anything else, an identity band that states the anti-retouching constraint up front rather than in a trailing negative, and a dedicated PRODUCT band - the only template in this bank with one, and the reason it exists.",
+      "slots": [
+        {
+          "key": "role",
+          "label": "Role",
+          "does": "One line casting the photographer: their specialism, and the register the whole frame is pitched in.",
+          "why": "A brief that opens by naming the kind of photographer who would shoot it constrains everything after it - lighting, styling and grade all follow from 'confectionery campaign' in a way they never follow from a list of adjectives. It is the cheapest line in the template and it does the most work.",
+          "detect": [
+            "world-class",
+            "commercial and lifestyle",
+            "campaign",
+            "editorial fashion",
+            "specializing in",
+            "specialising in",
+            "high-energy"
+          ],
+          "example": "ROLE: A world-class commercial and lifestyle photographer specialising in bold, high-energy confectionery campaigns - vibrant colour storytelling with an editorial fashion influence."
+        },
+        {
+          "key": "identity",
+          "label": "Identity",
+          "does": "Who the subject is - age, skin tone, hair, any accessory - and the preservation constraint that keeps them human.",
+          "why": "The preservation clause belongs HERE, at the top, not in a trailing negative. A model reads a brief in order, and 'authentic skin texture, no over-smoothing' stated alongside the subject is an instruction about how to render them; the same words appended at the end read as an afterthought it can trade away against 'polished commercial finish' further down.",
+          "detect": [
+            "mid-20s",
+            "mid-twenties",
+            "natural features",
+            "curly",
+            "worn loose",
+            "headband",
+            "realistic anatomy",
+            "without over-smoothing",
+            "no over-smoothing"
+          ],
+          "example": "IDENTITY: A woman in her mid-twenties, warm medium skin tone, natural features. Long voluminous curly brown hair worn loose with real movement in it, held back from the face by a yellow-green tropical-print headband. Keep realistic anatomy, natural facial detail and authentic skin texture - no over-smoothing."
+        },
+        {
+          "key": "wardrobe",
+          "label": "Wardrobe",
+          "does": "The outfit, the skin it leaves visible, and any styling detail that carries colour - nails, jewellery, a manicure.",
+          "why": "In a campaign frame wardrobe is colour blocking, not clothing. The nails in the worked example are there because they repeat the pack's yellow into the foreground where the hand is; that is a styling decision doing compositional work, and it only happens if a slot exists to hold it.",
+          "detect": [
+            "tube top",
+            "strapless",
+            "bare shoulders",
+            "collarbone",
+            "painted nails",
+            "colour-coordinated",
+            "color-coordinated",
+            "fashion-forward"
+          ],
+          "example": "WARDROBE: A bold red strapless tube top, bare shoulders and collarbone visible in a clean editorial way. Bright yellow painted nails on both hands, picking up the pack's own colour. Playful and fashion-forward, strongly colour-coordinated."
+        },
+        {
+          "key": "composition",
+          "label": "Composition",
+          "does": "Framing, camera height, lens, aspect ratio and where the focus falls - the whole optical setup as one band.",
+          "why": "Folded into one line rather than split across this app's separate composition, camera and lens layers, for the same reason action-commercial's Render slot folds camera and grain together: that is how a real commercial brief is written. The keywords here are this slot's own, so it stays honest about being a fold rather than pretending to be a gated layer.",
+          "detect": [
+            "chest-up",
+            "medium close-up",
+            "slight angle toward camera",
+            "aspect ratio",
+            "background falloff",
+            "portrait lens"
+          ],
+          "example": "COMPOSITION: Medium close-up, chest-up framing, subject centred at a slight angle toward camera. Eye level. An 85mm portrait lens, aspect ratio 4:5, sharp on the face and the product with soft background falloff."
+        },
+        {
+          "key": "pose",
+          "label": "Pose",
+          "does": "What both hands are doing, where the eyes go, and the one expression the frame is buying.",
+          "why": "Two hands, two jobs: one holds the product up, the other carries the performance. Briefing them separately is what stops the model inventing a limp second arm - and naming where the eyes look is what separates a caught-in-the-act expression from a posed one.",
+          "detect": [
+            "finger lightly touching",
+            "shoulder height",
+            "holding product toward camera",
+            "caught in the act",
+            "mischievous",
+            "cheeky",
+            "looking upward"
+          ],
+          "example": "POSE: Right hand raised near the mouth, a finger lightly touching the lips in a playful, mischievous gesture. Left hand raised at shoulder height holding the product toward camera. Dramatically playful and cheeky, eyes looking upward and to the side - caught in the act - mouth slightly open."
+        },
+        {
+          "key": "product",
+          "label": "Product",
+          "does": "The pack itself: what it is, the exact label text, the colours that text is set in, and how prominently it sits.",
+          "why": "The only slot of its kind in this bank, and the reason this template exists. Naming the label's exact words AND their colours is the single highest-value line in a product frame - a model told 'bold yellow lettering outlined in dark brown' renders legible type far more often than one told 'the logo is visible'. This is the same instruction tools/static_ad_bank.json carries as label_accuracy_phrase; state it here in full rather than relying on a trailing phrase.",
+          "detect": [
+            "wrapper",
+            "logo",
+            "lettering",
+            "legible",
+            "facing the camera",
+            "packaging",
+            "focal point"
+          ],
+          "example": "PRODUCT: The subject is holding a chocolate bar in its iconic orange wrapper. The logo faces camera and is clearly readable - bold yellow lettering outlined in dark brown. Packaging clean, undamaged and fully legible, positioned prominently as a second focal point beside the face."
+        },
+        {
+          "key": "lighting",
+          "label": "Lighting",
+          "layer": "lighting",
+          "does": "The light on the face and on the pack, and the separation between subject and background.",
+          "why": "A campaign frame lights two subjects, not one: a face that is beautifully lit above a pack that has fallen into shadow is a failed product shot. Say 'even across face and product' explicitly.",
+          "example": "LIGHTING: Bold, vibrant studio softbox lighting with strong fill and realistic shadows, even across both the face and the product. Warm highlights giving a soft bronzed glow on the skin, high contrast between subject and background."
+        },
+        {
+          "key": "background",
+          "label": "Background",
+          "does": "The backdrop as a designed gradient - named colours, and where each one sits top to bottom.",
+          "why": "'Orange background' produces a flat wall. Naming the gradient by position - deep at the bottom, glowing at the top - produces depth behind the subject and is what makes a seamless read as a lit studio rather than as a fill layer.",
+          "detect": [
+            "seamless",
+            "backdrop",
+            "gradient",
+            "terracotta",
+            "burnt orange",
+            "amber-brown",
+            "immersive"
+          ],
+          "example": "BACKGROUND: A seamless studio backdrop in a rich burnt-orange gradient - deep amber-brown at the bottom, warm terracotta through the middle, glowing orange at the top. Smooth and immersive."
+        },
+        {
+          "key": "texture",
+          "label": "Skin and texture",
+          "layer": "texture",
+          "does": "The surface detail that has to survive the polish - skin, hair strands, fabric weave.",
+          "why": "This band and the OUTPUT band pull in opposite directions on purpose: one asks for a clean commercial finish, the other refuses to buy it with skin. Writing both down is what keeps the tension explicit instead of letting the model resolve it toward plastic.",
+          "example": "SKIN AND TEXTURE: Natural skin texture with visible pores and a subtle glow, high detail in individual hair strands and in the fabric grain of the top. A clean commercial finish that is not airbrushed."
+        },
+        {
+          "key": "colour",
+          "label": "Colour and mood",
+          "layer": "colour",
+          "does": "The palette as a named set of colours, plus the feeling the frame is pitched at.",
+          "why": "Naming the palette as a list - red, orange, yellow - rather than as a mood word is what keeps the wardrobe, the pack and the backdrop in one colour story instead of three.",
+          "example": "COLOUR AND MOOD: A bold saturated palette of red, orange and yellow with tropical accents, high contrast and realistic colour balance. Playful, energetic and youthful - editorial fashion meeting confectionery advertising."
+        },
+        {
+          "key": "output",
+          "label": "Output",
+          "does": "The capture body the whole frame is pretending to be, stated once at the end.",
+          "why": "The source asked for '8K quality' and that is dropped here on purpose - prompt_bank.json lists '8k' in warn because a resolution claim does nothing that a real camera name does not do better. Naming a body that is actually full-frame and mirrorless earns the CAMERA layer honestly, which a number never does. The three core triggers and 'sharp focus' are what carry the core and grain layers, and they are why this template's worked example clears the full 8/8 gate rather than merely describing a frame - tests/test_anatomy.py pins that, because an example a reader is meant to paste should not be one the app would refuse.",
+          "detect": [
+            "canon eos",
+            "eos r5",
+            "shot on a canon"
+          ],
+          "example": "OUTPUT: Shot on a Canon EOS R5, full-frame mirrorless - photorealistic, ultra-realistic, true-to-life textures, sharp focus throughout."
+        },
+        {
+          "key": "framing-requirement",
+          "label": "Framing",
+          "does": "The one thing that must not be cropped, stated as a requirement rather than a preference.",
+          "why": "A separate final line, not folded into COMPOSITION, because it is a different kind of instruction: composition says where to put things, this says what the frame is not allowed to lose. In a product frame the pack is what gets clipped, and it is the only element whose loss makes the image worthless.",
+          "detect": [
+            "fully visible within the frame",
+            "no cropping",
+            "must both be fully visible",
+            "key elements"
+          ],
+          "example": "FRAMING: Subject and product must both be fully visible within the frame, with clear focus on the facial expression and the product placement - no cropping of key elements."
+        }
+      ]
+    },
+    "candid-editorial": {
+      "label": "Candid editorial close-up",
+      "kind": "image",
+      "scaffold": "inline",
+      "summary": "A close portrait that has to read as a photograph someone took, not one someone made: found light, a real place behind, and an exact crop. Thirteen slots. Where the beauty macro listed above spends its slots on skin at magnification in a controlled studio, this one spends them on the two things a studio removes - the light you did not set, and the room you did not build - and then asks for the same skin detail anyway.",
+      "source_note": "Reverse-engineered from a fourth community-supplied prompt contributed by the user - a golden-hour cafe profile portrait. NOT AI Video Bootcamp course material. It is deliberately NOT a second beauty-macro: that template is a studio macro (tools/macro_insert_bank.json pairs it with a Hasselblad, a 100mm macro lens and beauty-box lighting), while this one is explicitly anti-studio - its source says 'no artificial lighting, no studio look - this must feel like a real candid photo taken on a phone or mirrorless camera in a cafe'. The two answer different questions, so they are two templates rather than one with a switch. Dropped from the source, the same editorial call macro_insert_bank.json and product-campaign already made: the '8K, ultra-high resolution' claim, because prompt_bank.json lists '8k' in `warn` - a resolution number does nothing a named body and a named aperture do not do better. Also trimmed: most of the source's fourteen-item negative list, because 'no cartoon, no CGI, no plastic skin' are already prompt_bank.json's own `negatives` and ride every composed prompt for free. What survives in the negatives slot is only what that list does NOT already cover.",
+      "slots": [
+        {
+          "key": "frame",
+          "label": "Frame",
+          "does": "The shot in one breath: how close, what angle, and the fact that it is candid rather than posed.",
+          "why": "Leading with 'candid, unposed' sets the register for every slot after it. A prompt that establishes this first gets a subject who happens to be there; one that mentions it last gets a posed portrait with the word 'candid' attached.",
+          "detect": [
+            "side-profile",
+            "three-quarter profile",
+            "3/4 profile",
+            "candid",
+            "unposed",
+            "caught mid-moment"
+          ],
+          "example": "an ultra-realistic, true-to-life, lifelike close-up three-quarter profile portrait of a young woman at an outdoor cafe, candid and unposed"
+        },
+        {
+          "key": "crop",
+          "label": "Crop",
+          "does": "Exactly where the frame cuts - which features are in, and which are deliberately out.",
+          "why": "The single most-skipped decision in a close portrait, and the one that decides whether it reads as editorial or as a passport photo. Naming both edges ('above the forehead', 'below the lips') is what stops the model defaulting to a centred head with air all round it.",
+          "detect": [
+            "fills most of the frame",
+            "cropped just above",
+            "below the lips",
+            "intimate crop"
+          ],
+          "example": "her face filling most of the frame, cropped just above the forehead and below the lips for an intimate editorial crop"
+        },
+        {
+          "key": "gaze",
+          "label": "Gaze",
+          "does": "Where the eyes go, and the thought behind them.",
+          "why": "Off-camera is what makes a candid candid. An eyeline into the lens is a portrait of someone being photographed; an eyeline past it is a portrait of someone thinking.",
+          "detect": [
+            "off-camera",
+            "looking slightly forward",
+            "thoughtful",
+            "unaware of the camera"
+          ],
+          "example": "her gaze looking slightly forward and off-camera, thoughtful and unaware of the lens"
+        },
+        {
+          "key": "skin",
+          "label": "Skin",
+          "layer": "texture",
+          "does": "The skin at close range - pores, tonal variation, the shine the light actually makes.",
+          "why": "This is the slot the whole template is protecting. At this crop, skin is most of the picture, and an oil sheen on the forehead and cheekbones is the difference between a face and a mask. State the sheen positively: it is a thing the light is doing, not a flaw to permit.",
+          "example": "visible skin pores, faint freckles and slight redness across the cheeks and nose, a realistic oil sheen on the forehead and cheekbones catching the sun, slight imperfections preserved rather than retouched away"
+        },
+        {
+          "key": "features",
+          "label": "Features",
+          "does": "Eyes, lashes, brows and lips at the level of individual hairs and real moisture.",
+          "why": "Separate from the skin slot because they fail differently: skin fails by being too smooth, features fail by being too uniform. A brow drawn as a shape reads as makeup; a brow drawn as irregular individual hairs reads as a brow.",
+          "detect": [
+            "individual eyelashes",
+            "visible hair strands",
+            "light reflecting inside the pupils",
+            "slightly parted",
+            "realistic moisture"
+          ],
+          "example": "eyes sharp and glossy with light reflecting naturally inside the pupils, fine individual eyelashes, natural brows with visible hair strands, lips soft and slightly parted with realistic moisture"
+        },
+        {
+          "key": "hair",
+          "label": "Hair",
+          "does": "How it is worn, and the strands that escape - flyaways and baby hairs along the hairline.",
+          "why": "Pulled-back hair is a trap: a model given only 'tied back' renders a helmet. The flyaways are what make it hair, and they are only ever there if you ask.",
+          "detect": [
+            "pulled back",
+            "flyaway",
+            "baby hairs",
+            "hairline",
+            "individual hair strands"
+          ],
+          "example": "hair pulled back tightly to reveal the forehead and temples, tiny flyaway and baby hairs visible along the hairline, individual strands crisp and naturally lit"
+        },
+        {
+          "key": "light",
+          "label": "Light",
+          "layer": "lighting",
+          "does": "Light that was already there - its direction, its hour, and the exact features it lands on.",
+          "why": "The anti-studio slot. Naming which side it comes from AND which planes it touches - forehead, cheekbone, nose bridge, upper lip - is what produces directional light instead of an even wash. A studio setup named here would undo the whole template.",
+          "example": "warm directional golden-hour sunlight from the left, soft natural daylight with realistic shadows, catching the forehead, cheekbone, nose bridge and upper lip with a gentle falloff on the far side of the face"
+        },
+        {
+          "key": "background",
+          "label": "Background",
+          "does": "The real place behind her, and how far out of focus it goes.",
+          "why": "A studio removes the room; this template needs it. The instruction that matters is the tension - alive but not competing - because a background described only as 'blurred' comes back empty, and one described only as 'a cafe' comes back sharp and distracting.",
+          "detect": [
+            "wicker",
+            "wooden tables",
+            "glassware",
+            "softly blurred",
+            "alive but not distracting",
+            "filtering through"
+          ],
+          "example": "a European outdoor cafe behind her - wooden tables, wicker chairs, glassware - softly blurred, alive but not distracting, warm sunlight filtering through"
+        },
+        {
+          "key": "camera",
+          "label": "Camera",
+          "layer": "lens",
+          "does": "The body, the focal length and the aperture that produce this depth of field.",
+          "why": "The bokeh in the slot above is a CONSEQUENCE of this one, not an independent wish. Naming a wide aperture on a long-ish prime is what earns the creamy background; asking for 'creamy bokeh' without it asks for an effect with no cause.",
+          "example": "shot on a full-frame mirrorless camera with an 85mm lens at f/1.8, shallow depth of field, natural bokeh, the face tack-sharp while the cafe melts behind her"
+        },
+        {
+          "key": "grade",
+          "label": "Grade",
+          "layer": "colour",
+          "does": "The colour treatment, and the processing this photograph has NOT had.",
+          "why": "The refusals carry the slot: no HDR and no oversharpening name the two artefacts that most reliably give away a generated image, and they are not in prompt_bank's standing negatives.",
+          "example": "natural color grading, warm golden highlights and realistic contrast, no HDR look and no oversharpening"
+        },
+        {
+          "key": "mood",
+          "label": "Mood",
+          "does": "The feeling in three or four words, and the world it belongs to.",
+          "why": "Last of the positive slots because it is the least specific. It arbitrates the close calls the slots above left open - how parted the lips, how soft the falloff - and it can only do that once they are all on the table.",
+          "detect": [
+            "effortless",
+            "behind-the-scenes",
+            "european",
+            "intimate",
+            "unhurried"
+          ],
+          "example": "effortless, modern and intimate - a behind-the-scenes moment from a lifestyle shoot"
+        },
+        {
+          "key": "capture",
+          "label": "Capture",
+          "does": "The one line that says this is a photograph: sharpness, and any grain the sensor actually put there.",
+          "why": "Separate from the camera slot because it is about the FILE rather than the glass. It is also where the source's '8K' claim was dropped: a resolution number is not a capture property, and prompt_bank.json lists '8k' in warn precisely because it does nothing on its own.",
+          "detect": [
+            "tack-sharp on the eye",
+            "sharp focus",
+            "photographic detail"
+          ],
+          "example": "sharp focus on the near eye, real photographic detail, subtle sensor noise in the shadows"
+        },
+        {
+          "key": "negatives",
+          "label": "Negatives",
+          "does": "Only the refusals that prompt_bank.json's own standing negatives do NOT already cover.",
+          "why": "The source listed fourteen, and most of them - no cartoon, no CGI, no plastic skin - are already appended to every prompt this app composes. Repeating them costs words and teaches nothing. What is left is specific to this shot: the studio look it must not fall back into, and the lighting cliches that would undo the found-light slot.",
+          "detect": [
+            "no studio backdrop",
+            "no glamour lighting",
+            "no artificial glow",
+            "no fake bokeh",
+            "no beauty filter"
+          ],
+          "example": "no studio backdrop, no glamour lighting, no artificial glow, no fake bokeh, no beauty filter"
+        }
       ]
     }
   }

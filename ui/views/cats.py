@@ -1213,6 +1213,16 @@ class CatsView(QWidget):
         return self.arc.currentData() or self.story_bank.get("default_arc", "classic")
 
     def style_key(self):
+        """The look this format uses, or the bank's default when it hides the row.
+
+        `trade` sets ui.rows.Look false, but this read the hidden combo anyway -
+        so picking Stylised on `story` and then switching to `trade` kept
+        generating stylised scenes with no visible control saying so, and no way
+        to get back without switching format again. Same guard cast_key()
+        already uses for the Cast row, for the same reason.
+        """
+        if not self.ui_cfg().get("rows", {}).get("Look"):
+            return self.story_bank.get("default_style", "photoreal")
         return self.style.currentData() or self.story_bank.get("default_style", "photoreal")
 
     def clip_length(self):

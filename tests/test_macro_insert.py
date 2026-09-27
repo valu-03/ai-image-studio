@@ -218,13 +218,19 @@ b = copy.deepcopy(shots)
 b[3]["spec"]["overrides"]["texture"] = ["a nice face"]
 b[3]["prompt"], _ = bp.compose(image_bank, b[3]["spec"])
 check("stripped macro vocabulary is caught", only_fails(b, "macro_vocabulary"))
-# ...and this is exactly why macro_vocabulary is a separate check from realism.
-# With every macro phrase gone, the prompt STILL scores a full 8/8: DETECT's
-# plain "texture" key is start-anchored and fires on the core layer's own
-# "true-to-life textures". realism alone would have waved this through.
+# ...and this used to be exactly why macro_vocabulary is a separate check from
+# realism: with every macro phrase gone the prompt STILL scored a full 8/8,
+# because one lone "texture" substring - fired by the CORE layer's own
+# "true-to-life textures", not by anything in the texture layer - was all the
+# texture layer needed. realism_lint's texture layer asks for two distinct keys
+# now, so that single borrowed hit is no longer enough and realism catches this
+# too. macro_vocabulary stays, and stays separate: it names the exact missing
+# phrases, where realism can only say "texture".
 present, _m, _b, _w, _n = rl.lint(b[3]["prompt"].lower(), image_bank)
-check("realism alone would NOT have caught it (the loophole macro_vocabulary closes)",
-      len(present) == 8, "{}/8".format(len(present)))
+check("realism now catches it as well, on the texture layer", len(present) == 7,
+      "{}/8".format(len(present)))
+check("and it is the texture layer that dropped",
+      "texture" not in [n for n, _, _ in present])
 
 print()
 print("=== the shared bank is untouched ===")

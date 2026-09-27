@@ -264,9 +264,15 @@ def check_prompts(bank, scenes, image_bank=None):
     cfg = bs.styles(bank).get(style, {})
 
     if cfg.get("gate") == "realism_lint" or not cfg:
+        # A cat is judged as an animal. Pointed at one in its default human
+        # mode, this gate was inverted: it passed "realistic skin textures of a
+        # ginger tabby cat" at 8/8 and FAILED a prompt that named guard hairs,
+        # vibrissae and nose leather. `subject_kind` comes from the style.
+        kind = cfg.get("subject_kind", "human")
         weak = []
         for scene in scenes:
-            present, _, banned, _, _ = rl.lint((scene.get("prompt") or "").lower(), image_bank)
+            present, _, banned, _, _ = rl.lint(
+                (scene.get("prompt") or "").lower(), image_bank, kind=kind)
             if len(present) < 8 or banned:
                 weak.append("scene {} {}/8{}".format(
                     scene.get("n"), len(present),

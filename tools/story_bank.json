@@ -54,13 +54,18 @@
       "label": "Photoreal",
       "note": "A real-looking cat doing an absurdly human thing. The comedy comes from the gap between how real it looks and what it is doing.",
       "gate": "realism_lint",
-      "overrides": {},
-      "extra": [
-        "visible individual fur strands",
-        "whisker detail",
-        "wet nose texture",
-        "natural animal anatomy"
-      ]
+      "subject_kind": "animal",
+      "pet_realism": "natural",
+      "pet_realism_note": "A key into tools/pet_realism_bank.json, resolved by build_story.apply_style() - not a copy of its phrases, the same rule tools/macro_insert_bank.json follows when it keys `lighting_setup` into lighting_bank.json, so the two cannot drift apart. It replaces four phrases that used to sit in `extra` here - 'visible individual fur strands', 'whisker detail', 'wet nose texture', 'natural animal anatomy' - which read like fur vocabulary but scored NOTHING: deleting all four left the scene's 8/8 completely unchanged, because realism_lint was scoring the prompt's own 'realistic skin textures' instead. `subject_kind` is what routes both that gate and build_prompt's identity lock to their animal versions.",
+      "overrides": {
+        "core": [
+          "ultra-realistic",
+          "photorealistic",
+          "true-to-life textures"
+        ]
+      },
+      "core_note": "All three are already tools/prompt_bank.json core terms - nothing new is invented here. They are PINNED rather than picked because the bank's core layer can otherwise draw 'realistic skin textures', which is how every photoreal cat scene this app has built opened by asking for skin on a cat. prompt_bank.json cannot simply drop that term: it is correct for the human pipeline, the file is hash-pinned by tests/test_story.py, and bumping its `version` would invalidate every rated history entry. An override is build_prompt's own top-precedence slot and costs neither.",
+      "extra": []
     },
     "stylised": {
       "label": "Stylised / 3D animated",

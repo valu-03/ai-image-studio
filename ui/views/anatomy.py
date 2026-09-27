@@ -53,9 +53,13 @@ class AnatomyView(QWidget):
 
     status = pyqtSignal(str)
 
-    def __init__(self, parent=None):
+    def __init__(self, kind=None, parent=None):
         super().__init__(parent)
         self.bank = pa.load_bank()
+        # `kind` narrows this instance to one sort of prompt. None keeps the
+        # old behaviour - every template in one picker - which is what a caller
+        # that has never heard of the split gets.
+        self.kind = kind
 
         self.picker = QComboBox()
         # A QComboBox sizes itself to its longest item by default, and the
@@ -66,15 +70,20 @@ class AnatomyView(QWidget):
         # asks for and let the popup be as wide as it likes.
         self.picker.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
         self.picker.setMinimumContentsLength(24)
-        # Grouped, not just listed - a template produces exactly one kind of
-        # prompt, and the suffix says which before you have picked it. Mirrors
-        # StyleView's own photoreal/stylised combo (ui/views/style.py), the
-        # existing precedent for separating one flat picker into two kinds.
+        # A template produces exactly one kind of prompt. When this instance is
+        # scoped to one kind the tab above already says which, so the label
+        # carries no "(Image prompt)" suffix - repeating it only eats the combo
+        # width that the setMinimumContentsLength above exists to protect.
+        # Unscoped, the suffix comes back, because then it is the only thing
+        # saying which kind a row is.
         for kind, tag in (("image", "Image prompt"), ("video", "Video prompt")):
+            if self.kind and kind != self.kind:
+                continue
             group = pa.image_templates(self.bank) if kind == "image" else pa.video_templates(self.bank)
             for key, cfg in group.items():
-                self.picker.addItem("{}  ({} slots, {})".format(
-                    cfg["label"], len(cfg["slots"]), tag), key)
+                suffix = "" if self.kind else ", " + tag
+                self.picker.addItem("{}  ({} slots{})".format(
+                    cfg["label"], len(cfg["slots"]), suffix), key)
         self.picker.currentIndexChanged.connect(self._on_template_changed)
 
         self.summary = MutedLabel("")
@@ -266,3 +275,49 @@ class AnatomyView(QWidget):
 
     def refresh(self):
         return None
+
+
+class AnatomyContainer(QWidget):
+    """Anatomy, split by the kind of prompt a template produces.
+
+    An image prompt and a video prompt are not two flavours of one thing - they
+    have different slots, different sources and barely any vocabulary in
+    common. `photoreal-portrait` is eight realism layers; `action-commercial`
+    is render/look/grade plus timed shots. Putting them in one picker made you
+    read a suffix on every row to find out which half of the list you were in.
+
+    A thin container, like ImagesView and LookView: it builds the children,
+    exposes them (`self.image`, `self.video`), and anything that needs one
+    reaches in. One AnatomyView class, two instances - the only difference is
+    the `kind` each was given.
+    """
+
+    status = pyqtSignal(str)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.image = AnatomyView(kind="image")
+        self.video = AnatomyView(kind="video")
+        self._children = (self.image, self.video)
+        for child in self._children:
+            child.status.connect(self.status)
+
+        self.tabs = QTabWidget()
+        self.tabs.addTab(self.image, "Image prompts")
+        self.tabs.addTab(self.video, "Video prompts")
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(T.SPACE["sm"])
+        layout.addWidget(self.tabs)
+
+    def show_image(self):
+        self.tabs.setCurrentIndex(0)
+
+    def show_video(self):
+        self.tabs.setCurrentIndex(1)
+
+    def refresh(self):
+        current = self.tabs.currentWidget()
+        if hasattr(current, "refresh"):
+            current.refresh()

@@ -1261,6 +1261,175 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   lounge hip-hop beat" sails past the music gate and fails `check_event` instead, for naming an
   object rather than a sound. `tests/test_sound.py` now pins the list both ways so the next
   wrong claim fails a test instead of shipping.
+- **The gate itself needs a test, and for a long time it was the only thing without one.**
+  Every satellite bank had a suite auditing its phrases against `realism_lint`
+  (`test_lighting_bank.py`, `test_color_bank.py`, `test_macro_insert.py`, …); the linter they
+  all pointed at had none. Three holes sat in it as a result, each reproduced by running the
+  tool, not by reading it: (1) `is_negated()` was wired into `find_terms()` for banned terms
+  and **never into the layer loop**, so `"no bokeh, avoid film grain, no texture"` scored lens,
+  grain AND texture - a full 8/8 PASS on a prompt that ruled out three layers; (2) a plain
+  single-word key was anchored only at its START, so `"wear"` fired inside `"wearing"` - and
+  `build_prompt.subject_clause()` writes `"wearing <wardrobe>"` into nearly every prompt this
+  app composes, so the texture layer was auto-satisfied almost everywhere (the same bug also
+  scored `"hazel eyes"` on the COMPOSITION layer, via `haze`); (3) one keyword was one point,
+  so eight unrelated words - `"lifelike iphone aperture sunlight texture high contrast
+  close-up sharp focus"` - scored 8/8 and exited 0. `tests/test_realism_lint.py` now exists and
+  states each hole as the string that used to pass.
+- **A density threshold is MEASURED against the builder, never copied from `pick`.**
+  `prompt_bank.json` says `pick: 3` for texture, so 3 looked like the obvious requirement - but
+  over 300 seeds of `compose()` the bank's own texture picks yielded only 2 distinct DETECT
+  keys 16% of the time, because three chosen terms are not three distinct keys when two of them
+  both match `"texture"`. A threshold of 3 would have failed this app's own output one time in
+  six. `REQUIRED_HITS` is `{"core": 3, "texture": 2}`, and the comment records the measurement.
+- **`realism_lint` is a HUMAN-PORTRAIT detector, and pointed at an animal it was inverted.**
+  Not merely blind - it rewarded the wrong answer. Measured: a cat prompt naming guard hairs,
+  vibrissae, nose leather and slit pupils scored **7/8 and FAILED**, while the app's own
+  photoreal cat scene - `"realistic skin textures of a ginger tabby cat"` - **passed 8/8**, and
+  deleting all four of `story_bank.json`'s fur phrases left that 8/8 *completely unchanged*
+  because none of them scored anything. Meanwhile every locked scene opened with
+  `LOCK_COMPACT` verbatim: *"the exact same **person** … identical face, bone structure, eye
+  colour, **hairline**, **skin tone**"*, applied to a cat.
+- **Species-awareness SWITCHES the gate's keys; it must never widen them.** `DETECT_BY_KIND`
+  replaces the `core` and `texture` key lists for `kind="animal"` and adds `ANIMAL_BANNED`
+  (`skin pores`, `hairline`, `skin tone`, `bone structure`). The human lists are byte-for-byte
+  unchanged, which is the only reason bumping this file's hash pin is honest - adding fur words
+  to the human list would have loosened the shared gate for every human prompt in the app,
+  which is exactly what that pin exists to catch. An unknown `kind` falls back to human, never
+  to something more permissive.
+- **Vocabulary a bank can write but the gate cannot see is decoration.** That is what those
+  four fur phrases were. `tools/pet_realism_bank.json` is keyed into by `story_bank.json`, never
+  copied (the rule `macro_insert_bank.json` already set for `lighting_setup`), and
+  `tests/test_pet_realism.py` checks **every** texture phrase is detectable by the animal keys,
+  per phrase, audited rather than assumed.
+- **A cat's core terms are PINNED, not picked.** `prompt_bank.json`'s core layer can draw
+  `"realistic skin textures"`, which is how every photoreal cat scene opened by asking for skin
+  on a cat. That term cannot simply be deleted: it is correct for humans, the file is
+  hash-pinned, and bumping its `version` would invalidate every rated history entry through
+  `history.usable()`. `story_bank.json`'s photoreal style sets `overrides.core` to three terms
+  that were **already in `prompt_bank.json`** - an override is `build_prompt`'s own
+  top-precedence slot and costs neither the hash nor the ratings.
+- **A hidden form row must not stay live.** `cats.py`'s `style_key()` read the Look combo even
+  on `trade`, which sets `ui.rows.Look: false` - so picking Stylised on `story` and switching to
+  `trade` kept generating stylised scenes with no visible control and no way back.
+  `cast_key()` already had exactly this guard; `style_key()` just never got one. When a format
+  hides a row, read the bank's default, not the widget.
+- **Nothing in this app described the CAPTURE, only the subject.** A repo-wide grep across
+  every bank returned zero hits for chromatic aberration, halation, veiling glare, vignetting,
+  barrel distortion, ISO, shutter speed, white balance, motion blur and sensor dust, and no
+  film stock was nameable anywhere - so output topped out at "well-lit studio photograph",
+  plausible and with nothing in it saying a physical camera was involved. Two stranger finds
+  from the same grep: `subsurface scattering` and `sensor noise` were already `DETECT` keys, so
+  the gate could SEE them while the builder could never WRITE them, and
+  `upscale_image.UPSCALE_PROMPT` carries `hair strands`/`fabric fibers` that are composable
+  nowhere. `tools/capture_bank.json` + `build_capture.py` + `capture_lint.py` + the Look →
+  **Capture** tab close that gap.
+- **Capture EXTENDS the other overrides; every other `set_*_override` replaces.** Lighting
+  setups are alternatives - one instead of another. A capture artefact is a property of the
+  camera that is true at the same time as everything else: "shot on Portra 400" does not cancel
+  "soft window light". `SpecEditor.set_capture_overrides()` therefore merges per layer, and it
+  takes a **dict**, not a phrase, because one selection strengthens `grain`, `lens`, `lighting`
+  and `colour` at once - the only toolkit in Look that does.
+- **A group's declared layer is a default, not a claim about every option in it.** In
+  `capture_bank.json`, white balance sits in the `exposure` group but is colour temperature and
+  belongs to `lighting`; highlight rolloff is tonal and belongs to `colour`. Both override the
+  group. `tests/test_capture_bank.py` checks the EFFECTIVE layer per option, so a wrong default
+  cannot hide behind a right-looking group.
+- **Scope a bank rule to where it means something; do not delete it to reach 100%.**
+  `capture_lint.py` requires a hedging word ("faint", "subtle", "slight") because a shouted
+  artefact is a filter rather than a photograph, and it initially failed three options. Two
+  were real (`around` was simply missing from the hedge list). The third was the rule being
+  wrong: a crop is imperfect or it is not, and on-camera flash falls off hard by definition, so
+  the `evidence` group carries `"restraint": false` and says why. Weakening the check to pass
+  would have been the other thing.
+- **A film stock can already contain an artefact.** CineStill 800T's whole signature IS its
+  halation, so selecting both produced the phrase twice - which reads as emphasis to the model
+  and makes the artefact louder than any real one. Declared as `"implies": ["halation"]` in the
+  bank and de-duplicated in `compose_capture()`, not string-matched, so the two cannot drift.
+- **Capture is APPENDED to `LookView`'s tabs, never inserted.** `SUBVIEW_ROUTES` maps each
+  toolkit to a fixed tab index, so inserting a tab would silently re-point `go_to("style")` and
+  every `SpecEditor.open_*_requested` signal at the wrong one. `tests/test_style_gui.py` pins
+  the full tab list in order.
+- **A "flaky GUI test" was a real race, and the race is in the APP.** `test_newui.py`'s
+  `"adopted into compose"` failed on roughly half of full-suite runs and never standalone,
+  which reads like a timing artefact of the test harness. It was not.
+  `ComposeView.schedule_rebuild()` arms a **180ms single-shot QTimer**, and `rebuild()` opens
+  by clearing `_override_prompt` - so a pending debounced rebuild fired straight after
+  `use_upgraded_prompt()` and silently reverted the rewrite the user had just adopted. The same
+  timing exists for a person who edits a field and clicks Apply within 180ms; there the prompt
+  simply changes back with no message. Fixed by stopping the timer in `use_upgraded_prompt()`,
+  and `test_newui.py` now pumps a full second past the debounce window instead of checking
+  once. **The lesson is the method**: the flake was proven pre-existing by stashing every other
+  change and reproducing it on the untouched tree, rather than assumed either way - and
+  "intermittent under load" turned out to mean "there is a real race here", not "ignore it".
+- **Anatomy splits by the KIND of prompt, not by template count.** An image prompt and a video
+  prompt have different slots, different sources and barely any vocabulary in common -
+  `photoreal-portrait` is eight realism layers, `action-commercial` is render/look/grade plus a
+  timed shot list. One picker holding both made you read a `(Video prompt)` suffix on every row
+  to find where your half of the list started. `AnatomyView` now takes a `kind`, and
+  `AnatomyContainer` holds two instances of it. **One class, two instances** - the container
+  pattern `ImagesView`/`LookView` set. A scoped picker drops the suffix; an unscoped one keeps
+  it, because then nothing else says which kind a row is.
+- **A summary that names another template by its KEY can break an ordering test.**
+  `tests/test_anatomy.py` asserts every video template's key appears after the "VIDEO PROMPTS"
+  heading in `--list`, using `stdout.index()`. `product-campaign`'s summary said "the IMAGE
+  sibling of `action-commercial`", which put that key in the IMAGE section and failed the check.
+  The test was right. Cross-reference another template by its human LABEL in a `summary` (which
+  `--list` prints) and keep the key for `source_note` (which it does not).
+- **`product-campaign` is the first template with a PRODUCT band, and that is why it exists.**
+  Reverse-engineered from a user-supplied confectionery campaign prompt. The band names the
+  exact label text AND the colours it is set in - "bold yellow lettering outlined in dark brown"
+  renders legible type far more often than "the logo is visible", which is the same instruction
+  `static_ad_bank.json` carries as `label_accuracy_phrase`. Two things were deliberately NOT
+  carried across from the source, the same editorial call `macro_insert_bank.json` made about
+  its own: the "8K quality" claim (`8k` is on prompt_bank's `warn` list - a resolution number
+  does nothing a real camera name does not do better, so the OUTPUT band names a Canon EOS R5,
+  full-frame mirrorless, which earns the camera layer honestly), and "no text overlay, no
+  watermark", which is already in prompt_bank's own `negatives` and rides every prompt for free.
+- **A banded template's worked example is meant to be PASTED, so it must clear the gate.**
+  `photoreal-portrait`'s inline scaffold was already pinned at 8/8; `product-campaign`'s twelve
+  bands are now pinned the same way, plus a no-warn-terms check that is what actually holds the
+  8K decision above. An example a reader is told to use should not be one the app would refuse.
+- **`tools/typography_bank.json` is the first vocabulary in this app for text INSIDE an image.**
+  Before it, a repo-wide grep for typography, headline, logo, copy placement, kerning, lockup or
+  type hierarchy found nothing about text in a picture anywhere - the only hits were
+  `ui/tokens.py`'s own Qt stylesheet fonts and one photographic phrase, `negative-space`, and
+  `logo` had **zero hits in `tools/`**. An app that builds advertising could describe the
+  photograph and not one word of the advert laid over it. Its phrases land on `composition`,
+  and that is not a fudge: reserving an even-toned region of the frame for type IS a
+  compositional instruction, and it is the one that decides whether the type ends up legible.
+- **A typography phrase written as a REFUSAL is invisible, and nothing else would catch it.**
+  `lockup.none` and `restraint.no-legal` were first written "no brand logo in the frame" and
+  "no small print or legal line in the frame" - sensible English, and completely unscored,
+  because `is_negated()` correctly refuses to credit a key a prompt is ruling out. Both now lead
+  with the positive half ("the packaging itself carrying the brand mark", "the type limited to
+  what reads at a glance"). `typography_lint.py` carries a `positive` check that
+  `capture_lint.py` does not, precisely because typography constantly wants to say what is
+  ABSENT - no logo, no small print, no competing subhead - and that is the shape that goes
+  silently undetected.
+- **A flat hierarchy is caught as a CONTRADICTION, not a heuristic.** "Everything is loud so
+  nothing leads" cannot be read out of words, but the two decisions that express it can be
+  checked against each other: asking for the type to lead while giving it a tenth of the frame
+  is a flat hierarchy stated twice. `compose_typography()` **raises** on that (there is no
+  composed answer when two values cannot both be true of one layout) and only **warns** on a
+  named conflict like a logo sitting where the headline goes (still a coherent layout, you have
+  just been told). Same split `build_color.py` uses refusing `--mood` with `--film-look`.
+- **Word caps are a rendering fact, not style advice.** Image models garble long strings, so
+  each `ratio` carries `max_words` and `--headline` is checked against it. Anything longer
+  belongs in a typesetting tool over a clean plate.
+- **Bank order, not argument order - WITHIN a group as well as between them.**
+  `build_typography.compose_typography()` shipped briefly with the stackable `restraint` group
+  emitting in the order it was typed, so the same two options reversed composed to two
+  different strings. `build_capture.py` already had the guard and it was not carried over.
+  Caught by a "selection order does not change the output" assertion, which every builder with
+  a repeatable group should have.
+- **`product-campaign` and `candid-editorial` are the two user-supplied image templates, and
+  they are deliberately not each other.** One is a banded commercial brief with a PRODUCT band
+  (the only one in the bank); the other is an inline candid portrait whose whole point is the
+  two things a studio removes - found light and a real room - and whose `negatives` slot refuses
+  the studio look by name. `candid-editorial` is NOT a second `beauty-macro`: that one is a
+  studio macro paired with a Hasselblad and beauty-box lighting. Both worked examples are pinned
+  at a full 8/8 with **no warn terms**, which is what holds the decision to drop "8K" from both
+  sources - a resolution number does nothing a named body and aperture do not do better.
 - **Run `python tests/run_all.py` before calling anything done.** 1718 checks, all green
   across 31 suites (`test_history.py`, `test_lighting_bank.py`, `test_elevenlabs.py`,
   `test_composition_bank.py`, `test_posing_bank.py`, `test_color_bank.py`,

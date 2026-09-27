@@ -95,6 +95,7 @@ SUBVIEW_ROUTES = {
     "color": ("look", 3),
     "posing": ("look", 4),
     "style": ("look", 5),
+    "capture": ("look", 6),
     "advisor": ("assistant", 0),
     "brief": ("assistant", 1),
     "history": ("activity", 0),
@@ -279,6 +280,7 @@ class MainWindow(QMainWindow):
         self.color_view = self.look_view.color
         self.posing_view = self.look_view.posing
         self.style_view = self.look_view.style
+        self.capture_view = self.look_view.capture
 
         self.assistant_view = AssistantView(self.bank)
         self.advisor_view = self.assistant_view.advisor
@@ -385,6 +387,7 @@ class MainWindow(QMainWindow):
         self.color_view.color_applied.connect(self.apply_color_phrase)
         self.camera_angle_view.angle_applied.connect(self.apply_camera_angle_phrase)
         self.style_view.style_applied.connect(self.apply_style_phrase)
+        self.capture_view.capture_applied.connect(self.apply_capture_overrides)
         self.influencer_studio_view.persona_applied.connect(self.apply_persona_phrase)
         # The sound sheet is generated from whatever story is open in Cats, so
         # the two stay in step without either knowing about the other.
@@ -544,6 +547,7 @@ class MainWindow(QMainWindow):
         self.color_view.set_palette_tokens(self.theme.palette)
         self.camera_angle_view.set_palette_tokens(self.theme.palette)
         self.style_view.set_palette_tokens(self.theme.palette)
+        self.capture_view.set_palette_tokens(self.theme.palette)
         self.influencer_studio_view.set_palette_tokens(self.theme.palette)
         self.insights_view.set_palette_tokens(self.theme.palette)
         self.statusBar().showMessage("{} theme".format(name.capitalize()))
@@ -588,6 +592,19 @@ class MainWindow(QMainWindow):
         """Style's "Apply to Compose" - identical shape to
         apply_lighting_phrase(), landing in the (widget-less) style override."""
         self.compose_view.editor.set_style_override(phrase)
+        self.go_to("images")
+        self.images_view.show_compose()
+
+    def apply_capture_overrides(self, overrides):
+        """Capture's "Apply to Compose".
+
+        A dict rather than a phrase, unlike every other apply_*_phrase here:
+        one Capture selection can strengthen `grain`, `lens`, `lighting` and
+        `colour` at once, so there is no single field to put it in. SpecEditor
+        merges it with whatever the form already says instead of replacing -
+        "shot on Portra 400" does not cancel "soft window light".
+        """
+        self.compose_view.editor.set_capture_overrides(overrides)
         self.go_to("images")
         self.images_view.show_compose()
 

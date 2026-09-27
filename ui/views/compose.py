@@ -897,7 +897,7 @@ class ComposeView(QWidget):
             self.bank, spec, detailed=bool(self.form_mode.currentData()), weights=weights
         )
         self.prompt_view.setPlainText(prompt)
-        self.passing = self.lint.update_result(prompt, self.bank)
+        self.passing = self.lint.update_result(prompt, self.bank, layers)
         self.last_layers = layers
         self.status.emit(
             "{} words · {}".format(len(prompt.split()), "PASS" if self.passing else "needs work")
@@ -941,7 +941,20 @@ class ComposeView(QWidget):
 
         It sticks until the next edit, at which point the spec wins again — the
         spec, not a one-off rewrite, is what the app can reproduce.
+
+        The pending rebuild has to be CANCELLED first. `schedule_rebuild()`
+        arms a 180ms single-shot timer, and `rebuild()` opens by clearing
+        `_override_prompt` — so an edit made less than 180ms before Apply left
+        a timer that fired straight afterwards and silently reverted the
+        rewrite the user had just adopted. It showed up as
+        `tests/test_newui.py` failing "adopted into compose" on roughly half of
+        full-suite runs and never standalone, which reads like flakiness but is
+        a real race: the same timing exists when a person edits a field and
+        clicks Apply quickly, and there the prompt just quietly changes back.
+        Confirmed pre-existing by stashing every other change in this branch
+        and reproducing it on the untouched tree.
         """
+        self._timer.stop()
         self._override_prompt = prompt
         self.prompt_view.setPlainText(prompt)
         self.passing = self.lint.update_result(prompt, self.bank)

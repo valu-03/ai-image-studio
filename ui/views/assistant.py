@@ -5,8 +5,11 @@ one-shot helpers (BriefView: idea -> spec, upgrade a prompt, critique an
 image, reverse-engineer a photo). Both feed the Images Compose form; grouping
 them means the rail says "ask for help" once, not twice.
 
-Anatomy (AnatomyView) is the odd one out and deliberately so: it teaches the
-SHAPE of a prompt rather than writing one. It feeds Compose nothing, calls no
+Anatomy (AnatomyContainer) is the odd one out and deliberately so: it teaches
+the SHAPE of a prompt rather than writing one. It splits again inside itself,
+into Image prompts and Video prompts, because those two have different slots,
+different sources and barely any vocabulary in common - one picker holding
+both made you read a suffix on every row to find your half of the list. It feeds Compose nothing, calls no
 model, and answers a different question - "what are the parts of a prompt like
 this, and which ones have I actually filled in?" It belongs here because it is
 help with a prompt; it stays read-only because the moment it offered to fix a
@@ -22,7 +25,7 @@ from PyQt6.QtWidgets import QTabWidget, QVBoxLayout, QWidget
 from .. import tokens as T
 from ..widgets import MutedLabel
 from .advisor import AdvisorView
-from .anatomy import AnatomyView
+from .anatomy import AnatomyContainer
 from .brief_view import BriefView
 
 
@@ -33,7 +36,7 @@ class AssistantView(QWidget):
         super().__init__(parent)
         self.advisor = AdvisorView(bank)
         self.brief = BriefView(bank)
-        self.anatomy = AnatomyView()
+        self.anatomy = AnatomyContainer()
         self.advisor.status.connect(self.status)
         self.brief.status.connect(self.status)
         self.anatomy.status.connect(self.status)

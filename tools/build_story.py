@@ -375,22 +375,69 @@ def shot_for(bank, beat_key, occurrence, fmt=None):
 # --------------------------------------------------------------------------- #
 # Scenes
 # --------------------------------------------------------------------------- #
-def apply_style(bank, style, spec):
+PET_REALISM_PATH = Path(__file__).resolve().parent / "pet_realism_bank.json"
+
+
+def load_pet_realism():
+    """tools/pet_realism_bank.json, or {} if it is missing.
+
+    Missing is tolerated rather than fatal: this bank adds coat vocabulary, and
+    a checkout without it should still build a story, just a less detailed one.
+    """
+    try:
+        with PET_REALISM_PATH.open(encoding="utf-8") as fh:
+            return json.load(fh)
+    except (OSError, ValueError):
+        return {}
+
+
+def pet_realism_phrases(level, pet_bank=None):
+    """(texture_phrases, extra_phrases) for a pet_realism level key.
+
+    The bank's groups declare which layer they belong to: `texture` groups
+    describe the SURFACE and are what the animal texture layer scores, while
+    `extra` groups (anatomy, extremities) describe structure and ride the free
+    trailing segment. Scoring structure as texture would let a prompt clear the
+    coat layer without ever describing the coat.
+    """
+    pet_bank = load_pet_realism() if pet_bank is None else pet_bank
+    cfg = (pet_bank.get("levels") or {}).get(level or "", {})
+    groups = pet_bank.get("groups") or {}
+    texture, extra = [], []
+    for name in cfg.get("groups", []):
+        group = groups.get(name)
+        if not group:
+            continue
+        (texture if group.get("layer") == "texture" else extra).extend(group.get("phrases", []))
+    return texture, extra
+
+
+def apply_style(bank, style, spec, pet_bank=None):
     """Fold a style's vocabulary into the spec as overrides.
 
     Overrides are build_prompt's own top-precedence slot, so this needs no new
     mechanism - and an override the caller set themselves still wins, because
     the style only fills what is not already there.
+
+    A style may also carry `subject_kind` and a `pet_realism` level key. The
+    level is resolved out of tools/pet_realism_bank.json rather than copied
+    into this bank, so the coat vocabulary and the gate that scores it cannot
+    drift apart.
     """
     cfg = styles(bank).get(style or "", {})
     if not cfg:
         return spec
     merged = dict(spec)
+    if cfg.get("subject_kind") and not merged.get("subject_kind"):
+        merged["subject_kind"] = cfg["subject_kind"]
     overrides = dict(cfg.get("overrides", {}))
+    pet_texture, pet_extra = pet_realism_phrases(cfg.get("pet_realism"), pet_bank)
+    if pet_texture:
+        overrides.setdefault("texture", pet_texture)
     overrides.update(merged.get("overrides", {}))
     if overrides:
         merged["overrides"] = overrides
-    extra = list(cfg.get("extra", [])) + list(merged.get("extra", []))
+    extra = list(cfg.get("extra", [])) + pet_extra + list(merged.get("extra", []))
     if extra:
         merged["extra"] = extra
     return merged
@@ -579,7 +626,8 @@ def compose_story(bank, base_spec, arc=None, seconds=None, clip_length=None,
         # a verdict: a stylised scene is meant to score low there, and history
         # excludes anything that did not pass, so the vocabulary weights stay
         # photoreal. story_lint is what decides whether the story is shippable.
-        present, _, banned, _, _ = rl.lint(prompt.lower(), image_bank)
+        present, _, banned, _, _ = rl.lint(
+            prompt.lower(), image_bank, kind=spec.get("subject_kind", "human"))
         score = len(present)
         passed = score == 8 and not banned
 

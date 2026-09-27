@@ -55,9 +55,16 @@ check("go_to('style') routes into Look",
       (win.go_to("style") or True)
       and win.stack.currentWidget() is win.look_view
       and win.look_view.tabs.currentWidget() is sv)
-check("Look has six toolkit tabs",
+check("Look has seven toolkit tabs",
       [win.look_view.tabs.tabText(i) for i in range(win.look_view.tabs.count())]
-      == ["Lighting", "Composition", "Camera", "Color", "Posing", "Style"])
+      == ["Lighting", "Composition", "Camera", "Color", "Posing", "Style", "Capture"])
+# Capture is appended, never inserted: SUBVIEW_ROUTES maps each toolkit to a
+# fixed tab index, so inserting one would silently re-point go_to("style") and
+# every SpecEditor.open_*_requested signal at the wrong tab.
+check("go_to('capture') routes into Look's last tab",
+      (win.go_to("capture") or True)
+      and win.stack.currentWidget() is win.look_view
+      and win.look_view.tabs.currentWidget() is win.capture_view)
 
 print()
 print("=== a photoreal style: applies, prompt updated, still 8/8 ===")

@@ -19,6 +19,12 @@ ROOT = HERE.parent
 
 # CLI suites first: they are fast and their failures explain GUI failures.
 ORDER = [
+    # The gate every other suite leans on, first: if realism_lint is wrong,
+    # a dozen downstream failures are only echoes of this one.
+    "test_realism_lint.py",
+    "test_pet_realism.py",
+    "test_capture_bank.py",
+    "test_typography_bank.py",
     "test_motion.py",
     "test_brief.py",
     "test_advisor.py",

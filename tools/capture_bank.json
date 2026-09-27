@@ -1,0 +1,139 @@
+{
+  "source": "Ordinary photographic practice - film stocks, lens artefacts and the exposure triad - NOT AI Video Bootcamp course material. The same honesty convention tools/style_bank.json's `tilt-shift` entry and tools/macro_insert_bank.json already use. What prompted it: a repo-wide grep across every bank returned ZERO hits for chromatic aberration, halation, veiling glare, vignetting, barrel distortion, anamorphic, ISO, shutter speed, white balance, motion blur, moire and sensor dust, and no film stock is named anywhere except as prose inside anatomy_bank.json's worked example. `subsurface scattering` and `sensor noise` were stranger still: both are DETECT keys in realism_lint.py, so the gate could see them, but neither appears in any bank, so the builder could never write them. tools/upscale_image.py's UPSCALE_PROMPT constant likewise carries 'hair strands' and 'fabric fibers' that exist nowhere else as composable terms.",
+  "version": 1,
+  "note": "This bank exists because prompt_bank.json could not take it. That file is hash-pinned by tests/test_story.py, and bumping its `version` makes history.usable() discard every rated entry recorded against the old vocabulary - so adding terms there would silently reset the UCB1 weights behind 'prefer learned terms'. A separate bank with its own builder costs neither, and is the pattern lighting_bank/color_bank/style_bank already set.\n\nEvery phrase declares the realism_lint layer it is meant to strengthen, and tests/test_capture_bank.py checks per phrase that the layer can actually SEE it - a phrase the gate cannot detect is decoration, which is precisely what story_bank.json's four fur phrases turned out to be. Phrases are comma-joinable fragments with no terminal full stop, because build_compact() comma-joins them.\n\nRESTRAINT IS THE POINT. Real capture artefacts are faint; a prompt that shouts them produces a filter, not a photograph. Every phrase here is hedged - 'faint', 'subtle', 'slight', 'just short of' - and tests/test_capture_bank.py asserts that no phrase trips prompt_bank.json's banned or warn lists, which matters more here than for most banks because film-stock language sits close to the 'cinematic masterpiece' vocabulary that list exists to catch.",
+  "groups": {
+    "film_stock": {
+      "label": "Film stock",
+      "layer": "grain",
+      "note": "Naming a stock implies a whole grain structure, colour response and highlight rolloff in two words. Pick at most one - two stocks in one prompt contradict each other.",
+      "exclusive": true,
+      "options": {
+        "portra-400": {
+          "label": "Kodak Portra 400",
+          "phrase": "shot on Kodak Portra 400, fine natural film grain, warm restrained skin tones",
+          "note": "The portrait default. Forgiving skin, muted warmth, grain you feel rather than see."
+        },
+        "cinestill-800t": {
+          "label": "CineStill 800T",
+          "implies": ["halation"],
+          "phrase": "shot on CineStill 800T, tungsten-balanced, subtle halation blooming around the brightest highlights",
+          "note": "Night and neon. The red halation around light sources is the stock's signature - it is a real artefact, not a filter."
+        },
+        "tri-x-400": {
+          "label": "Kodak Tri-X 400",
+          "phrase": "shot on Kodak Tri-X 400 black and white film, pronounced grain structure, deep blacks",
+          "note": "Documentary monochrome. Grain is part of the image, not a flaw in it."
+        },
+        "fuji-pro-400h": {
+          "label": "Fujifilm Pro 400H",
+          "phrase": "shot on Fujifilm Pro 400H, soft pastel colour response, gentle highlight rolloff",
+          "note": "Cooler and softer than Portra. Pale greens and airy highlights."
+        },
+        "ektachrome": {
+          "label": "Kodak Ektachrome",
+          "phrase": "shot on Kodak Ektachrome slide film, saturated but natural colour, crisp fine grain",
+          "note": "Slide film: cleaner and more contrasty than negative stock, with less exposure latitude."
+        }
+      }
+    },
+    "optics": {
+      "label": "Lens artefacts",
+      "layer": "lens",
+      "note": "Real glass is imperfect, and those imperfections are most of what separates a photograph from a clean render. Stack freely - these are independent properties of a lens.",
+      "exclusive": false,
+      "options": {
+        "chromatic-aberration": {
+          "label": "Chromatic aberration",
+          "phrase": "faint chromatic aberration fringing the high-contrast edges toward the frame corners",
+          "note": "Colour fringing where the lens fails to focus every wavelength on the same plane. Strongest at the edges, absent in the centre."
+        },
+        "halation": {
+          "label": "Halation",
+          "phrase": "subtle halation blooming softly around the brightest highlights",
+          "note": "Light scattering back through the film base. Glow around a bright source, not a glow filter over everything."
+        },
+        "vignetting": {
+          "label": "Natural vignetting",
+          "phrase": "natural lens vignetting darkening gently toward the corners",
+          "note": "Wide apertures lose light at the edges. Gentle and circular, never a hard oval."
+        },
+        "veiling-glare": {
+          "label": "Veiling glare",
+          "phrase": "slight veiling glare from a light source just outside the frame, lifting the shadows",
+          "note": "Flare that raises black level rather than drawing streaks. The tell of an un-coated or dirty front element."
+        },
+        "barrel-distortion": {
+          "label": "Barrel distortion",
+          "phrase": "mild barrel distortion bowing the straight lines near the frame edge",
+          "note": "Wide lenses bend straight lines outward. Only worth naming when the frame contains straight lines."
+        },
+        "focus-falloff": {
+          "label": "Focus falloff",
+          "phrase": "the plane of focus landing marginally behind the eyes, falling off naturally toward the ears",
+          "note": "A real photographer misses the eye plane slightly. Perfect focus on both eyes is a rendering tell."
+        }
+      }
+    },
+    "exposure": {
+      "label": "Exposure and sensor",
+      "layer": "grain",
+      "note": "The exposure triad and white balance. Naming them implies a physical camera making a physical decision. Two options here override the group layer: white balance is colour temperature and belongs to lighting, and highlight rolloff is tonal and belongs to colour. A group layer is a default, not a claim about every option in it - and tests/test_capture_bank.py checks the EFFECTIVE layer per option, so a wrong default cannot hide.",
+      "exclusive": false,
+      "options": {
+        "iso-400-shadow-noise": {
+          "label": "ISO 400, noise in the shadows",
+          "phrase": "shot at ISO 400 with fine luminance noise in the shadows only, clean in the highlights",
+          "note": "Noise lives in the shadows on a real sensor. Uniform noise across the frame is a filter."
+        },
+        "shutter-1-125": {
+          "label": "1/125s shutter",
+          "phrase": "a 1/125 second shutter speed, handheld, the motion just arrested",
+          "note": "A shutter speed that implies a hand holding the camera rather than a tripod and infinite time."
+        },
+        "tungsten-wb": {
+          "label": "Tungsten white balance",
+          "layer": "lighting",
+          "phrase": "tungsten white balance around 3200K, the daylight through the window going cool by contrast",
+          "note": "Mixed colour temperature is what a real interior looks like. A single neutral balance is the rendered look."
+        },
+        "highlight-rolloff": {
+          "label": "Highlights just short of clipping",
+          "layer": "colour",
+          "phrase": "the brightest highlights rolling off just short of clipping, blacks retaining detail",
+          "note": "Real capture sits close to its limits without hitting them."
+        },
+        "sensor-dust": {
+          "label": "Sensor dust",
+          "phrase": "one or two faint dust specks on the sensor, visible against the bright areas",
+          "note": "Nobody's sensor is clean. Use sparingly - one or two, not a field of them."
+        }
+      }
+    },
+    "evidence": {
+      "label": "Evidence of a hand",
+      "layer": "composition",
+      "note": "Proof that a person was holding the camera. These read as composition rather than optics, and are the fastest way out of the tripod-perfect look.",
+      "restraint": false,
+      "restraint_note": "capture_lint.py requires a hedging word ('faint', 'subtle', 'slight') everywhere else, because an optical artefact has an INTENSITY and a shouted one is a filter. These do not: a crop is imperfect or it is not, and on-camera flash falls off hard by definition - that hardness is the whole look. Scoping the rule is honest; weakening it to 19/19 would have been the other thing.",
+      "exclusive": false,
+      "options": {
+        "handheld-frame": {
+          "label": "Handheld framing",
+          "phrase": "handheld framing, the horizon a degree or two off level",
+          "note": "Perfectly level is a tell. A degree or two is a person."
+        },
+        "flash-falloff": {
+          "label": "On-camera flash falloff",
+          "phrase": "on-camera flash falling off hard into a darker background, a candid unposed frame",
+          "note": "Direct flash: bright subject, background dropping away. The party-photo and paparazzi look."
+        },
+        "imperfect-crop": {
+          "label": "Imperfect crop",
+          "phrase": "an imperfect crop clipping an elbow at the frame edge, unstaged composition",
+          "note": "A real frame is taken in a moment, not composed at leisure. Something gets clipped."
+        }
+      }
+    }
+  }
+}

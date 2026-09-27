@@ -17,6 +17,7 @@ it's worth a workflow file.
 | [image-to-video.md](image-to-video.md) | Still → Kling clip: pick the camera move first, then make the still support it (Phase 3) | **ready** |
 | [relight-and-angles.md](relight-and-angles.md) | Change the lighting and/or camera angle of an existing photo, scene locked (Phase 3, two lessons synthesised) | **ready** |
 | [macro-insert.md](macro-insert.md) | One face → a full-face beauty macro, then extreme-macro inserts of its eye, mouth and cheek, each scoped to preserve its own feature (community-supplied, not course material) | **ready** |
+| [capture-realism.md](capture-realism.md) | Film stock, lens artefacts, exposure and evidence of a hand on the camera — the properties of the CAMERA rather than the subject (photographic practice, not course material) | **ready** |
 | [ugc-ad.md](ugc-ad.md) | Product + audience → five timed beats, one presenter across all of them, gated by the ad checklist (Phase 6) | **ready** |
 | [cat-story-video.md](cat-story-video.md) | Idea → a story in scenes, each a still and a camera move, plus a CapCut edit sheet | **ready** |
 | [pet-sitcom-series.md](pet-sitcom-series.md) | A repeating two-character pet comedy: a locked cast, one standing set, a five-stage curve in 15s, the app's first content gate, and the post to publish it with (user-supplied series brief, not course material) | **ready** |

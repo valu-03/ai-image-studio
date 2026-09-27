@@ -121,21 +121,13 @@ def slot_keywords(slot):
     return keys + (list(BORROW[slot["borrow"]]()) if slot.get("borrow") else [])
 
 
-def _key_positions(key, text):
-    """Every index where `key` matches, using realism_lint's own matching rule:
-    a plain single word is start-anchored (\bkey), anything with a space,
-    hyphen or digit is a plain substring. Mirrors realism_lint._layer_key_present,
-    which answers the same question but cannot say WHERE."""
-    key = key.lower()
-    if rl._PLAIN_WORD.fullmatch(key):
-        return [m.start() for m in re.finditer(r"\b" + re.escape(key), text)]
-    out, start = [], 0
-    while True:
-        index = text.find(key, start)
-        if index < 0:
-            return out
-        out.append(index)
-        start = index + 1
+# This module used to carry its own copy of the position-finding rule, written
+# to mirror realism_lint._layer_key_present from the outside. realism_lint now
+# needs the position itself - a layer key sitting inside a negation must not
+# score - so the rule moved down into the module that owns it and this is the
+# same function, imported rather than mirrored. Two copies of one matching rule
+# is exactly how the two linters would drift apart.
+_key_positions = rl._key_positions
 
 
 def slot_present(slot, text):

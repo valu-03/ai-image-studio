@@ -98,6 +98,7 @@ class SpecEditor(QWidget):
         self.bank = bank
         self._reference = ""
         self._style_override = ""
+        self._capture_overrides = {}
 
         self._build_fields()
         self._build_tabs()
@@ -525,6 +526,21 @@ class SpecEditor(QWidget):
         self._style_override = (phrase or "").strip()
         self.changed.emit()
 
+    def set_capture_overrides(self, overrides):
+        """Load a composed selection from the Capture section.
+
+        A dict, not a phrase: one selection there can strengthen `grain`,
+        `lens`, `lighting` and `colour` at once, so there is no single layer to
+        put it in. Replaces the previous capture selection wholesale (Apply
+        means "this is my capture now"), but MERGES with the other overrides
+        rather than replacing them - see spec().
+
+        Passing {} or None clears it, which is what "no film stock, nothing
+        ticked" composes to.
+        """
+        self._capture_overrides = dict(overrides or {})
+        self.changed.emit()
+
     # -- data in / out ------------------------------------------------------ #
     def filled_keys(self):
         """The spec keys the user has actually put something into.
@@ -599,6 +615,15 @@ class SpecEditor(QWidget):
         # mechanism `_reference` uses.
         if getattr(self, "_style_override", ""):
             overrides["style"] = [self._style_override]
+        # Capture (film stock, lens artefacts, exposure) EXTENDS rather than
+        # replaces, unlike every other set_*_override here. Those are
+        # alternatives - one lighting setup instead of another - but a capture
+        # artefact is a property of the camera that sits on top of whatever the
+        # scene already says. "Shot on Portra 400" does not replace "soft
+        # window light", it is true at the same time. It also lands on several
+        # layers at once, which is why it arrives as a dict.
+        for layer, phrases in (getattr(self, "_capture_overrides", None) or {}).items():
+            overrides[layer] = list(overrides.get(layer, [])) + list(phrases)
         if overrides:
             spec["overrides"] = overrides
 
