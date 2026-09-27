@@ -39,6 +39,15 @@ jobs:
           # silently stop installing anything the day ubuntu-latest moves on.
           sudo apt-get install -y --no-install-recommends libasound2t64 \
             || sudo apt-get install -y --no-install-recommends libasound2
+          # ...and an actual FONT. libfontconfig1 above is the library, not any
+          # typeface: a bare runner has no font files at all, so Qt falls back
+          # to metrics no real desktop produces, and every height this app
+          # computes from a font moves with it. tests/test_layout.py caught
+          # exactly that - a 12px badge whose line box measured 14px instead of
+          # 12px stopped fitting the minimum window, and the Compose column
+          # shared the shortfall out across its children. A desktop app tested
+          # with zero fonts is being tested in a configuration no user has.
+          sudo apt-get install -y --no-install-recommends fonts-dejavu-core
 
       - name: Install Python dependencies
         run: pip install -r requirements.txt
@@ -49,9 +58,21 @@ jobs:
       # guessing game into a diff.
       - name: Record the environment
         run: |
-          python -VV
-          python -c "import PyQt6.QtCore as c; print('Qt', c.QT_VERSION_STR, 'PyQt', c.PYQT_VERSION_STR)"
-          fc-list | wc -l | xargs echo "fonts installed:"
+          py=$(python -VV | tr '\n' ' ')
+          qt=$(python -c "import PyQt6.QtCore as c; print('Qt', c.QT_VERSION_STR, 'PyQt', c.PYQT_VERSION_STR)")
+          fonts=$(fc-list | wc -l)
+          metrics=$(QT_QPA_PLATFORM=offscreen python -c "
+          from PyQt6.QtWidgets import QApplication
+          from PyQt6.QtGui import QFont, QFontInfo, QFontMetrics
+          a = QApplication([])
+          f = QFont(a.font()); f.setPixelSize(12)
+          print('12px line box:', QFontMetrics(f).height(), 'px, resolved to', repr(QFontInfo(f).family()))
+          ")
+          echo "$py"; echo "$qt"; echo "fonts installed: $fonts"; echo "$metrics"
+          # Emitted as an annotation too, not just to the log: the log needs
+          # authentication to read and annotations do not, so this is the only
+          # way the numbers are visible to anyone without repo credentials.
+          echo "::notice title=Runner environment::${py}%0A${qt}%0Afonts installed: ${fonts}%0A${metrics}"
 
       # The job log needs authentication to read; check ANNOTATIONS do not.
       # So on failure the failing lines are re-emitted as an ::error::
