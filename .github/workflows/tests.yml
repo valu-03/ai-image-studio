@@ -43,5 +43,32 @@ jobs:
       - name: Install Python dependencies
         run: pip install -r requirements.txt
 
+      # Record what actually ran. A suite that passes on a developer's machine
+      # and fails here differs by exactly two things - the OS and these
+      # versions - so printing them turns "green locally, red on CI" from a
+      # guessing game into a diff.
+      - name: Record the environment
+        run: |
+          python -VV
+          python -c "import PyQt6.QtCore as c; print('Qt', c.QT_VERSION_STR, 'PyQt', c.PYQT_VERSION_STR)"
+          fc-list | wc -l | xargs echo "fonts installed:"
+
+      # The job log needs authentication to read; check ANNOTATIONS do not.
+      # So on failure the failing lines are re-emitted as an ::error::
+      # annotation, which makes them visible on the commit and in the API
+      # without anyone downloading a log. %0A is how a workflow command
+      # encodes a newline inside a single annotation.
       - name: Run every suite
-        run: python tests/run_all.py
+        run: |
+          set +e
+          python tests/run_all.py > suite.log 2>&1
+          status=$?
+          cat suite.log
+          if [ "$status" -ne 0 ]; then
+            detail=$(grep -E "^ +FAIL|[1-9][0-9]* failed|\(exit [0-9]+\)|Traceback|^[A-Za-z_.]*Error" suite.log \
+              | head -40 \
+              | sed 's/%/%25/g' \
+              | sed ':a;N;$!ba;s/\n/%0A/g')
+            echo "::error title=Failing suites::${detail}"
+          fi
+          exit $status
