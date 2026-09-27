@@ -1478,6 +1478,27 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   weeks ago; a fingerprint smear on the mirror edge is about the surface between camera and
   subject. None of them describe how she looks. This is the flyaway-hair instinct one level
   deeper - imperfection with a CAUSE - and no generator adds any of it unasked.
+- **Run the layout suite with `QT_QPA_FONTDIR` set, or it cannot see layout bugs.**
+  Qt's offscreen platform on this machine exposes ZERO font families
+  (`QFontDatabase.families()` returns `[]`), so a 12px font reports a 12px line
+  box. Any real typeface reports 14 - DejaVu Sans on the CI runner does, Segoe
+  UI reports 16 - and every height this app derives from a font is therefore
+  measured 2-4px short PER LINE locally. `tests/test_layout.py` passed a
+  genuinely broken Compose card for exactly this reason: `setMinimumSize(1100,
+  700)` claims that size is supported, and with real metrics `MainWindow`'s own
+  minimum was 774px, so Qt shared the 74px shortfall out and the Realism-check
+  badge (size policy Fixed) came out 16px of the 22px it asked for. Reproduce
+  with `QT_QPA_FONTDIR="C:/Windows/Fonts" python tests/run_all.py`; CI installs
+  `fonts-dejavu-core` for the same reason. A green local layout run means less
+  than it looks like.
+- **CI failures are readable without credentials, by design.** GitHub serves
+  Actions job logs only to authenticated callers, so a red run showed nothing
+  but "Process completed with exit code 1". `.github/workflows/tests.yml` now
+  re-emits the suite's own failing lines as an `::error::` annotation and the
+  runner's Python/Qt/font numbers as a `::notice::` - both readable anonymously
+  via `/repos/{owner}/{repo}/commits/{sha}/check-runs` and its
+  `output.annotations_url`. If a run goes red, read the annotation; do not
+  guess from a local run, which uses different fonts.
 - **Run `python tests/run_all.py` before calling anything done.** 1718 checks, all green
   across 31 suites (`test_history.py`, `test_lighting_bank.py`, `test_elevenlabs.py`,
   `test_composition_bank.py`, `test_posing_bank.py`, `test_color_bank.py`,

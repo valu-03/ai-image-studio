@@ -257,9 +257,32 @@ class ComposeView(QWidget):
         coherence_tab_layout.addWidget(self.coherence_button)
         coherence_tab_layout.addWidget(self.coherence_lint, 1)
 
+        # Each tab scrolls - the same fix, for the same reason, as
+        # below_preview_scroll further down this file. Tabbing these two (see
+        # the note above) bought enough room at the time, but only just: this
+        # card's natural height still exceeds what it is given at the 700px
+        # minimum window, and a QVBoxLayout with nothing left to shrink crushes
+        # its children rather than clipping cleanly.
+        #
+        # It stayed invisible because Qt's offscreen platform with no fonts
+        # installed reports a 12px line box for a 12px font, while any real
+        # typeface reports 14 - so every height this app derives from a font
+        # was measured 2px short per line locally, and the card appeared to
+        # fit. CI with fonts-dejavu-core installed is what finally measured it
+        # honestly: the gate badge, whose policy is Fixed, came out 16px tall
+        # of the 22px it asked for. Scrolling makes the overflow visible as a
+        # scrollbar instead of silently squashing the panel.
+        def _scrolled(inner):
+            area = QScrollArea()
+            area.setWidgetResizable(True)
+            area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+            area.setFrameShape(QScrollArea.Shape.NoFrame)
+            area.setWidget(inner)
+            return area
+
         secondary_checks = QTabWidget()
-        secondary_checks.addTab(vision_tab, "Vision QC")
-        secondary_checks.addTab(coherence_tab, "Coherence")
+        secondary_checks.addTab(_scrolled(vision_tab), "Vision QC")
+        secondary_checks.addTab(_scrolled(coherence_tab), "Coherence")
         lint_card.body.addWidget(secondary_checks, 1)
 
         middle = QSplitter(Qt.Orientation.Vertical)
