@@ -25,6 +25,7 @@ ORDER = [
     "test_pet_realism.py",
     "test_capture_bank.py",
     "test_typography_bank.py",
+    "test_creative_ad.py",
     "test_motion.py",
     "test_brief.py",
     "test_advisor.py",
