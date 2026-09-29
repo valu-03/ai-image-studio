@@ -93,6 +93,11 @@ class VariantsView(QWidget):
         self.cancel_button.setProperty("class", "danger")
         self.cancel_button.clicked.connect(self.cancel_requested)
         self.cancel_button.setEnabled(False)
+        # The caveat every Cancel in the app now carries: stopping is not a
+        # refund. This button predates the others and said nothing at all.
+        self.cancel_button.setToolTip(
+            "Stop waiting on these images. Requests already sent to the provider "
+            "still finish and may still be billed; anything queued is dropped.")
 
         self.adopt_button = QPushButton("Pick as winner")
         self.adopt_button.clicked.connect(self.adopt_selected)

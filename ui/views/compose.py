@@ -50,6 +50,7 @@ class ComposeView(QWidget):
     generate_requested = pyqtSignal(str, list)
     upscale_requested = pyqtSignal(str)
     refine_requested = pyqtSignal()
+    cancel_requested = pyqtSignal()
     status = pyqtSignal(str)
 
     def __init__(self, bank, parent=None):
@@ -306,6 +307,24 @@ class ComposeView(QWidget):
         self.generate_button.setIconSize(assets.ICON_SIZE)
         self.generate_button.clicked.connect(self.request_generate)
 
+        # Every long-running path needs a way out. workers.WorkerPool.
+        # cancel() already did the work; only Variants exposed it, so a slow
+        # run left the form disabled with no recourse but to wait.
+        self.cancel_button = QPushButton("Cancel")
+        self.cancel_button.setProperty("class", "danger")
+        self.cancel_button.clicked.connect(self.cancel_requested)
+        self.cancel_button.setEnabled(False)
+        self.cancel_button.setToolTip(
+            "Stop waiting on this generation. Requests already sent to the provider "
+            "still finish and may still be billed; anything queued is dropped.")
+
+        # What the next press will cost, before it is pressed. Settings says
+        # of its resolution picker that "the estimate on the generate button
+        # follows this" - it does now. `cost_provider` is set by MainWindow,
+        # the only object that knows the provider, model and account options.
+        self.cost_provider = None
+        self.cost_note = MutedLabel("")
+
         self.rating = StarRating()
         self.rating.setEnabled(False)
         self.rating.rated.connect(self.apply_rating)
@@ -447,6 +466,8 @@ class ComposeView(QWidget):
         buttons_col.addWidget(self.copy_mj_button, 0, 1)
         buttons_col.addWidget(self.refine_button, 1, 0)
         buttons_col.addWidget(self.generate_button, 1, 1)
+        buttons_col.addWidget(self.cancel_button, 2, 0)
+        buttons_col.addWidget(self.cost_note, 2, 1)
         buttons_col.setColumnStretch(0, 1)
         buttons_col.setColumnStretch(1, 1)
 
@@ -1042,9 +1063,17 @@ class ComposeView(QWidget):
             return
         self.refine_requested.emit()
 
+    def update_cost_note(self):
+        """What one more generation would cost. Silent with no provider set,
+        so the view still stands up alone in a test."""
+        if self.cost_provider is None:
+            return
+        self.cost_note.setText(self.cost_provider())
+
     def set_busy(self, busy):
         self.generate_button.setEnabled(not busy)
         self.generate_button.setText("Generating…" if busy else "Generate")
+        self.cancel_button.setEnabled(busy)
         self.upscale_button.setEnabled(not busy and bool(self.current_image))
         self.refine_button.setEnabled(not busy and bool(self.current_image))
 

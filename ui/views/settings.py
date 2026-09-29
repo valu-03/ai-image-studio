@@ -86,8 +86,10 @@ class SettingsView(QWidget):
         for option in gi.KIE_RESOLUTIONS:
             self.resolution.addItem(option, option)
         self.resolution.setToolTip(
-            "What Nano Banana Pro renders at. Larger costs more per image; the "
-            "estimate on the generate button follows this.")
+            "What Nano Banana Pro renders at. The note under Compose's Generate "
+            "button and the confirmation before it spends anything both price "
+            "this setting - though pricing.json currently rates 1K, 2K and 4K "
+            "the same, because nobody has measured whether they differ.")
         self.resolution.currentIndexChanged.connect(self.image_options_changed)
 
         self.output_format = QComboBox()

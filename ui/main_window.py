@@ -85,6 +85,11 @@ NAV_ITEMS = [
     ("settings", "Settings"),
 ]
 
+def _plural(noun, count):
+    """`noun` agreeing with `count`. Every unit here is a regular plural."""
+    return noun if count == 1 else noun + "s"
+
+
 # Keys that are no longer their own rail entry but still work as go_to()
 # targets: (container nav key, tab index inside that container). Every
 # existing go_to("lighting") / go_to("history") / SpecEditor.open_*_requested
@@ -381,6 +386,9 @@ class MainWindow(QMainWindow):
         self.compose_view.generate_requested.connect(self.generate_single)
         self.compose_view.upscale_requested.connect(self.upscale_image)
         self.compose_view.refine_requested.connect(self.refine_image)
+        # The estimate Settings promises next to Generate.
+        self.compose_view.cost_provider = self.image_cost_note
+        self.compose_view.update_cost_note()
         self.variants_view.spec_provider = self.current_spec_bundle
         self.variants_view.generate_requested.connect(self.generate_batch)
         # Relight and Macro insert derive their shots from the open character
@@ -419,7 +427,13 @@ class MainWindow(QMainWindow):
         self.cats_view.custom_generate_requested.connect(self.generate_custom_still)
         self.cats_view.video_requested.connect(
             lambda jobs, options: self.generate_videos(jobs, options, self.cats_view))
-        self.variants_view.cancel_requested.connect(self.cancel_generation)
+        # Cancel, everywhere a generation can be started. The pool has always
+        # been able to stop; only Variants offered the button.
+        for view in (self.compose_view, self.variants_view, self.ads_view,
+                     self.cats_view, self.cats_view.custom_tab):
+            view.cancel_requested.connect(self.cancel_generation)
+        # Videos drives its own pool, so it stops through that one.
+        self.videos_view.cancel_requested.connect(self.cancel_videos)
         self.variants_view.seed_adopted.connect(self.adopt_seed)
 
         self.videos_view.context = lambda: self.compose_view.editor.spec()
@@ -464,6 +478,39 @@ class MainWindow(QMainWindow):
         self.video_pool.batch_finished.connect(self.on_video_batch_finished)
 
         self.compose_view.rebuild()
+
+    def resolved_model(self, provider=None, override=None):
+        """The model a submission will really use.
+
+        Only refine_image() worked this out properly; the other paid paths
+        used `override or self.model`, which is empty whenever the user has
+        not typed a model - and confirm_spend() then priced it "unknown".
+        A confirmation that cannot state the cost is barely a confirmation,
+        so all of them resolve through here now: the override, then the
+        chosen model, then the provider's env var, then its default.
+        """
+        cfg = gi.PROVIDERS.get(provider or self.provider, {})
+        return (override or self.model
+                or gi.env_value(cfg.get("model_var", "")) or cfg.get("default_model"))
+
+    def image_cost_note(self, units=1):
+        """One line for a button that is about to spend money on stills.
+
+        Settings told the user "the estimate on the generate button follows
+        this" about the resolution picker, and there was no estimate on any
+        generate button - the claim was simply false. price_note() already
+        existed and was already used for video by Videos and Cats; this is
+        the same call for images, which makes the sentence true rather than
+        deleting it. nano-banana-pro really does carry a `resolution`
+        multiplier in pricing.json, so the number does follow the picker.
+        """
+        options = self.request_options()
+        options.update(self.compose_view.options_override())
+        model = self.resolved_model(
+            self.compose_view.provider_override(),
+            self.compose_view.model_override())
+        return gv.price_note(model, units, credits_left=self.credits_left,
+                             **options)
 
     def request_options(self, spec=None):
         """What goes in the request body rather than in the prompt.
@@ -656,12 +703,15 @@ class MainWindow(QMainWindow):
         if self.pool.busy:
             self.statusBar().showMessage("A generation is already running")
             return
-        self._batch = None   # no session = Compose's own single-image path
-        self.compose_view.set_busy(True)
         provider = self.compose_view.provider_override() or self.provider
-        model = self.compose_view.model_override() or self.model
+        model = self.resolved_model(provider, self.compose_view.model_override())
         options = self.request_options(self.compose_view.editor.spec())
         options.update(self.compose_view.options_override())
+        if not self.confirm_spend(model, 1, "image", 1, **options):
+            self.statusBar().showMessage("Cancelled - nothing was generated")
+            return
+        self._batch = None   # no session = Compose's own single-image path
+        self.compose_view.set_busy(True)
         self.pool.submit([(0, prompt, None, references)], provider, model, options)
 
     def upscale_image(self, path):
@@ -676,12 +726,16 @@ class MainWindow(QMainWindow):
         if self.pool.busy:
             self.statusBar().showMessage("A generation is already running")
             return
-        self._batch = None
-        self.compose_view.set_busy(True)
         provider = self.compose_view.provider_override() or self.provider
-        model = self.compose_view.model_override() or self.model
+        model = self.resolved_model(provider, self.compose_view.model_override())
         options = self.request_options(self.compose_view.editor.spec())
         options.update(self.compose_view.options_override())
+        # An upscale is a full paid generation, not a free post-process.
+        if not self.confirm_spend(model, 1, "image (upscale)", 1, **options):
+            self.statusBar().showMessage("Cancelled - nothing was generated")
+            return
+        self._batch = None
+        self.compose_view.set_busy(True)
         self.pool.submit([(0, up.UPSCALE_PROMPT, None, [path])], provider, model, options)
 
     def refine_image(self):
@@ -703,7 +757,12 @@ class MainWindow(QMainWindow):
         model = (self.compose_view.model_override() or self.model
                  or gi.env_value(cfg.get("model_var", "")) or cfg.get("default_model"))
         max_retries = 2
-        if not self.confirm_spend(model, max_retries + 1, "images (up to)", max_retries + 1):
+        # Refine already resolved its own model correctly; this only lets its
+        # estimate follow the resolution picker like every other image path.
+        options = self.request_options(self.compose_view.editor.spec())
+        options.update(self.compose_view.options_override())
+        if not self.confirm_spend(model, max_retries + 1, "images (up to)",
+                                  max_retries + 1, **options):
             self.statusBar().showMessage("Cancelled - nothing was generated")
             return
 
@@ -750,12 +809,23 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Refine failed: {}".format(reason))
 
     def generate_batch(self, jobs):
+        """Variants. The default click sampled SIX paid images with no
+        confirmation and no cost shown - the largest unguarded spend in the
+        app, and the easiest one to press by accident."""
         if self.pool.busy:
             self.statusBar().showMessage("A generation is already running")
             return
-        self._batch = BatchSession(self.variants_view, len(jobs))
+        if not jobs:
+            self.statusBar().showMessage("Nothing to generate yet")
+            return
         spec, _detailed, _weights = self.current_spec_bundle()
-        self.pool.submit(jobs, self.provider, self.model, self.request_options(spec))
+        options = self.request_options(spec)
+        model = self.resolved_model()
+        if not self.confirm_spend(model, len(jobs), "images", len(jobs), **options):
+            self.statusBar().showMessage("Cancelled - nothing was generated")
+            return
+        self._batch = BatchSession(self.variants_view, len(jobs))
+        self.pool.submit(jobs, self.provider, model, options)
 
     def generate_custom_still(self, prompt, references):
         """Cats' Custom Prompt tab: one still, routed back to that tab
@@ -764,11 +834,16 @@ class MainWindow(QMainWindow):
         if self.pool.busy:
             self.statusBar().showMessage("A generation is already running")
             return
-        self._batch = BatchSession(self.cats_view.custom_tab, 1)
         aspect = self.cats_view.custom_tab.aspect.currentText().strip()
         spec = {"aspect": aspect} if aspect else {}
-        self.pool.submit([(0, prompt, None, references)], self.provider, self.model,
-                         self.request_options(spec))
+        options = self.request_options(spec)
+        model = self.resolved_model()
+        if not self.confirm_spend(model, 1, "image", 1, **options):
+            self.statusBar().showMessage("Cancelled - nothing was generated")
+            return
+        self._batch = BatchSession(self.cats_view.custom_tab, 1)
+        self.pool.submit([(0, prompt, None, references)], self.provider, model,
+                         options)
 
     def generate_ad(self, jobs):
         """The Ads path: one job per beat, locked to beat 1."""
@@ -868,6 +943,11 @@ class MainWindow(QMainWindow):
             target, len(jobs),
             {job["index"]: int(job.get("duration", 0)) for job in jobs})
         self.busy_badge.set_status("accent", "clips 0/{}".format(len(jobs)))
+        # Mark the asking view busy, which is also what enables its Cancel
+        # button. The still path has always done this through BatchSession;
+        # the clip path never did, so a Cancel here would have stayed dead.
+        if target is not None and hasattr(target, "set_busy"):
+            target.set_busy(True, len(jobs))
         self.video_pool.submit(jobs, aspect_ratio=aspect_ratio, **options)
 
     def on_video_finished(self, index, path, used):
@@ -899,6 +979,9 @@ class MainWindow(QMainWindow):
 
     def on_video_batch_finished(self):
         self.busy_badge.set_status("neutral", "idle")
+        if (self._video is not None and self._video.target is not None
+                and hasattr(self._video.target, "set_busy")):
+            self._video.target.set_busy(False)
         self._video = None
         self.refresh_credits()
 
@@ -948,7 +1031,9 @@ class MainWindow(QMainWindow):
         else:
             body = "{} {} · {} {}\n\nAbout {:,} credits ({}).".format(
                 count, unit_name, units,
-                "seconds" if unit_name.endswith("clips") else "images",
+                # "1 image · 1 images" read badly once the single-image paths
+                # started asking. Name the unit from its own count.
+                _plural("second" if unit_name.endswith("clips") else "image", units),
                 total, confidence)
             if self.credits_left is not None:
                 body += "\nYou have {:,}.".format(int(self.credits_left))
@@ -961,6 +1046,13 @@ class MainWindow(QMainWindow):
             QMessageBox.StandardButton.Cancel | QMessageBox.StandardButton.Ok,
             QMessageBox.StandardButton.Ok)
         return answer == QMessageBox.StandardButton.Ok
+
+    def cancel_videos(self):
+        """Videos runs on its own pool, so cancel_generation() would not
+        touch it."""
+        self.video_pool.cancel()
+        self.statusBar().showMessage(
+            "Cancelled - running clips finish, queued ones drop")
 
     def cancel_generation(self):
         # Drop the rest of a locked sequence first, or on_batch_finished would

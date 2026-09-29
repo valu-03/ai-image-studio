@@ -131,6 +131,7 @@ class AdsView(QWidget):
 
     generate_requested = pyqtSignal(list)
     video_requested = pyqtSignal(list, dict)
+    cancel_requested = pyqtSignal()
     status = pyqtSignal(str)
 
     def __init__(self, bank, palette=None, parent=None):
@@ -339,6 +340,18 @@ class AdsView(QWidget):
         self.gate = GateTree()
 
         self.generate_button = QPushButton("Generate all five shots")
+
+        # Every long-running path needs a way out. workers.WorkerPool.
+        # cancel() already did the work; only Variants exposed it, so a slow
+        # run left the form disabled with no recourse but to wait.
+        self.cancel_button = QPushButton("Cancel")
+        self.cancel_button.setProperty("class", "danger")
+        self.cancel_button.clicked.connect(self.cancel_requested)
+        self.cancel_button.setEnabled(False)
+        self.cancel_button.setToolTip(
+            "Stop waiting on this generation. Requests already sent to the provider "
+            "still finish and may still be billed; anything queued is dropped.")
+
         self.generate_button.setProperty("class", "primary")
         self.generate_button.setIcon(assets.icon("generate"))
         self.generate_button.setIconSize(assets.ICON_SIZE)
@@ -384,6 +397,7 @@ class AdsView(QWidget):
         actions_row = QHBoxLayout()
         actions_row.setSpacing(T.SPACE["sm"])
         actions_row.addWidget(self.generate_button, 1)
+        actions_row.addWidget(self.cancel_button)
         actions_row.addWidget(self.voice_combo)
         actions_row.addWidget(self.voiceover_button)
         gate.body.addLayout(actions_row)
@@ -831,6 +845,7 @@ class AdsView(QWidget):
     # five shots were written to disk and never shown anywhere.
     def set_busy(self, busy, total=0):
         self.generate_button.setEnabled(not busy and bool(self.shots))
+        self.cancel_button.setEnabled(busy)
         self.progress.setVisible(busy)
         if busy:
             self.progress.setRange(0, total)

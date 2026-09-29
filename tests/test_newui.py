@@ -19,6 +19,13 @@ _EMPTY_ENV = Path(_tempfile.gettempdir()) / "aivs-tests-empty.env"
 _EMPTY_ENV.write_text("# intentionally empty" + chr(10), encoding="utf-8")
 os.environ["AIVS_ENV_FILE"] = str(_EMPTY_ENV)
 
+# This suite drives generate_batch(), upscale_image() and generate_single(), and
+# all three now ask confirm_spend() first - a modal nobody can answer is a hang,
+# not a safeguard. run_all.py sets this for every child, but a developer running
+# THIS file on its own would otherwise watch every submission be declined.
+# Joins test_ads, test_cats_custom, test_story and smoke_gui in doing so.
+os.environ.setdefault("AIVS_ASSUME_YES", "1")
+
 import mock_api
 PORT = 8799
 mock_api.serve(PORT)
@@ -288,6 +295,7 @@ check("clearing the overrides falls back to Settings' provider, exactly as befor
       submitted and submitted[0][0] == win.provider, str(submitted))
 
 print("--- Compose: Upscale to 4K (bootcamp's own 'upscale before you animate') ---")
+import generate_image as gi
 import upscale_image as upi
 
 check("nothing to upscale yet - the button starts disabled",
@@ -318,8 +326,21 @@ check("the fixed upscale prompt is sent, not whatever was in the prompt box",
       job[1] == upi.UPSCALE_PROMPT, job[1][:60])
 check("the image on screen is the sole reference",
       job[3] == [str(fixture_image)], str(job[3]))
+# The paid paths now submit a RESOLVED model rather than a possibly-empty
+# one, because confirm_spend() has to be able to price it - "unknown" is a
+# poor confirmation. That is not a behaviour change downstream:
+# generate_image._resolve() runs the identical chain (model or env var or
+# the provider's default), so this asserts the two agree.
 check("the request options still honour Compose's own overrides, unchanged",
-      submitted[0][0] == win.provider and submitted[0][1] == win.model)
+      submitted[0][0] == win.provider)
+check("...and the submitted model is the one the provider would have resolved",
+      submitted[0][1] == win.resolved_model(win.provider),
+      "{} vs {}".format(submitted[0][1], win.resolved_model(win.provider)))
+check("...which is what an empty model would have become anyway",
+      submitted[0][1] == (win.model or gi.env_value(
+          gi.PROVIDERS[win.provider].get("model_var", ""))
+          or gi.PROVIDERS[win.provider].get("default_model")),
+      str(submitted[0][1]))
 
 emitted = []
 cv.upscale_requested.connect(lambda path: emitted.append(path))

@@ -49,6 +49,7 @@ ORDER = [
     "test_posing_field.py",
     "test_purpose_custom.py",
     "test_batch_shots_gui.py",
+    "test_spend_and_cancel.py",
     "test_camera_angle_bank.py",
     "test_relight.py",
     "test_macro_insert.py",

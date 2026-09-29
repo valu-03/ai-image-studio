@@ -59,6 +59,7 @@ CATEGORY_LABELS = {
 class VideosView(QWidget):
     hints_applied = pyqtSignal(dict)
     video_requested = pyqtSignal(list, dict)
+    cancel_requested = pyqtSignal()
     status = pyqtSignal(str)
 
     def __init__(self, palette, parent=None):
@@ -327,6 +328,17 @@ class VideosView(QWidget):
         self.generate_button.setIconSize(assets.ICON_SIZE)
         self.generate_button.setEnabled(False)
         self.generate_button.clicked.connect(self.request_video)
+
+        # Clips are the slowest thing in the app - minutes, not seconds - so
+        # this is the path where having no way out hurt most. Videos runs on
+        # its own pool, so MainWindow stops it through cancel_videos().
+        self.cancel_button = QPushButton("Cancel")
+        self.cancel_button.setProperty("class", "danger")
+        self.cancel_button.clicked.connect(self.cancel_requested)
+        self.cancel_button.setEnabled(False)
+        self.cancel_button.setToolTip(
+            "Stop waiting on this clip. A request already sent to Kling still "
+            "finishes and may still be billed; anything queued is dropped.")
         self.cost_note = MutedLabel("")
 
         # generate_button (279px, no shrink) alone left only 105px for the
@@ -351,6 +363,7 @@ class VideosView(QWidget):
 
         generate_row = QHBoxLayout()
         generate_row.addWidget(self.generate_button)
+        generate_row.addWidget(self.cancel_button)
         generate_row.addStretch(1)
 
         # form_scroll's own 220px floor covers the five-row form + prompt
@@ -687,12 +700,19 @@ class VideosView(QWidget):
               "out_name": "clip-{}.mp4".format(self.movement or "move")}],
             options)
 
+    def set_busy(self, busy, total=0):
+        """Videos toggled its generate button from three scattered places and
+        had no set_busy at all. One method now, so the Cancel button can never
+        disagree with the Generate button about whether a clip is running."""
+        self.generate_button.setEnabled(not busy and bool(self.movement))
+        self.cancel_button.setEnabled(busy)
+
     def on_video_finished(self, _index, path):
-        self.generate_button.setEnabled(True)
+        self.set_busy(False)
         self.status.emit("Clip saved: {}".format(path))
 
     def on_video_failed(self, _index, reason):
-        self.generate_button.setEnabled(True)
+        self.set_busy(False)
         self.status.emit(reason[:160])
 
     def copy_prompt(self):

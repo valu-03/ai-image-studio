@@ -172,6 +172,7 @@ class CatsView(QWidget):
 
     generate_requested = pyqtSignal(list)
     video_requested = pyqtSignal(list, dict)
+    cancel_requested = pyqtSignal()
     story_changed = pyqtSignal()
     status = pyqtSignal(str)
     # Separate from `generate_requested`, which is shaped for one job per
@@ -514,6 +515,18 @@ class CatsView(QWidget):
         self.cost_note = MutedLabel("")
 
         self.generate_button = QPushButton("Generate every scene")
+
+        # Every long-running path needs a way out. workers.WorkerPool.
+        # cancel() already did the work; only Variants exposed it, so a slow
+        # run left the form disabled with no recourse but to wait.
+        self.cancel_button = QPushButton("Cancel")
+        self.cancel_button.setProperty("class", "danger")
+        self.cancel_button.clicked.connect(self.cancel_requested)
+        self.cancel_button.setEnabled(False)
+        self.cancel_button.setToolTip(
+            "Stop waiting on this generation. Requests already sent to the provider "
+            "still finish and may still be billed; anything queued is dropped.")
+
         self.generate_button.setProperty("class", "primary")
         self.generate_button.setIcon(assets.icon("generate"))
         self.generate_button.setIconSize(assets.ICON_SIZE)
@@ -540,6 +553,7 @@ class CatsView(QWidget):
         gate.body.addLayout(header)
         gate.body.addWidget(self.gate, 1)
         gate.body.addWidget(self.generate_button)
+        gate.body.addWidget(self.cancel_button)
         gate.body.addWidget(self.progress)
 
         video_row = QHBoxLayout()
@@ -1697,6 +1711,7 @@ class CatsView(QWidget):
     # for, so a generated story disappeared without an error anywhere.
     def set_busy(self, busy, total=0):
         self.generate_button.setEnabled(not busy and bool(self.scenes))
+        self.cancel_button.setEnabled(busy)
         self.write_button.setEnabled(not busy)
         self.progress.setVisible(busy)
         if busy:
