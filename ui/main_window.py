@@ -97,6 +97,8 @@ SUBVIEW_ROUTES = {
     "posing": ("look", 4),
     "style": ("look", 5),
     "capture": ("look", 6),
+    "relight": ("images", 2),
+    "macro_insert": ("images", 3),
     "static_ad": ("ads", 1),
     "advisor": ("assistant", 0),
     "brief": ("assistant", 1),
@@ -267,10 +269,12 @@ class MainWindow(QMainWindow):
                                   T.CONTAINER_PADDING, T.CONTAINER_PADDING)
 
         self.stack = QStackedWidget()
-        self.images_view = ImagesView(self.bank)
-        # Compose and Variants keep their own identities; Images just groups them.
+        self.images_view = ImagesView(self.bank, self.theme.palette)
+        # Each child keeps its own identity; Images just groups them.
         self.compose_view = self.images_view.compose
         self.variants_view = self.images_view.variants
+        self.relight_view = self.images_view.relight
+        self.macro_view = self.images_view.macro
 
         # Look groups the five tuning toolkits; MainWindow still talks to each
         # one by name, so every apply_*_phrase / ADVISOR_SECTION_SETTERS wire
@@ -379,6 +383,14 @@ class MainWindow(QMainWindow):
         self.compose_view.refine_requested.connect(self.refine_image)
         self.variants_view.spec_provider = self.current_spec_bundle
         self.variants_view.generate_requested.connect(self.generate_batch)
+        # Relight and Macro insert derive their shots from the open character
+        # AND the photo Compose last produced, so "re-light the shot I just
+        # made" needs no file picking at all. Same one-directional link
+        # Variants, Ads and Videos already use - they read Compose, never
+        # write to it.
+        for view in (self.relight_view, self.macro_view):
+            view.spec_provider = self.current_spec_bundle
+            view.image_provider = lambda: self.compose_view.current_image
         # The ads view reads the open character so the presenter is the one you
         # are already working on, the same one-directional link Videos uses.
         self.ads_view.context = lambda: self.compose_view.editor.spec()
@@ -557,6 +569,7 @@ class MainWindow(QMainWindow):
         self.capture_view.set_palette_tokens(self.theme.palette)
         self.influencer_studio_view.set_palette_tokens(self.theme.palette)
         self.insights_view.set_palette_tokens(self.theme.palette)
+        self.images_view.set_palette_tokens(self.theme.palette)
         self.statusBar().showMessage("{} theme".format(name.capitalize()))
 
     def apply_lighting_phrase(self, phrase):

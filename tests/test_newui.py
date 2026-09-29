@@ -79,7 +79,12 @@ check("images/videos/assistant present",
 check("images icon", not win.nav_buttons["images"].icon().isNull())
 check("videos icon", not win.nav_buttons["videos"].icon().isNull())
 check("assistant icon", not win.nav_buttons["assistant"].icon().isNull())
-check("images groups compose+variants", win.images_view.tabs.count() == 2)
+check("images groups the four still-producing views",
+      [win.images_view.tabs.tabText(i)
+       for i in range(win.images_view.tabs.count())]
+      == ["Compose", "Variants", "Relight", "Macro insert"],
+      str([win.images_view.tabs.tabText(i)
+           for i in range(win.images_view.tabs.count())]))
 check("compose is images tab 0", win.images_view.tabs.tabText(0) == "Compose")
 check("brief routes to the Assistant section's Prompt tools tab",
       (win.go_to("brief") or True)

@@ -162,6 +162,15 @@ def _shot_label(shot):
     return "{} ({})".format(shot["label"], shot["scope"])
 
 
+def shot_label(shot):
+    """The insert's one-line name - its label and what it is scoped to.
+
+    Public so the GUI labels a shot exactly as the written batch does;
+    one source of truth rather than two that drift.
+    """
+    return _shot_label(shot)
+
+
 def write_macro_set(base_spec, shots):
     """Write the batch to temp/outputs/prompts/: a readable .txt and a .json
     sibling macro_insert_lint.py's CLI reads. Returns the .txt path."""

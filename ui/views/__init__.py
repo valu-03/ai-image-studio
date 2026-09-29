@@ -2,7 +2,8 @@
 
 Ten rail sections, each a plain noun:
 
-images    -> Compose + Variants (stills)
+images    -> Compose + Variants + Relight + Macro insert (stills). The last
+             two derive a batch of shots from one photo you already have.
 look      -> LookView: Lighting / Composition / Camera / Color / Posing
              (Style is added later) - each builds a phrase you Apply into the
              Images prompt
@@ -38,7 +39,9 @@ from .images import ImagesView
 from .influencer_studio import InfluencerStudioView
 from .insights import InsightsView
 from .lighting import LightingView
+from .macro_insert import MacroInsertView
 from .look import LookView
+from .relight import RelightView
 from .posing import PosingView
 from .settings import SettingsView
 from .static_ad import StaticAdView
@@ -52,5 +55,5 @@ __all__ = [
     "AdsContainer", "StaticAdView", "CatsView", "SoundView", "LightingView", "CompositionView", "ColorGradingView",
     "PosingView", "CameraAngleView", "StyleView", "InfluencerStudioView",
     "AssistantView", "BriefView", "AdvisorView", "ActivityView", "HistoryView",
-    "InsightsView", "SettingsView",
+    "InsightsView", "SettingsView", "RelightView", "MacroInsertView",
 ]

@@ -111,6 +111,15 @@ def _shot_label(shot):
     return " / ".join(bits) or "shot"
 
 
+def shot_label(shot):
+    """The shots' one-line name - lighting setup and/or angle axes, joined.
+
+    Public so the GUI labels a shot exactly as the written batch does;
+    one source of truth rather than two that drift.
+    """
+    return _shot_label(shot)
+
+
 def write_relight_set(base_spec, shots):
     """Write the whole batch to temp/outputs/prompts/: a readable .txt and a
     .json sibling relight_lint.py's CLI reads. Returns the .txt path."""
