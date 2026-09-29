@@ -258,7 +258,15 @@ QTableWidget {{ selection-background-color: {c['primary_fixed']}; }}
 
 /* --- chrome ----------------------------------------------------------- */
 QMenuBar {{ background: {c['surface']}; color: {c['text']}; border: none; }}
-QMenuBar::item {{ padding: {s['sm']}px {s['md']}px; border-radius: {r['sm']}px; }}
+/* `xs` vertically, not `sm`. This rule was written before the app had a menu
+   bar to style, so its padding was never measured against anything. Once one
+   existed it stood 33px tall and took that much off the canvas, which at the
+   1100x700 minimum was enough to compress Compose's character-library card
+   until Load/Save and New/Delete overlapped by one to three pixels. Raising
+   the window minimum instead would have pushed it past what a 1366x768 laptop
+   can show, so the chrome gives the pixels back. Horizontal padding is
+   untouched - the menu titles still have room to breathe. */
+QMenuBar::item {{ padding: {s['xs']}px {s['md']}px; border-radius: {r['sm']}px; }}
 QMenuBar::item:selected {{ background: {c['surface_variant']}; }}
 QMenu {{
     background: {c['surface']};

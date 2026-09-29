@@ -41,6 +41,7 @@ import generate_speech as gspeech  # noqa: E402
 import sound_lint as sl  # noqa: E402
 
 from .. import assets, tokens as T  # noqa: E402
+from ..hints import NAV_HINTS
 from ..widgets import Badge, Card, MutedLabel, TitleLabel  # noqa: E402
 from ..workers import SoundTask, SpeechTask, VoiceCloneTask, VoiceListTask  # noqa: E402
 
@@ -83,6 +84,10 @@ class SoundView(QWidget):
         self.tabs.addTab(self._build_voices_tab(), "Voices")
 
         layout = QVBoxLayout(self)
+        # The section says what it is for. Seven of the ten rail sections
+        # said nothing at all; the sentence is ui/hints.py's, the same one
+        # the rail tooltip and the Go menu use, so the three cannot drift.
+        layout.addWidget(MutedLabel(NAV_HINTS["sound"]))
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.tabs)
 

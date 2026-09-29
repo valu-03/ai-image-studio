@@ -78,6 +78,7 @@ import build_prompt as bp  # noqa: E402
 import build_voice as bvoice  # noqa: E402
 
 from .. import assets, tokens as T  # noqa: E402
+from ..hints import NAV_HINTS
 from ..widgets import Badge, Card, MutedLabel, TitleLabel, chip_row  # noqa: E402
 
 REFERENCE_LIMIT = 8
@@ -178,6 +179,10 @@ class InfluencerStudioView(QWidget):
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
+        # The section says what it is for. Seven of the ten rail sections said
+        # nothing at all; the sentence is ui/hints.py's, the same one the rail
+        # tooltip and the Go menu use, so the three cannot drift.
+        layout.addWidget(MutedLabel(NAV_HINTS["influencer_studio"]))
         layout.addWidget(self.tabs)
 
     def _build_roster_tab(self):

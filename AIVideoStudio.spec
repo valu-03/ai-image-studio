@@ -57,6 +57,10 @@ ICON_PATH = ROOT / "assets" / "icons" / "app.ico"
 datas = [
     ("tools", "tools"),
     ("assets", "assets"),
+    # The in-app Guides dialog reads these at runtime. Without this line the
+    # frozen build has no onboarding at all: ui/views/guides.py falls back to
+    # a source-tree path that does not exist beside the .exe.
+    ("workflows", "workflows"),
     (".env.example", "."),
 ]
 binaries = []

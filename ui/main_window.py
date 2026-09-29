@@ -36,6 +36,8 @@ import upscale_image as up  # noqa: E402
 import refine_image as ri  # noqa: E402
 
 from . import assets, tokens as T  # noqa: E402
+from .hints import NAV_HINTS
+from .views.guides import GuidesDialog
 from .views import (  # noqa: E402
     ActivityView,
     AdsContainer,
@@ -332,32 +334,82 @@ class MainWindow(QMainWindow):
         return host
 
     def build_actions(self):
-        # Generated from NAV_ITEMS rather than listed again: the hardcoded copy
-        # silently drifted out of step every time a section was added. `k=key`
-        # binds per iteration - a bare closure would capture the last key.
-        # Ctrl+1..9 then Ctrl+0 for the tenth - QKeySequence cannot parse a
-        # multi-digit token ("Ctrl+10" is a dead shortcut), and the rail is ten
-        # sections now.
-        shortcuts = [
-            (label, "Ctrl+{}".format((index + 1) % 10), lambda k=key: self.go_to(k))
-            for index, (key, label) in enumerate(NAV_ITEMS[:10])
-        ] + [
-            ("Focus search", "Ctrl+F", self.search.setFocus),
-            ("Copy prompt", "Ctrl+Shift+C", self.compose_view.copy_prompt),
-            ("Save character", "Ctrl+S", self.compose_view.save_spec),
-            ("Reshuffle", "Ctrl+R", self.compose_view.reshuffle),
-            ("Generate", "Ctrl+G", self.compose_view.request_generate),
-            ("Toggle theme", "Ctrl+T", self.theme.toggle),
+        """Every shortcut, grouped into the menus that make them findable.
+
+        Generated from NAV_ITEMS rather than listed again: the hardcoded copy
+        silently drifted out of step every time a section was added. `k=key`
+        binds per iteration - a bare closure would capture the last key.
+        Ctrl+1..9 then Ctrl+0 for the tenth - QKeySequence cannot parse a
+        multi-digit token ("Ctrl+10" is a dead shortcut), and the rail is ten
+        sections now.
+
+        THE GROUPS ARE THE MENU BAR. Sixteen shortcuts existed and every one
+        of them was invisible: they were added to the window with addAction(),
+        which binds the key and shows nothing, and ui/theme.py has styled a
+        QMenuBar since before there was one to style. Building the menus from
+        this same list is what stops them drifting apart the way the old
+        hardcoded shortcut copy did.
+        """
+        groups = [
+            ("&Go", [
+                (label, "Ctrl+{}".format((index + 1) % 10),
+                 # `*_` absorbs QAction.triggered's `checked` argument. Without
+                 # it PyQt passes False into `k` - a lambda with one defaulted
+                 # parameter still ACCEPTS one positional arg - so every one of
+                 # these called go_to(False), which matched no route and no nav
+                 # button and returned silently. Ctrl+1..Ctrl+0 had therefore
+                 # never navigated at all, and nothing noticed because nothing
+                 # ever triggered one in a test.
+                 lambda *_, k=key: self.go_to(k), NAV_HINTS.get(key, ''))
+                for index, (key, label) in enumerate(NAV_ITEMS[:10])
+            ]),
+            ("&Compose", [
+                ("Generate", "Ctrl+G", self.compose_view.request_generate,
+                 "Generate the current prompt. Asks before it spends anything."),
+                ("Reshuffle", "Ctrl+R", self.compose_view.reshuffle,
+                 "Re-roll the vocabulary with a new seed."),
+                ("Copy prompt", "Ctrl+Shift+C", self.compose_view.copy_prompt,
+                 "Put the composed prompt on the clipboard."),
+                ("Save character", "Ctrl+S", self.compose_view.save_spec,
+                 "Save this spec so you can load the same person again."),
+            ]),
+            ("&View", [
+                ("Focus search", "Ctrl+F", self.search.setFocus,
+                 "Jump to the search box."),
+                ("Toggle theme", "Ctrl+T", self.theme.toggle,
+                 "Switch between the dark and light themes."),
+            ]),
+            ("&Help", [
+                ("Guides", "Ctrl+/", self.show_guides,
+                 "The workflow guides this app was built around."),
+            ]),
         ]
-        for label, sequence, slot in shortcuts:
-            action = QAction(label, self)
-            action.setShortcut(QKeySequence(sequence))
-            action.triggered.connect(slot)
-            self.addAction(action)
+        bar = self.menuBar()
+        for title, entries in groups:
+            menu = bar.addMenu(title)
+            for label, sequence, slot, hint in entries:
+                action = QAction(label, self)
+                action.setShortcut(QKeySequence(sequence))
+                if hint:
+                    action.setStatusTip(hint)
+                    action.setToolTip(hint)
+                action.triggered.connect(slot)
+                menu.addAction(action)
+                # Still on the window too, so every shortcut keeps working
+                # exactly as before even where a menu is not reachable.
+                self.addAction(action)
+
+    def show_guides(self):
+        """workflows/*.md, rendered. See ui/views/guides.py."""
+        GuidesDialog(self).exec()
 
     def apply_styles(self):
         """Per-widget style hooks the global sheet cannot express."""
         self.nav_buttons["images"].setChecked(True)
+        for key, button in self.nav_buttons.items():
+            hint = NAV_HINTS.get(key)
+            if hint:
+                button.setToolTip(hint)
         self.busy_badge.set_status("neutral", "idle")
         self.compose_view.prompt_view.setProperty("class", "mono")
         for view in self.views.values():
@@ -533,6 +585,13 @@ class MainWindow(QMainWindow):
         return spec, detailed, weights
 
     def go_to(self, key):
+        """Show a rail section, or a sub-view through SUBVIEW_ROUTES.
+
+        An unknown key used to return silently, which is precisely what hid
+        ten dead nav shortcuts for as long as they existed. It says so now -
+        a status-bar line rather than an exception, because a mistyped deep
+        link should not take the window down with it.
+        """
         route = SUBVIEW_ROUTES.get(key)
         if route:
             container_key, tab_index = route
@@ -545,6 +604,10 @@ class MainWindow(QMainWindow):
         if button:
             button.setChecked(True)
             self.on_nav_clicked(list(self.nav_buttons).index(key))
+            return
+        self.statusBar().showMessage(
+            "No section called {!r} - this is a bug, not something you did.".format(
+                key))
 
     def current_context(self):
         """(prompt, image) — what the Brief view acts on."""

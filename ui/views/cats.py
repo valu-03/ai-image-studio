@@ -61,6 +61,7 @@ import social_lint as socl  # noqa: E402
 import story_lint as stl  # noqa: E402
 
 from .. import assets, tokens as T  # noqa: E402
+from ..hints import NAV_HINTS
 from ..widgets import AiSuggestionBadge, Badge, Card, GateTree, MutedLabel, TitleLabel  # noqa: E402
 from ..workers import LlmTask, RenderTask, SoundTask, SpeechTask  # noqa: E402
 from .cats_custom import CustomPromptTab  # noqa: E402
@@ -260,6 +261,10 @@ class CatsView(QWidget):
         self.tabs.currentChanged.connect(self.on_tab_changed)
 
         layout = QVBoxLayout(self)
+        # The section says what it is for. Seven of the ten rail sections
+        # said nothing at all; the sentence is ui/hints.py's, the same one
+        # the rail tooltip and the Go menu use, so the three cannot drift.
+        layout.addWidget(MutedLabel(NAV_HINTS["cats"]))
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.tabs)
 

@@ -31,6 +31,7 @@ import generate_image as gi  # noqa: E402
 import generate_sound as gsnd  # noqa: E402
 
 from .. import assets, tokens as T  # noqa: E402
+from ..hints import NAV_HINTS
 from ..widgets import Badge, Card, MutedLabel, TitleLabel  # noqa: E402
 from ..workers import VoiceDeleteTask, VoiceListTask  # noqa: E402
 
@@ -242,6 +243,10 @@ class SettingsView(QWidget):
         scroll.setWidget(body)
 
         outer = QVBoxLayout(self)
+        # The section says what it is for. Seven of the ten rail sections
+        # said nothing at all; the sentence is ui/hints.py's, the same one
+        # the rail tooltip and the Go menu use, so the three cannot drift.
+        outer.addWidget(MutedLabel(NAV_HINTS["settings"]))
         outer.setContentsMargins(0, 0, 0, 0)
         outer.addWidget(scroll)
 

@@ -47,6 +47,7 @@ import motion_lint as ml  # noqa: E402
 import sound_lint as sl  # noqa: E402
 
 from .. import assets, tokens as T  # noqa: E402
+from ..hints import NAV_HINTS
 from ..widgets import Badge, Card, MutedLabel, TitleLabel  # noqa: E402
 
 CATEGORY_LABELS = {
@@ -89,6 +90,10 @@ class VideosView(QWidget):
         self.tabs.addTab(self._build_glossary_tab(), "Glossary")
 
         layout = QVBoxLayout(self)
+        # The section says what it is for. Seven of the ten rail sections
+        # said nothing at all; the sentence is ui/hints.py's, the same one
+        # the rail tooltip and the Go menu use, so the three cannot drift.
+        layout.addWidget(MutedLabel(NAV_HINTS["videos"]))
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.tabs)
 
