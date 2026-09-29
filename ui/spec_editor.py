@@ -11,7 +11,7 @@ expects; it composes nothing itself. The public surface — `spec()`,
 `changed` signal and the `.seed` attribute — is what the rest of the app talks
 to, so it stays stable regardless of how the tabs are arranged.
 
-Shot, lighting and composition are all editable combos: the bank's entries are
+Shot, purpose, lighting and composition are all editable combos: the bank's entries are
 tested starting points, not a closed world. Preset keys and typed text travel as
 separate spec keys (`shot` vs `shot_custom`) so that a misspelt preset is still
 rejected by the validators instead of quietly becoming a custom phrase.
@@ -109,19 +109,30 @@ class SpecEditor(QWidget):
     def _build_fields(self):
         bank = self.bank
 
-        self.purpose = QComboBox()
+        # Editable, like shot/lighting/composition: the seven placements are the
+        # ones whose shot and aspect the bank actually knows, not every place an
+        # image can end up. A typed placement is honest about what it can and
+        # cannot do - see purpose_custom() and _refresh_derived().
+        self.purpose = QComboBox(editable=True)
+        self.purpose.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.purpose.addItem(AUTO_LABEL, "")
         for key, cfg in bank.get("purposes", {}).items():
             self.purpose.addItem(cfg.get("label", key), key)
         self.purpose.setToolTip(
-            "What the image is for. Sets the shot and aspect below unless you set "
-            "them yourself — your own choice always wins."
+            "What the image is for. Pick a listed placement and it sets the shot and "
+            "aspect below unless you set them yourself — your own choice always wins.\n"
+            "Or type your own, e.g. \"LinkedIn banner\". A typed placement is recorded "
+            "and shown to the model when it fills the form for you, but it supplies no "
+            "shot or aspect: only a listed one knows what those should be, so set them "
+            "yourself below."
         )
 
         self.aspect = QComboBox(editable=True)
         self.aspect.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.aspect.addItems(["", "1:1", "4:5", "3:2", "16:9", "9:16"])
-        self.aspect.setToolTip("Leave blank to take the aspect from the purpose.")
+        self.aspect.setToolTip(
+            "Leave blank to take the aspect from the purpose — a listed one. A typed "
+            "purpose has no aspect to give, so set it here.")
 
         self.purpose_note = MutedLabel("")
 
@@ -322,7 +333,10 @@ class SpecEditor(QWidget):
         for widget in [self.wardrobe, self.setting, self.action, self.posing,
                        self.mood, self.slug]:
             widget.textChanged.connect(self.changed)
-        self.purpose.currentIndexChanged.connect(self.changed)
+        # Text, not index: purpose joined the editable combos, and an index
+        # never moves for typed text - watching it would make a typed
+        # placement invisible to the live rebuild.
+        self.purpose.currentTextChanged.connect(self.changed)
         # Editable combos must watch text, not index — a typed value never
         # changes the index. Shot and composition joined this group when they
         # gained a custom option; watching the index would have made typed text
@@ -347,8 +361,25 @@ class SpecEditor(QWidget):
             else "No reference image — the face is invented each time."
         )
 
-        key = self.purpose.currentData()
+        key = self.purpose_value()
         if not key:
+            custom = self.purpose_custom()
+            if custom:
+                # Say plainly what it does not do. The listed placements are the
+                # only ones whose shot and aspect the bank knows, so a typed one
+                # leaves both to the user rather than inventing a crop for it.
+                missing = [name for name in ("shot", "aspect")
+                           if not self._explicit(name)]
+                note = ("Your own placement: “{}”. Recorded with the spec and "
+                        "shown to the model when it fills the form.".format(custom))
+                if missing:
+                    note += (" It supplies no {} — set {} below.".format(
+                        " or ".join(missing),
+                        "them" if len(missing) == 2 else "it"))
+                else:
+                    note += " Shot and aspect are your own."
+                self.purpose_note.setText(note)
+                return
             self.purpose_note.setText(
                 "No purpose set. Shot and aspect are whatever you choose below."
             )
@@ -434,6 +465,34 @@ class SpecEditor(QWidget):
             return ""
         text = self.composition.currentText().strip()
         return "" if text in ("", NO_GUIDE_LABEL) else text
+
+    def purpose_value(self):
+        """The chosen placement key, or "" for auto or for typed text.
+
+        `_listed()` alone, never `currentData()` first - see
+        `composition_guide()`'s docstring. This combo became editable later
+        than the others and inherited the same trap: picking "Instagram post"
+        and then typing "LinkedIn banner" over it leaves currentData() stuck
+        on `instagram-post`, which would have gone on supplying a 4:5 crop and
+        a portrait shot for a placement the user had just replaced.
+        """
+        return self._listed(self.purpose, self.purpose.currentText())
+
+    def purpose_custom(self):
+        """A typed placement, or "" when a listed one (or auto) is chosen.
+
+        Deliberately supplies NO shot and NO aspect. A listed purpose can fill
+        those because the bank records what that placement wants; a typed one
+        is a name and nothing more, and inventing a crop for it would be the
+        app guessing on the user's behalf in the one place it never does.
+        It still earns its keep: it travels with the spec, and brief.py shows
+        it to the model, so auto-fill writes for "LinkedIn banner" instead of
+        for nothing.
+        """
+        if self.purpose_value():
+            return ""
+        text = self.purpose.currentText().strip()
+        return "" if text in ("", AUTO_LABEL) else text
 
     def shot_value(self):
         """The chosen preset key, or "" for auto or for typed text.
@@ -595,8 +654,14 @@ class SpecEditor(QWidget):
             if value:
                 spec[key] = value
 
-        if self.purpose.currentData():
-            spec["purpose"] = self.purpose.currentData()
+        # Listed key and typed text travel as separate keys, the same split
+        # shot/shot_custom and composition_guide/composition_guide_custom use:
+        # a misspelt placement is still caught by validate_purpose() instead of
+        # quietly becoming a custom one.
+        if self.purpose_value():
+            spec["purpose"] = self.purpose_value()
+        elif self.purpose_custom():
+            spec["purpose_custom"] = self.purpose_custom()
         # Preset key and free text are separate keys, so a typo in a preset name
         # is still caught by validate_shot() instead of silently becoming a
         # custom phrase. The same for composition.
@@ -678,7 +743,8 @@ class SpecEditor(QWidget):
                             spec.get("shot_custom", ""), AUTO_LABEL)
         self._restore_combo(self.composition, spec.get("composition_guide", ""),
                             spec.get("composition_guide_custom", ""), NO_GUIDE_LABEL)
-        self.purpose.setCurrentIndex(max(0, self.purpose.findData(spec.get("purpose", ""))))
+        self._restore_combo(self.purpose, spec.get("purpose", ""),
+                            spec.get("purpose_custom", ""), AUTO_LABEL)
         self.aspect.setCurrentText(spec.get("aspect", ""))
 
         # A saved custom source is not in the list, so fall back to setting the

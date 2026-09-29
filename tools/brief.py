@@ -34,6 +34,12 @@ ROOT = Path(__file__).resolve().parent.parent
 SPEC_KEYS = {"subject", "wardrobe", "setting", "action", "posing", "mood", "shot",
              "aspect", "purpose", "extra", "slug"}
 
+# `purpose_custom` is deliberately NOT here. A model-invented purpose is
+# already dropped on the way back (see the validate_purpose() filter below),
+# and letting it arrive under the custom key would be a way around exactly
+# that check. A user may name a placement; a model may only pick a listed
+# one. It is still SHOWN to the model by _describe_current().
+
 MAX_UPGRADE_WORDS = 320
 
 # Auto-fill may additionally *suggest* these two. They are not in SPEC_KEYS and
@@ -432,7 +438,7 @@ def _describe_current(spec):
     """What the user has already written, as the brief the model works from."""
     lines = []
     for key in ("subject", "wardrobe", "setting", "action", "posing", "mood", "shot",
-                "shot_custom", "purpose", "aspect"):
+                "shot_custom", "purpose", "purpose_custom", "aspect"):
         value = str(spec.get(key) or "").strip()
         if key == "subject" and value == PLACEHOLDER_SUBJECT:
             continue

@@ -46,8 +46,14 @@ neither can fix a prompt whose subject, setting or composition was wrong from th
 
 Picking a `purpose` in Compose already sets the right aspect ratio for you
 (`tools/prompt_bank.json`'s `purposes` table, applied by `build_prompt.apply_purpose()`); an
-explicit aspect pick always wins over the purpose's default. The bootcamp's own simple rule,
-for reference:
+explicit aspect pick always wins over the purpose's default.
+
+The box also takes your own text, for a placement the table has never heard of. A typed
+placement is recorded with the spec and shown to the model when it fills the form for you,
+but it supplies **no** shot and **no** aspect - only a listed placement knows what those
+should be, and guessing a crop on your behalf is the one thing this field will not do. Set
+them yourself; the note under the box says which are still missing. The bootcamp's own
+simple rule, for reference:
 
 | Ratio | Use it for |
 |---|---|

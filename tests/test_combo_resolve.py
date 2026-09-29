@@ -155,6 +155,40 @@ check("composition: an untouched pick still resolves to the guide key",
       ed3.composition_guide() == "golden-spiral")
 
 print()
+print("=== SpecEditor.purpose (the fifth location, editable as of this change) ===")
+
+# Purpose became editable last, and it is the most expensive place for this
+# bug to live: a stale currentData() would go on supplying the OLD placement's
+# shot AND aspect for a placement the user had already replaced, and those are
+# defaults the user never sees themselves choose.
+ed5 = SpecEditor(bank)
+index = ed5.purpose.findData("instagram-post")
+check("the purpose key exists", index >= 0)
+ed5.purpose.setCurrentIndex(index)
+check("picking resolves purpose_value() to the key",
+      ed5.purpose_value() == "instagram-post", ed5.purpose_value())
+check("purpose_custom() is empty for a picked placement", ed5.purpose_custom() == "")
+check("...and the picked placement really does supply its shot and aspect",
+      bp.apply_purpose(bank, ed5.spec()).get("aspect") == "4:5")
+
+ed5.purpose.setCurrentText("LinkedIn banner")
+check("retyping clears purpose_value()", ed5.purpose_value() == "", ed5.purpose_value())
+check("retyping surfaces the NEW text via purpose_custom()",
+      ed5.purpose_custom() == "LinkedIn banner", ed5.purpose_custom())
+spec5 = ed5.spec()
+check("the composed spec carries the custom placement, not the stale key",
+      spec5.get("purpose_custom") == "LinkedIn banner" and not spec5.get("purpose"),
+      str({k: spec5.get(k) for k in ("purpose", "purpose_custom")}))
+check("and the old placement's 4:5 crop is NOT still being supplied",
+      not bp.apply_purpose(bank, spec5).get("aspect"),
+      str(bp.apply_purpose(bank, spec5).get("aspect")))
+
+ed5.purpose.setCurrentText("Instagram post")
+check("typing a listed placement's exact label resolves back to its key",
+      ed5.purpose_value() == "instagram-post", ed5.purpose_value())
+
+
+print()
 print("=== fresh typing with nothing ever picked still works (no regression) ===")
 
 ed4 = SpecEditor(bank)

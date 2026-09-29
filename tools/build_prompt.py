@@ -62,6 +62,21 @@ def custom_guide(spec):
     return str(spec.get("composition_guide_custom") or "").strip()
 
 
+def custom_purpose(spec):
+    """A user-named placement, or "".
+
+    Unlike `custom_shot()` and `custom_guide()`, this one contributes NOTHING
+    to the composed prompt, and that is the whole design rather than an
+    omission. A purpose never appears in a prompt: its only job is to supply
+    `shot` and `aspect` when the spec is silent (see apply_purpose()), and a
+    name the bank has never seen has no shot or aspect to supply. So a custom
+    purpose is metadata - it travels with the spec, it reaches the model
+    through brief._describe_current(), and it is recorded in history. What it
+    must never do is make the app guess a crop on the user's behalf.
+    """
+    return str(spec.get("purpose_custom") or "").strip()
+
+
 def select_layers(bank, spec, rng, weights=None):
     """Choose the vocabulary for each of the eight layers.
 
@@ -342,7 +357,13 @@ def validate_shot(bank, shot):
 
 
 def validate_purpose(bank, purpose):
-    """Return an error message for an unknown purpose, or None."""
+    """Return an error message for an unknown purpose KEY, or None.
+
+    Only ever handed `spec["purpose"]`, never `spec["purpose_custom"]` - that
+    is the point of keeping them apart. A typo in a listed placement is still
+    an error here instead of silently becoming a custom one, which is the same
+    reason shot/shot_custom are two keys.
+    """
     if purpose and purpose not in bank.get("purposes", {}):
         return "Unknown purpose '{}'. Available: {}".format(
             purpose, ", ".join(bank.get("purposes", {}))
@@ -463,6 +484,12 @@ def parse_args(argv):
              "you set them yourself.",
     )
     p.add_argument(
+        "--purpose-custom", dest="purpose_custom",
+        help="your own placement instead of a listed one, e.g. \"LinkedIn banner\". "
+             "Recorded with the spec; supplies no shot or aspect, so set those "
+             "yourself.",
+    )
+    p.add_argument(
         "--shot-custom", dest="shot_custom",
         help="your own shot description instead of a preset, e.g. \"close-up "
              "iPhone-style photo\". Takes the camera slot; suppresses the preset.",
@@ -522,7 +549,7 @@ def spec_from_args(args):
         spec = {}
 
     for field in ["subject", "wardrobe", "setting", "action", "posing", "mood", "shot", "slug",
-                  "purpose", "composition_guide", "shot_custom",
+                  "purpose", "purpose_custom", "composition_guide", "shot_custom",
                   "composition_guide_custom"]:
         value = getattr(args, field, None)
         if value:
