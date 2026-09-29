@@ -29,7 +29,7 @@ def check(name, cond, detail=""):
 bank = pa.load_bank()
 
 print("=== the bank is well-formed ===")
-check("eleven templates", len(pa.templates(bank)) == 11, str(sorted(pa.templates(bank))))
+check("twelve templates", len(pa.templates(bank)) == 12, str(sorted(pa.templates(bank))))
 for name, cfg in pa.templates(bank).items():
     check("'{}' has label and summary".format(name), bool(cfg.get("label")) and bool(cfg.get("summary")))
     check("'{}' has slots".format(name), bool(cfg.get("slots")))
@@ -64,10 +64,11 @@ check("image_templates() and video_templates() partition every template, no over
       set(pa.image_templates(bank)) | set(pa.video_templates(bank)) == set(pa.templates(bank))
       and not set(pa.image_templates(bank)) & set(pa.video_templates(bank)),
       "{} / {}".format(sorted(pa.image_templates(bank)), sorted(pa.video_templates(bank))))
-check("the seven still-image templates are grouped as 'image'",
+check("the eight still-image templates are grouped as 'image'",
       set(pa.image_templates(bank)) == {"beauty-macro", "macro-insert", "photoreal-portrait",
                                         "product-campaign", "candid-editorial",
-                                        "influencer-series", "inventory-selfie"},
+                                        "influencer-series", "inventory-selfie",
+                                        "anthro-character"},
       str(sorted(pa.image_templates(bank))))
 check("the four video templates are grouped as 'video'",
       set(pa.video_templates(bank)) == {"video-sequence", "video-shot", "action-commercial",
@@ -214,7 +215,8 @@ check("product-campaign is the only template with a product band",
 # candid-editorial carries applies to both: a filled scaffold is a real prompt
 # somebody is told to paste, so it has to clear the gate this app would apply
 # to its own output - 8/8, nothing banned, and no soft warn term either.
-for name, lines_wanted in [("influencer-series", 1), ("inventory-selfie", 1)]:
+for name, lines_wanted in [("influencer-series", 1), ("inventory-selfie", 1),
+                           ("anthro-character", 1)]:
     lines = [line for line in pa.scaffold_lines(bank, name, filled=True)
              if not line.startswith("#") and line.strip()]
     check("the {} scaffold is one flowing line".format(name),
@@ -258,6 +260,43 @@ check("inventory-selfie keeps its own slot vocabulary",
 check("...and no other template carries an evidence band",
       [n for n, c in pa.templates(bank).items()
        if any(sl["key"] == "marks" for sl in c["slots"])] == ["inventory-selfie"])
+
+print()
+print("=== the anthropomorphic template protects the believable half ===")
+# Every other image template asks for something believable. This one asks for
+# something believable doing something impossible, and nearly all its slots
+# exist to defend the first half.
+anthro = pa.slots(bank, "anthro-character")
+keys = [sl["key"] for sl in anthro]
+check("it carries the two slots that decide animal-versus-person-in-a-suit",
+      {"anatomy", "paws"} <= set(keys), str(keys))
+anatomy = next(sl for sl in anthro if sl["key"] == "anatomy")
+check("the anatomy slot names the joint that actually gives it away",
+      "hock" in anatomy["example"].lower(), anatomy["example"][:60])
+paws = next(sl for sl in anthro if sl["key"] == "paws")
+check("the paw slot refuses the hand grip a model defaults to",
+      "rather than gripping it like a hand" in paws["example"])
+
+# The slot this template exists to get right, and the reason is mechanical:
+# prompt_bank appends "no text, logo or watermark" to EVERY composed prompt, so
+# a prompt naming a chain's mark asks for a logo and forbids one at once.
+brand = next(sl for sl in anthro if sl["key"] == "brand")
+image_bank = rl.json.load((ROOT / "tools" / "prompt_bank.json").open(encoding="utf-8"))
+check("prompt_bank really does forbid logos on every prompt",
+      any("logo" in n.lower() for n in image_bank.get("negatives", [])),
+      str(image_bank.get("negatives", [])[-1:]))
+check("...so the brand slot says why a named mark fights that",
+      "no text, logo or watermark" in brand["why"])
+check("...and its worked example asks for no lettering at all",
+      "unbranded" in brand["example"] and "no lettering" in brand["example"])
+check("no template's worked example names a real trademark",
+      not [n for n, c in pa.templates(bank).items()
+           for sl in c["slots"] if "mcdonald" in sl["example"].lower()])
+
+# "4K" and "hyper-detailed" are BOTH on prompt_bank's warn list, and this is
+# the worst template in the bank to carry either of them.
+check("the capture slot records dropping both warn terms",
+      "4K" in anthro[-1]["why"] and "hyper-detailed" in anthro[-1]["why"])
 
 print()
 print("=== the selfie video template: the two locks it lives on ===")

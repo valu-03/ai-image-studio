@@ -1,6 +1,6 @@
 {
   "source": "This app's own 8-layer prompt system (tools/prompt_bank.json + tools/realism_lint.py), plus slot structure reverse-engineered from worked prompts - the `beauty-macro` and `macro-insert` templates from a community-supplied macro/beauty-portrait prompt contributed by the user (the same prompt tools/macro_insert_bank.json harvests its vocabulary from), and `photoreal-portrait` from this app's own build_prompt.py compose order. The `video-sequence` template is reverse-engineered from a community-supplied luxury-vlog video prompt contributed by the user, and `video-shot` from this app's own tools/motion_lint.py rules (which DO transcribe the bootcamp's Kling camera-movement toolkit, via tools/motion_bank.json). The `action-commercial` template is reverse-engineered from a second, different community-supplied video prompt contributed by the user (a high-action car commercial) - see its own `source_note` for how its shape differs from video-sequence. The `product-campaign` template is reverse-engineered from a THIRD community-supplied prompt contributed by the user (a confectionery campaign portrait), and is the image-side sibling of `action-commercial`: the same banded-brief house style, but one still frame with a person and a package in it. Everything else here is NOT AI Video Bootcamp course material.",
-  "version": 8,
+  "version": 9,
   "note": "A template is an ORDERED list of slots - the skeleton of a prompt, not its words. This bank teaches structure; the vocabulary banks (prompt_bank, lighting_bank, style_bank, macro_insert_bank, ...) supply what goes in each slot. Every template also declares `kind` - 'image' or 'video' - so the Anatomy tab's picker can group them instead of listing all five as one undifferentiated list; a template produces exactly one kind of prompt, never both, so this is a fixed fact about the template rather than a per-run choice. Detection is deliberately split: a slot that maps onto one of the eight gated realism layers declares `layer` and is detected by tools/realism_lint.py's OWN DETECT table - never a second copy of those keywords, the same no-duplication rule tools/relight_bank.json follows for lighting and camera-angle phrases. Only slots the eight layers do not cover carry their own `detect` list - and a slot whose vocabulary already lives in ANOTHER linter borrows it by name instead: a `borrow` of 'motion-verbs' takes tools/motion_lint.py's own MOTION_VERBS, so the camera-movement slots cannot drift away from what that linter actually gates on. The video templates also record two facts about this app that a prompt written elsewhere will trip over: tools/sound_bank.json is effects-only and its linter rejects music vocabulary outright (hence a separate `music` slot), and tools/build_story.py distinguishes clip_seconds from edit_seconds (hence the shot-sequence slot's warning that two-second beats are edit lengths, not generation lengths). `analyse()` is keyword presence, not parsing: it answers 'which slots does this prompt appear to fill', which is honest, rather than pretending to segment free prose into semantic regions.",
 
   "templates": {
@@ -1292,6 +1292,183 @@
           "does": "The colour treatment, in the vocabulary of a phone rather than a film.",
           "why": "Last, and deliberately restrained. Everything above has been specific, so the grade's job is only to not undo it: warm highlights, soft falloff, mild processing. A strong grade on a prompt this detailed flattens the forty decisions above into a look, which is the one way this method can still fail.",
           "example": "warm oat-and-cream highlights, soft shadow falloff, realistic contrast, natural skin tones, clean modern editorial colour grading with nothing pushed"
+        }
+      ]
+    },
+    "anthro-character": {
+      "label": "Anthropomorphic character (animal in a human role)",
+      "kind": "image",
+      "scaffold": "inline",
+      "summary": "Thirteen slots for an animal doing a human job: standing on its hind legs, in uniform, holding a tool, with a straight face. Every other template in this bank asks for something believable; this one asks for something believable doing something impossible, and almost all of its slots exist to protect the first half. The joke only lands if the anatomy, the coat and the light are photographic - a cartoon cat in a cartoon kitchen is not funny, it is just a cartoon.",
+      "source_note": "Reverse-engineered from a community-supplied image prompt contributed by the user - a cat in fast-food uniform behind a tray of fries. NOT AI Video Bootcamp course material. The source arrived as two spliced variants (it runs '...whimsical yet believable.low McDonald's uniform behind the counter...'), so the slots below are the union of both, deduplicated. THREE editorial calls. First, '4K' and 'hyper-detailed' are BOTH on tools/prompt_bank.json's `warn` list, so both are gone - the same call already made for '8K' in product-campaign, candid-editorial and macro_insert_bank, and for the same reason: a resolution number and an intensity adjective do nothing a named body and a named aperture do not do better. Second, the named brand is described by its FORM rather than its trademark - see the `brand` slot's `why`, which is about a contradiction inside this app's own composed output rather than about anybody's lawyers. Third, the source's 'anthropomorphic humor' is expressed as a deadpan performance instead, because naming humour invites a cartoon and prompt_bank.json already appends 'no cartoon style' to every prompt it composes.",
+      "slots": [
+        {
+          "key": "frame",
+          "label": "Frame and register",
+          "does": "The shot, the animal, and the single most important instruction in the template: that this is a photograph.",
+          "why": "Everything here is a tension between an impossible premise and a photographic execution, and the register has to be set before the premise is stated or the model resolves the tension the easy way - toward illustration. 'Believable' is doing more work in this prompt than any other word in it.",
+          "detect": [
+            "anthropomorphic",
+            "on its hind legs",
+            "standing upright",
+            "believable",
+            "straight-faced",
+            "photograph, not an illustration"
+          ],
+          "example": "Ultra-realistic photorealistic photograph, true-to-life, of a fluffy orange tabby cat standing upright on its hind legs behind a service counter - anthropomorphic but entirely believable, a photograph rather than an illustration, framed from the counter up at eye level"
+        },
+        {
+          "key": "costume",
+          "label": "Costume",
+          "does": "The garment on a body it was not cut for: colour, fabric, and how it actually sits.",
+          "why": "A uniform described only by name is rendered as a flat decal laid over the animal. What makes it read as worn is the fit being wrong in the right way - a collar standing off the neck ruff, a sleeve too wide at the shoulder, fabric bunching where a cat's spine is not a person's. Name the fabric, because polyester and cotton catch the light differently and a uniform is almost always the shinier one.",
+          "detect": [
+            "uniform",
+            "collar",
+            "cuffs",
+            "bunching",
+            "sits over the",
+            "cut for a human",
+            "polyester",
+            "apron"
+          ],
+          "example": "wearing a red short-sleeved service uniform in slightly shiny polyester with a matching cap, the collar standing off its neck ruff and the shoulders cut for a human frame so the fabric bunches at the elbows"
+        },
+        {
+          "key": "brand",
+          "label": "Brand, by form not by mark",
+          "does": "The livery - colours, stripe, cap shape - described as design rather than as a trademark.",
+          "why": "The slot this template exists to get right, and the reason is mechanical rather than legal. tools/prompt_bank.json appends 'no text, logo or watermark' to EVERY prompt this app composes, so a prompt that also asks for a named chain's mark is asking for a logo and forbidding one in the same breath - and what comes back is a smeared pseudo-logo that satisfies neither. Describe the livery instead and the picture reads as the brand without containing its mark. If you genuinely need the real mark, generate a clean cap and composite it afterwards, which is the same conclusion tools/typography_bank.json reaches about rendered text from the other direction.",
+          "detect": [
+            "livery",
+            "no visible logo",
+            "unbranded",
+            "colour scheme",
+            "yellow flash",
+            "blank cap",
+            "brandless"
+          ],
+          "example": "livery suggested by colour alone - a deep red uniform with a single yellow flash across the cap front, the cap otherwise blank and unbranded, no lettering anywhere on the garment"
+        },
+        {
+          "key": "anatomy",
+          "label": "Bipedal anatomy",
+          "does": "How a four-legged body carries itself on two, joint by joint.",
+          "why": "The slot that decides whether this is an animal or a person in a suit, and the one every version of this prompt leaves out. A cat on its hind legs has a specific set of problems: the hock bends backwards, the spine is longer than a human's, the hips sit differently, and the centre of balance is further forward. Name them and you get a real cat doing something unusual; leave them out and you get either a human silhouette with a cat's head, or a cat floating upright with no weight in it.",
+          "detect": [
+            "hind legs",
+            "hocks",
+            "weight over",
+            "spine",
+            "haunches",
+            "balanced",
+            "centre of balance",
+            "tail counterbalancing"
+          ],
+          "example": "its weight carried over the haunches with the hocks bent back the way a cat's actually do, the long spine upright but not human-straight, the tail low and counterbalancing behind it"
+        },
+        {
+          "key": "paws",
+          "label": "Paws on the prop",
+          "does": "What the front paws are doing, and how they meet the object they are holding.",
+          "why": "The hardest thing in the frame and the first thing a viewer checks, exactly as hands are in a human portrait. A paw is not a hand: it cannot oppose a thumb, so it grips by pressing the object against the pad or cradling it between both. Say which, and say the toes are spread - a paw rendered as a mitten is the giveaway.",
+          "detect": [
+            "paw",
+            "pads",
+            "toes spread",
+            "gripping",
+            "pressed against",
+            "one paw raised",
+            "claws retracted"
+          ],
+          "example": "one front paw pressing a metal serving spoon against the pad rather than gripping it like a hand, toes visibly spread, claws retracted, the other paw resting flat on the counter edge"
+        },
+        {
+          "key": "expression",
+          "label": "Deadpan",
+          "does": "The face: focused, serious, entirely uninterested in being funny.",
+          "why": "The comedy is structural - a cat is doing a job - so the performance must not also be comic, or the picture tips into cartoon. A straight face is what makes the premise land, and it is also what keeps the model honest: 'serious and focused' is a real feline expression with real muscle positions, where 'funny' is not.",
+          "detect": [
+            "serious",
+            "focused",
+            "deadpan",
+            "level gaze",
+            "ears forward",
+            "unimpressed",
+            "concentrating"
+          ],
+          "example": "a serious, focused expression with the ears forward and the eyes level on the work, entirely deadpan - it is concentrating, not performing"
+        },
+        {
+          "key": "setting",
+          "label": "Workplace",
+          "does": "The room, named by the specific equipment in it.",
+          "why": "The premise needs a real workplace or the animal is standing in an idea of one. Stainless steel, a pass, a fryer basket, a stack of trays - the same inventory logic the mirror-selfie template runs on, and it does double duty here by giving the light something hard to bounce off.",
+          "detect": [
+            "stainless steel",
+            "fast food kitchen",
+            "service counter",
+            "heat lamps",
+            "fryer",
+            "trays",
+            "pass"
+          ],
+          "example": "a working fast-food kitchen behind the counter - stainless steel surfaces, a stack of trays, a fryer basket draining at the pass"
+        },
+        {
+          "key": "lighting",
+          "label": "Light",
+          "layer": "lighting",
+          "does": "The fittings that are actually in the room, and what they do to a coat.",
+          "why": "Heat lamps are the gift in this scene: they are a real, unglamorous, strongly coloured practical source hanging directly above the subject, which means hard top light, warm falloff and a rim along the ears. Naming the fitting rather than asking for 'warm lighting' is what gets the direction as well as the colour.",
+          "example": "lit by warm yellow heat lamps directly overhead, a practical source casting hard top light with realistic shadows under the muzzle and a warm rim along the ear tips, cooler fluorescent fill bouncing off the steel behind"
+        },
+        {
+          "key": "depth",
+          "label": "Someone else in the room",
+          "does": "A human, out of focus, doing something unrelated.",
+          "why": "The cheapest realism in the whole template. A second figure who is not looking at the subject turns a staged shot into a moment that was happening anyway - the same clause that does the most work in the mirror-selfie background. It also settles the scale question a viewer has been holding since the first line: next to a person, you can finally tell how big this cat is.",
+          "detect": [
+            "blurred",
+            "out of focus",
+            "in the background",
+            "another employee",
+            "unaware",
+            "going about"
+          ],
+          "example": "a human employee in matching red, well out of focus in the background, going about their own work and paying the cat no attention at all"
+        },
+        {
+          "key": "fur",
+          "label": "Coat",
+          "layer": "texture",
+          "does": "The coat at this distance - length, direction, and the places it is not tidy.",
+          "why": "The animal half of the believability, and the half a costume makes harder: fur flattens and parts where fabric presses on it. Saying so is what stops the uniform reading as painted on. Guard hairs catching the lamp above are the detail that sells it, because they only exist if there is a real light and a real coat.",
+          "example": "dense orange tabby coat with visible individual guard hairs catching the lamp, the fur flattened and parted where the collar presses, tactile surface detail throughout, slight imperfections rather than a groomed finish"
+        },
+        {
+          "key": "camera",
+          "label": "Camera and lens",
+          "layer": "lens",
+          "does": "The body, the focal length and the aperture that separate the subject from the kitchen.",
+          "why": "The blurred colleague in the depth slot is a CONSEQUENCE of this one. Naming a fast portrait prime is what earns that separation; asking for 'shallow depth of field' without a lens asks for the effect with no cause. This is also where the source's '4K, DSLR quality' was cut down to just the body: a resolution number is not a camera property.",
+          "example": "shot on a DSLR with an 85mm portrait lens at a wide aperture, shallow depth of field holding the cat sharp from whiskers to shoulder while the kitchen falls away"
+        },
+        {
+          "key": "grade",
+          "label": "Grade",
+          "layer": "colour",
+          "does": "The colour treatment, kept documentary rather than advertising.",
+          "why": "A scene lit by heat lamps is already saturated, so the grade's only job is restraint. Push it and the picture becomes an advert, which quietly answers the question the premise depends on - a photograph of something absurd is funny, an advertisement for it is not.",
+          "example": "natural colour grading with realistic contrast, warm highlights rolling off gently, natural skin tones on the human behind, nothing pushed"
+        },
+        {
+          "key": "capture",
+          "label": "Capture",
+          "layer": "grain",
+          "does": "The one line that says a sensor recorded this, not a renderer.",
+          "why": "Last, and short. It is also where two of the source's own words were dropped: '4K' and 'hyper-detailed' are both on prompt_bank.json's `warn` list, and a template whose whole argument is 'make it photographic' is the worst possible place to ask for the two adjectives that most reliably produce the opposite.",
+          "example": "fine sensor noise in the shadows, sharp focus on the near eye, not overly polished"
         }
       ]
     }
