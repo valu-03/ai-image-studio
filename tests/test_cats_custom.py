@@ -273,6 +273,78 @@ check("set_busy(False) re-enables Generate once the batch finishes",
       ct.generate_button.isEnabled())
 
 print()
+print("=== THE CONTENT GATE, ON THE ONE ANIMAL PATH THAT HAD NONE ===")
+# The Cats storyboard reaches safety_lint through story_lint.check_safety().
+# This free-form tab - the only place a user types arbitrary text about a cat -
+# reached nothing, so a scene staging real harm generated without complaint.
+import realism_lint as rl  # noqa: E402
+import safety_lint as sfl  # noqa: E402
+
+SAFE_CAT = ("an orange tabby cat, photorealistic, ultra-realistic, true-to-life, "
+            "lifelike details, visible guard hairs and undercoat, natural "
+            "imperfections, shot on a DSLR with an 85mm portrait lens at a wide "
+            "aperture, natural window light with realistic shadows, tactile fur "
+            "texture with fine surface detail, natural colour grading with "
+            "realistic contrast, eye-level candid framing, subtle film grain, "
+            "sharp focus")
+
+ct.subject_box.setPlainText(SAFE_CAT)
+ct.background_box.setPlainText("a sunlit living room rug")
+ct.style_box.setPlainText("soft daylight")
+ct.rebuild_preview()
+safety_rows = [c for c in ct.gate._checks if c["key"].startswith("safety_")]
+check("the gate carries safety_lint's four content rows",
+      len(safety_rows) == len(sfl.CHECKS), str(len(safety_rows)))
+check("a harmless cat scene passes every one of them",
+      all(c["passed"] for c in safety_rows),
+      str([c["label"] for c in safety_rows if not c["passed"]]))
+check("...and Generate is allowed", ct.generate_button.isEnabled())
+
+# history.py formats the score as "{score}/8", and checks_for() returns TEN
+# rows - the eight layers plus banned and warn. Summing all of them logged a
+# clean prompt as 10/8, which was wrong before the safety rows existed too.
+check("the recorded score counts the eight realism layers only",
+      ct._score <= 8, str(ct._score))
+check("...and a clean prompt records a full 8", ct._score == 8, str(ct._score))
+check("the safety rows do not inflate it",
+      ct._score == sum(1 for c in ct.gate._checks
+                       if c["key"] in rl.LAYER_ORDER and c["passed"]))
+
+ct.subject_box.setPlainText(SAFE_CAT + ", swatting the kitten off the balcony")
+ct.rebuild_preview()
+failing = [c for c in ct.gate._checks
+           if c["key"].startswith("safety_") and not c["passed"]]
+check("staging real harm fails the content gate", bool(failing),
+      str([c["label"] for c in ct.gate._checks if c["key"].startswith("safety_")]))
+check("...naming the hazard and the unsoftened contact",
+      {c["key"] for c in failing} == {"safety_hazard", "safety_softened"},
+      str(sorted(c["key"] for c in failing)))
+check("...and Generate is blocked", not ct.generate_button.isEnabled())
+
+# The softener rule is the positive one: the same swat, named as gentle, is the
+# comedy the source brief actually asks for.
+ct.subject_box.setPlainText(SAFE_CAT + ", a soft playful paw tap, claws sheathed")
+ct.background_box.setPlainText("a sunlit living room rug")
+ct.rebuild_preview()
+check("a softened, harmless swat passes again",
+      all(c["passed"] for c in ct.gate._checks if c["key"].startswith("safety_")),
+      str([c["fix"][:50] for c in ct.gate._checks
+           if c["key"].startswith("safety_") and not c["passed"]]))
+
+# Rule 1 of safety_lint: never scan the assembled prompt. Style & Atmosphere is
+# rendering vocabulary, so it is deliberately not scanned - "crushing blacks"
+# is a grade, not an act.
+ct.subject_box.setPlainText(SAFE_CAT)
+ct.style_box.setPlainText("crushing the blacks, knife-sharp contrast")
+ct.rebuild_preview()
+check("style vocabulary is not mistaken for staging",
+      all(c["passed"] for c in ct.gate._checks if c["key"].startswith("safety_")),
+      str([c["key"] for c in ct.gate._checks
+           if c["key"].startswith("safety_") and not c["passed"]]))
+ct.style_box.setPlainText("soft daylight")
+ct.rebuild_preview()
+
+print()
 if fails:
     print("FAILURES: " + ", ".join(fails))
     sys.exit(1)

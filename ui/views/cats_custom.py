@@ -35,6 +35,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 import history as hist  # noqa: E402
 import realism_lint as rl  # noqa: E402
+import safety_lint as sfl  # noqa: E402
 
 from .. import assets, tokens as T  # noqa: E402
 from ..widgets import AiSuggestionBadge, Card, GateTree, MutedLabel, ResultCard, TitleLabel  # noqa: E402
@@ -76,6 +77,7 @@ class CustomPromptTab(QWidget):
         self.current_image = None
         self.entry_id = None
         self._score = 0
+        self.safety_bank = sfl.load_bank()
         self.pool = QThreadPool(self)
         self.pool.setMaxThreadCount(1)
         self.setup_ui()
@@ -360,9 +362,43 @@ class CustomPromptTab(QWidget):
             self.style_box.toPlainText())
         self.full_prompt_view.setPlainText(prompt)
         checks = rl.checks_for(prompt, self.bank)
+        # The EIGHT realism layers only. self._score is what history records,
+        # and history.py formats it as "{score}/8" - but checks_for() returns
+        # ten rows (the eight layers plus a banned-terms row and the soft warn
+        # row), so summing all of them logged a clean prompt as 10/8. That was
+        # already wrong before the safety rows below were added; counting by
+        # layer name fixes it and keeps it fixed as rows are added.
+        self._score = sum(1 for c in checks
+                          if c["key"] in rl.LAYER_ORDER and c["passed"])
+        checks = checks + self.safety_checks()
         self.gate.set_checks(checks)
-        self._score = sum(1 for c in checks if c["passed"])
         self.generate_button.setEnabled(self.gate.all_passed())
+
+    def safety_checks(self):
+        """safety_lint's four content rows, on the AUTHORED fields only.
+
+        This tab was the one animal-subject generation path with no content
+        gate at all: the Cats storyboard reaches safety_lint through
+        story_lint.check_safety(), and this free-form tab - the only place a
+        user types arbitrary text about a cat - reached nothing.
+
+        Scanned per field, never on the assembled prompt. That is safety_lint's
+        own first rule: the shared vocabulary is full of innocent collisions
+        ("crushing" is in camera_angle_bank.json, "squash and stretch" in
+        story_bank.json's stylised style), so pointed at a composed prompt it
+        fails clean photoreal work for words the photographer put there. Style
+        & Atmosphere is left out for the same reason - this gate judges what a
+        scene DEPICTS, not how it is rendered.
+
+        Subject and Background map onto safety_lint's own `subject` and
+        `setting`, both of which are staging fields, so the softener rule
+        applies to them as it does in a storyboard scene.
+        """
+        item = {"subject": self.subject_box.toPlainText(),
+                "setting": self.background_box.toPlainText()}
+        return [{"key": "safety_" + key, "label": label, "passed": passed,
+                 "fix": detail, "ok_text": detail}
+                for key, label, passed, detail in sfl.lint(self.safety_bank, [item])]
 
     def copy_prompt(self):
         text = self.full_prompt_view.toPlainText()
@@ -375,7 +411,10 @@ class CustomPromptTab(QWidget):
     # -- generation -------------------------------------------------------------- #
     def request_generate(self):
         if not self.gate.all_passed():
-            self.status.emit("Fix the realism check first")
+            failing = [c for c in self.gate._checks if not c["passed"]]
+            content = [c for c in failing if c["key"].startswith("safety_")]
+            self.status.emit(
+                content[0]["fix"][:160] if content else "Fix the realism check first")
             return
         prompt = self.full_prompt_view.toPlainText()
         spec = {}
