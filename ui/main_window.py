@@ -38,6 +38,7 @@ import refine_image as ri  # noqa: E402
 from . import assets, tokens as T  # noqa: E402
 from .views import (  # noqa: E402
     ActivityView,
+    AdsContainer,
     AdsView,
     AssistantView,
     CatsView,
@@ -96,6 +97,7 @@ SUBVIEW_ROUTES = {
     "posing": ("look", 4),
     "style": ("look", 5),
     "capture": ("look", 6),
+    "static_ad": ("ads", 1),
     "advisor": ("assistant", 0),
     "brief": ("assistant", 1),
     "history": ("activity", 0),
@@ -291,7 +293,12 @@ class MainWindow(QMainWindow):
         self.insights_view = self.activity_view.insights
 
         self.videos_view = VideosView(self.theme.palette)
-        self.ads_view = AdsView(self.bank, self.theme.palette)
+        self.ads_container = AdsContainer(self.bank, self.theme.palette)
+        # The five-beat view is still `ads_view` everywhere else in this
+        # file and in tests/test_ads.py - the container is the new parent,
+        # not a new owner of the video ad's behaviour.
+        self.ads_view = self.ads_container.video
+        self.static_ad_view = self.ads_container.static
         self.cats_view = CatsView(self.bank, self.theme.palette)
         self.sound_view = SoundView(self.theme.palette)
         self.influencer_studio_view = InfluencerStudioView(self.theme.palette)
@@ -302,7 +309,7 @@ class MainWindow(QMainWindow):
             "look": self.look_view,
             "videos": self.videos_view,
             "influencer_studio": self.influencer_studio_view,
-            "ads": self.ads_view,
+            "ads": self.ads_container,
             "cats": self.cats_view,
             "sound": self.sound_view,
             "assistant": self.assistant_view,
@@ -538,7 +545,7 @@ class MainWindow(QMainWindow):
         self.compose_view.lint.set_palette_tokens(self.theme.palette)
         self.history_view.set_palette_tokens(self.theme.palette)
         self.videos_view.set_palette_tokens(self.theme.palette)
-        self.ads_view.set_palette_tokens(self.theme.palette)
+        self.ads_container.set_palette_tokens(self.theme.palette)
         self.cats_view.set_palette_tokens(self.theme.palette)
         self.sound_view.set_palette_tokens(self.theme.palette)
         self.lighting_view.set_palette_tokens(self.theme.palette)

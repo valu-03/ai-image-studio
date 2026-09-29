@@ -24,6 +24,7 @@ each child view keeps its own logic and signals, and MainWindow reaches in for
 
 from .activity import ActivityView
 from .ads import AdsView
+from .ads_container import AdsContainer
 from .advisor import AdvisorView
 from .assistant import AssistantView
 from .brief_view import BriefView
@@ -40,6 +41,7 @@ from .lighting import LightingView
 from .look import LookView
 from .posing import PosingView
 from .settings import SettingsView
+from .static_ad import StaticAdView
 from .sound import SoundView
 from .style import StyleView
 from .variants import VariantsView
@@ -47,7 +49,7 @@ from .videos import VideosView
 
 __all__ = [
     "ImagesView", "ComposeView", "VariantsView", "LookView", "VideosView", "AdsView",
-    "CatsView", "SoundView", "LightingView", "CompositionView", "ColorGradingView",
+    "AdsContainer", "StaticAdView", "CatsView", "SoundView", "LightingView", "CompositionView", "ColorGradingView",
     "PosingView", "CameraAngleView", "StyleView", "InfluencerStudioView",
     "AssistantView", "BriefView", "AdvisorView", "ActivityView", "HistoryView",
     "InsightsView", "SettingsView",

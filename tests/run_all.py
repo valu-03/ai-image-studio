@@ -61,6 +61,7 @@ ORDER = [
     "test_influencer_studio_gui.py",
     "test_ads.py",
     "test_static_ad.py",
+    "test_static_ad_gui.py",
     "test_sound.py",
     "test_sound_gui.py",
     "test_elevenlabs.py",
