@@ -140,6 +140,13 @@ def append(spec, prompt, layers, score, passed, detailed=False, image=None, note
         "passed": bool(passed),
         "bank_version": current_bank_version(),
         "layers": {k: list(v) for k, v in layers.items()},
+        # The WHOLE spec, so an entry can be loaded back into Compose.
+        # subject/shot/seed above are the three fields the table shows and
+        # were all that was ever kept, which meant a history row could be
+        # read but never reopened - wardrobe, setting, posing, lighting and
+        # every override were simply not recorded. Additive: entries written
+        # before this have no "spec" key and every reader uses .get().
+        "spec": dict(spec),
         "prompt": prompt,
         "image": image or "",
         "rating": None,

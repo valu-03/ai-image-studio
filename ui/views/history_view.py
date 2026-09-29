@@ -31,6 +31,9 @@ COLUMNS = ["Rating", "Score", "Seed", "Character", "When", "Image"]
 
 class HistoryView(QWidget):
     status = pyqtSignal(str)
+    # A history row was read-only text. This carries one back into Compose,
+    # which is the difference between a log and a library.
+    spec_chosen = pyqtSignal(dict)
 
     def __init__(self, palette, parent=None):
         super().__init__(parent)
@@ -55,6 +58,13 @@ class HistoryView(QWidget):
         refresh = QPushButton("Refresh")
         refresh.clicked.connect(self.reload)
         self.diff_button = QPushButton("Diff selected")
+        self.open_button = QPushButton("Open in Compose")
+        self.open_button.setProperty("class", "ghost")
+        self.open_button.setToolTip(
+            "Load this entry's spec back into Compose, so a prompt you "
+            "rated well can be the starting point for the next one.")
+        self.open_button.clicked.connect(self.open_in_compose)
+        self.open_button.setEnabled(False)
         self.diff_button.setToolTip("Select exactly two rows to compare their prompts")
         self.diff_button.clicked.connect(self.show_diff)
         self.diff_button.setEnabled(False)
@@ -63,6 +73,7 @@ class HistoryView(QWidget):
         buttons.setSpacing(T.SPACE["sm"])
         buttons.addWidget(refresh)
         buttons.addWidget(self.diff_button)
+        buttons.addWidget(self.open_button)
         buttons.addStretch(1)
 
         self.rating = StarRating()
@@ -141,6 +152,35 @@ class HistoryView(QWidget):
         self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
         self.status.emit("{} entries".format(len(self.entries)))
 
+    def open_in_compose(self):
+        """Load the selected entry's spec back into Compose.
+
+        Entries written before history recorded the whole spec carry only
+        subject/shot/seed, so those are reconstructed into a partial spec
+        rather than refused - a three-field restore beats a row you can only
+        read. The status message says which it was, so nobody wonders why an
+        older entry came back thinner.
+        """
+        chosen = self.selected_entries()
+        if len(chosen) != 1:
+            self.status.emit("Pick one entry to open")
+            return
+        entry = chosen[0]
+        spec = dict(entry.get("spec") or {})
+        if spec:
+            note = "Loaded {} into Compose".format(entry["id"])
+        else:
+            for key in ("subject", "shot", "seed"):
+                if entry.get(key):
+                    spec[key] = entry[key]
+            if not spec:
+                self.status.emit("That entry recorded nothing loadable")
+                return
+            note = ("Loaded {} into Compose - an older entry, so only subject, "
+                    "shot and seed were recorded").format(entry["id"])
+        self.spec_chosen.emit(spec)
+        self.status.emit(note)
+
     def selected_entries(self):
         rows = sorted({index.row() for index in self.table.selectedIndexes()})
         return [self.entries[row] for row in rows if 0 <= row < len(self.entries)]
@@ -148,6 +188,7 @@ class HistoryView(QWidget):
     def on_selection(self):
         chosen = self.selected_entries()
         self.diff_button.setEnabled(len(chosen) == 2)
+        self.open_button.setEnabled(len(chosen) == 1)
         if len(chosen) == 1:
             entry = chosen[0]
             self.rating.set_value(entry.get("rating") or 0)

@@ -26,6 +26,15 @@ IMAGES_DIR = ROOT / "temp" / "outputs" / "images"
 VIDEOS_DIR = ROOT / "temp" / "outputs" / "videos"
 SOUND_DIR = ROOT / "temp" / "outputs" / "sound"
 VOICE_DIR = ROOT / "temp" / "outputs" / "voice"
+# tools/render_video.py has written here since it existed, and this table did
+# not know about it - so nothing created it at launch, Settings had no Open
+# button for it, and the one folder holding the app's only actual DELIVERABLE
+# (a finished cut, not a prompt or a clip) was the hardest one to find.
+RENDER_DIR = ROOT / "temp" / "outputs" / "render"
+# Project manifests - see tools/project.py. Not disposable: this is the file
+# that makes a session survivable, so it sits under resources with characters
+# and personas rather than under outputs with the regenerable things.
+PROJECTS_DIR = ROOT / "temp" / "resources" / "projects"
 OUTPUTS_DIR = ROOT / "temp" / "outputs"
 ENV_PATH = ROOT / ".env"
 
@@ -35,8 +44,8 @@ ENV_PATH = ROOT / ".env"
 # nothing created it until the first clip was ever rendered and Settings had
 # no "Open Videos folder" button to offer. SOUND_DIR/VOICE_DIR follow the same
 # rule from day one of the ElevenLabs integration, not added after the fact.
-ALL_OUTPUT_DIRS = (CHARACTERS_DIR, PERSONAS_DIR, PROMPTS_DIR, IMAGES_DIR, VIDEOS_DIR,
-                   SOUND_DIR, VOICE_DIR)
+ALL_OUTPUT_DIRS = (CHARACTERS_DIR, PERSONAS_DIR, PROJECTS_DIR, PROMPTS_DIR,
+                   IMAGES_DIR, VIDEOS_DIR, SOUND_DIR, VOICE_DIR, RENDER_DIR)
 
 
 def ensure_output_dirs():
@@ -46,8 +55,9 @@ def ensure_output_dirs():
     at import time - tests repoint `assets.CHARACTERS_DIR` at a temp directory
     for isolation, and this must follow that redirection, not the original.
     """
-    for name in ("CHARACTERS_DIR", "PERSONAS_DIR", "PROMPTS_DIR", "IMAGES_DIR",
-                 "VIDEOS_DIR", "SOUND_DIR", "VOICE_DIR"):
+    for name in ("CHARACTERS_DIR", "PERSONAS_DIR", "PROJECTS_DIR", "PROMPTS_DIR",
+                 "IMAGES_DIR", "VIDEOS_DIR", "SOUND_DIR", "VOICE_DIR",
+                 "RENDER_DIR"):
         globals()[name].mkdir(parents=True, exist_ok=True)
 
 ICON_SIZE = QSize(20, 20)

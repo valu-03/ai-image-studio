@@ -233,6 +233,9 @@ class SettingsView(QWidget):
             ("Videos", assets.VIDEOS_DIR, True),
             ("Sound effects", assets.SOUND_DIR, True),
             ("Voice / speech", assets.VOICE_DIR, True),
+            # The finished cut, and the projects that describe how to rebuild it.
+            ("Rendered videos", assets.RENDER_DIR, False),
+            ("Projects", assets.PROJECTS_DIR, False),
         ]:
             row = QHBoxLayout()
             row.setSpacing(T.SPACE["sm"])

@@ -6,6 +6,7 @@ below those, and all domain logic lives in tools/.
 """
 
 import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -13,6 +14,7 @@ from PyQt6.QtCore import QSettings, QThreadPool, pyqtSignal
 from PyQt6.QtGui import QAction, QKeySequence
 from PyQt6.QtWidgets import (
     QButtonGroup,
+    QFileDialog,
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -31,6 +33,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 import build_prompt as bp  # noqa: E402
 import generate_image as gi  # noqa: E402
 import generate_video as gv  # noqa: E402
+import project as proj  # noqa: E402
 import history as hist  # noqa: E402
 import upscale_image as up  # noqa: E402
 import refine_image as ri  # noqa: E402
@@ -154,6 +157,10 @@ class MainWindow(QMainWindow):
         # `_sequence_total`, `_batch_offset`) tracked and cleared by hand.
         self._batch = None
         self.credits_left = None
+        # The open project, so Ctrl+Shift+S can save over it rather than
+        # asking for a name every time.
+        self._project_name = "Untitled"
+        self._project_path = None
         self._credits_pool = WorkerPool(1, self)
         # The refine loop is a multi-round, potentially minutes-long call - its
         # own small pool, the same way Brief/Compose's autofill/upgrade calls
@@ -351,6 +358,18 @@ class MainWindow(QMainWindow):
         hardcoded shortcut copy did.
         """
         groups = [
+            ("&File", [
+                ("New project", "Ctrl+N", self.new_project,
+                 "Start over: clears the spec and the story."),
+                ("Open project…", "Ctrl+O", self.open_project,
+                 "Load a saved session - spec, story settings and what it generated."),
+                ("Save project", "Ctrl+Shift+S", self.save_project,
+                 "Save this session so closing the window does not lose it."),
+                ("Save project as…", "Ctrl+Alt+S", self.save_project_as,
+                 "Save it under a new name."),
+                ("Save image as…", "Ctrl+Shift+E", self.save_image_as,
+                 "Copy the image on screen somewhere that is not temp/."),
+            ]),
             ("&Go", [
                 (label, "Ctrl+{}".format((index + 1) % 10),
                  # `*_` absorbs QAction.triggered's `checked` argument. Without
@@ -445,6 +464,9 @@ class MainWindow(QMainWindow):
         self.settings_view.keys_changed.connect(self.compose_view.refresh_key_state)
         self.settings_view.keys_changed.connect(self.refresh_credits)
         self.settings_view.keys_changed.connect(self.compose_view.update_cost_note)
+
+        # A history row becomes a starting point rather than a record.
+        self.history_view.spec_chosen.connect(self.adopt_history_spec)
 
         # The estimate Settings promises next to Generate.
         self.compose_view.cost_provider = self.image_cost_note
@@ -1117,6 +1139,138 @@ class MainWindow(QMainWindow):
             QMessageBox.StandardButton.Cancel | QMessageBox.StandardButton.Ok,
             QMessageBox.StandardButton.Ok)
         return answer == QMessageBox.StandardButton.Ok
+
+    # ------------------------------------------------------------ project -- #
+    def current_project(self, name=None):
+        """Everything this session is, as a manifest. See tools/project.py.
+
+        The largest functional hole this app had: a nine-scene story with clips,
+        sound and voiceovers lived in three plain attributes on CatsView and was
+        gone on close. Characters could be saved and personas could be saved;
+        the body of work that USES them could not.
+        """
+        cats = self.cats_view
+        return proj.from_views(
+            name or self._project_name,
+            spec=self.compose_view.editor.spec(),
+            scenes=[{"n": s.get("n"), "label": s.get("label")} for s in cats.scenes],
+            videos=cats.videos,
+            sfx=cats.sfx,
+            images=getattr(cats, "images", {}) or {},
+            render=str(getattr(cats, "render_path", "") or ""),
+            notes="",
+        )
+
+    def new_project(self):
+        self._project_name = "Untitled"
+        self._project_path = None
+        self.compose_view.editor.load_spec({})
+        self.setWindowTitle(self._window_title())
+        self.statusBar().showMessage("New project")
+
+    def save_project(self):
+        """Save over the open project, or ask for a name if there is not one."""
+        if self._project_path is None:
+            self.save_project_as()
+            return
+        self._write_project(self._project_path)
+
+    def save_project_as(self):
+        assets.ensure_output_dirs()
+        suggested = str(assets.PROJECTS_DIR / (proj._slug(self._project_name)
+                                              + proj.SUFFIX))
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Save project as", suggested,
+            "AI Video Studio project (*.aivs.json);;All files (*)")
+        if not path:
+            return
+        self._write_project(Path(path))
+
+    def _write_project(self, path):
+        # The story settings ride alongside the manifest rather than inside
+        # from_views(): CatsView owns that shape, and tools/project.py must not
+        # need to know what controls the Cats view happens to have.
+        project = self.current_project(Path(path).name.split(".")[0])
+        project["story"] = self.cats_view.story_state()
+        try:
+            written = proj.save(project, path)
+        except OSError as exc:
+            self.report_failure("Could not save the project:\n{}".format(exc),
+                                "Save failed")
+            return
+        self._project_path = written
+        self._project_name = project["name"]
+        self.setWindowTitle(self._window_title())
+        self.statusBar().showMessage("Saved {}".format(written))
+
+    def open_project(self):
+        assets.ensure_output_dirs()
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Open project", str(assets.PROJECTS_DIR),
+            "AI Video Studio project (*.aivs.json);;All files (*)")
+        if not path:
+            return
+        try:
+            project = proj.load(path)
+        except ValueError as exc:
+            self.report_failure(str(exc), "Could not open that project")
+            return
+
+        self.compose_view.editor.load_spec(project.get("spec") or {})
+        if project.get("story"):
+            self.cats_view.load_story_state(project["story"])
+        # Artefacts are paths, so they are restored as-is. rebuild() has just
+        # recomposed the scene list from the settings above, which is why these
+        # go back AFTER it rather than before.
+        self.cats_view.videos = proj.scene_videos(project)
+        self.cats_view.sfx = proj.scene_sfx(project)
+        if hasattr(self.cats_view, "images"):
+            self.cats_view.images = proj.scene_images(project)
+        self.cats_view.rebuild()
+
+        self._project_path = Path(path)
+        self._project_name = project.get("name") or Path(path).stem
+        self.setWindowTitle(self._window_title())
+
+        gone = proj.missing(project)
+        if gone:
+            # Better than loading a story with silent holes in it. temp/outputs
+            # is a folder this app's own Settings calls "disposable".
+            self.report_failure(
+                "Opened {}, but {} referenced file(s) are no longer on disk:\n\n{}"
+                .format(self._project_name, len(gone), "\n".join(gone[:8])),
+                "Some files are missing")
+        else:
+            self.statusBar().showMessage("Opened " + proj.describe(project))
+
+    def adopt_history_spec(self, spec):
+        """Load a history entry back into Compose and show it there."""
+        self.compose_view.editor.load_spec(dict(spec or {}))
+        self.go_to("images")
+        self.images_view.show_compose()
+
+    def save_image_as(self):
+        """Copy the image on screen out of temp/, which Settings calls disposable."""
+        source = self.compose_view.current_image
+        if not source:
+            self.statusBar().showMessage("No image on screen to save")
+            return
+        source = Path(str(source))
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Save image as", source.name,
+            "Images (*.png *.jpg *.jpeg *.webp);;All files (*)")
+        if not path:
+            return
+        try:
+            shutil.copy2(source, path)
+        except OSError as exc:
+            self.report_failure("Could not save the image:\n{}".format(exc),
+                                "Save failed")
+            return
+        self.statusBar().showMessage("Saved {}".format(path))
+
+    def _window_title(self):
+        return "{} - AI Video Studio".format(self._project_name or "Untitled")
 
     def cancel_videos(self):
         """Videos runs on its own pool, so cancel_generation() would not

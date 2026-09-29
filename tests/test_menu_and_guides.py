@@ -73,14 +73,16 @@ menus = {a.menu().title(): a.menu() for a in bar.actions() if a.menu()}
 
 
 print("=== THERE IS A MENU BAR, AND IT HOLDS EVERY SHORTCUT ===")
-check("four menus", sorted(menus) == ["&Compose", "&Go", "&Help", "&View"],
+check("five menus, File first",
+      [a.menu().title() for a in bar.actions() if a.menu()]
+      == ["&File", "&Go", "&Compose", "&View", "&Help"],
       str(sorted(menus)))
 entries = {}
 for title, menu in menus.items():
     for action in menu.actions():
         entries[action.text()] = action.shortcut().toString()
 check("every shortcut in the app is reachable from a menu",
-      len(entries) == 17, "{} entries: {}".format(len(entries), sorted(entries)))
+      len(entries) == 22, "{} entries: {}".format(len(entries), sorted(entries)))
 check("...and none of them is a dead key",
       all(seq for seq in entries.values()),
       str([k for k, v in entries.items() if not v]))

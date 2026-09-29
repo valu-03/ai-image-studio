@@ -194,6 +194,10 @@ class CatsView(QWidget):
         self.script = {}
         self.passing = False
         self.images = {}            # scene index -> generated still
+        # The finished cut. _on_render_finished() only ever put this in a
+        # label, so the one actual DELIVERABLE this app produces was the one
+        # thing no code could point at afterwards - including a project file.
+        self.render_path = ""
         self.videos = {}            # scene index -> generated clip
         self.voiceovers = {}        # scene index -> generated voiceover audio
         self.sfx = {}               # scene index -> {layer: generated audio path}
@@ -1227,6 +1231,65 @@ class CatsView(QWidget):
             self.steps_layout.addWidget(text)
         self.steps_layout.addStretch(1)
 
+    # -- saving and restoring a session ------------------------------------- #
+    def story_state(self):
+        """The INPUTS a story is composed from, for tools/project.py.
+
+        Deliberately not `self.scenes`. rebuild() recomposes that list from
+        these controls whenever anything changes, so a stored scene list would
+        be overwritten by the first rebuild after loading - or worse, survive
+        one and then disagree with the controls above it. Restoring the inputs
+        and letting rebuild() do its job is the only version that stays
+        consistent.
+
+        The generated artefacts - clips, stills, sound - are the opposite: they
+        cannot be recomputed, so the project stores those as paths.
+        """
+        return {
+            "idea": self.idea.text(),
+            "format": self.format.currentData(),
+            "arc": self.arc.currentData(),
+            "style": self.style.currentData(),
+            "trade": self.trade.currentData(),
+            "cast": self.cast.currentData(),
+            "premise": self.premise.currentData(),
+            "seconds": self.seconds.value(),
+            "clip": self.clip.value(),
+            "script": dict(self.script or {}),
+        }
+
+    def load_story_state(self, state):
+        """Put the controls back, then rebuild ONCE - not once per control.
+
+        Every one of these widgets is wired to rebuild(), so setting them one
+        at a time would recompose the story ten times over and flood the status
+        bar. blockSignals is the approach SpecEditor.load_spec() already takes,
+        for the same reason.
+        """
+        state = dict(state or {})
+        widgets = [self.idea, self.format, self.arc, self.style, self.trade,
+                   self.cast, self.premise, self.seconds, self.clip]
+        for widget in widgets:
+            widget.blockSignals(True)
+        try:
+            self.idea.setText(state.get("idea", ""))
+            for combo, key in ((self.format, "format"), (self.arc, "arc"),
+                               (self.style, "style"), (self.trade, "trade"),
+                               (self.cast, "cast"), (self.premise, "premise")):
+                index = combo.findData(state.get(key))
+                if index >= 0:
+                    combo.setCurrentIndex(index)
+            if state.get("seconds"):
+                self.seconds.setValue(int(state["seconds"]))
+            if state.get("clip"):
+                self.clip.setValue(int(state["clip"]))
+            self.script = dict(state.get("script") or {})
+        finally:
+            for widget in widgets:
+                widget.blockSignals(False)
+        self.rebuild()
+        self.story_changed.emit()
+
     # -- state -------------------------------------------------------------- #
     def arc_key(self):
         return self.arc.currentData() or self.story_bank.get("default_arc", "classic")
@@ -1703,6 +1766,7 @@ class CatsView(QWidget):
         self.render_status.setText(message)
 
     def _on_render_finished(self, path):
+        self.render_path = str(path)
         self.render_status.setText("Saved: {}".format(path))
         self.status.emit("Video rendered")
 
