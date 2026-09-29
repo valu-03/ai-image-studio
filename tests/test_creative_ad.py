@@ -326,6 +326,55 @@ for term in ("lightbulb moment", "packshot", "creative route"):
 
 
 print()
+print()
+print("=== critique_static_ad(): it argues, it does not grade ===")
+# The scope IS the design. Eight of the ten commands are decided by
+# creative_ad_lint, and a model adds nothing to a rule that already answers the
+# question - asking it to re-judge those would only invite disagreement with the
+# gate. The two it cannot judge are the two a human ticks, and they render amber
+# precisely because "somebody said so" is a weaker claim than "something checked".
+import brief  # noqa: E402
+
+text = brief.critique_static_ad(BANK)
+manual = [c["key"] for c in cal.commands(BANK) if c["check"] == "manual"]
+check("there are exactly two manual commands to critique", len(manual) == 2, str(manual))
+check("the brief asks about direction", "directed" in text.lower())
+check("...and about tier", "tier" in text.lower())
+
+# THE LOAD-BEARING REFUSAL: nothing in the reply can be wired to a checkbox.
+check("it forbids a pass/fail/score/boolean outright",
+      "pass, fail, score or boolean" in text, text[:60])
+for field in ('"passed"', '"score"', '"pass"', '"ok"', '"verdict"'):
+    check("the reply shape declares no {} field".format(field), field not in text)
+check("...and it says why - a human signs these two off",
+      "a human signs these two off" in text)
+check("it refuses to comment on the other eight",
+      "Do not comment on the other eight commands" in text)
+
+# It has to carry the tier definitions or "does it read as its tier" is unanswerable.
+tiers = [k for k in BANK["tiers"] if k != "note"]
+check("every tier's own definition is in the brief",
+      all(t in text for t in tiers), str(tiers))
+check("...with the bank's wording, not a paraphrase",
+      BANK["tiers"]["luxury"] in text)
+
+check("it asks for one change, not a list", "one edit, not a list" in text)
+check("it names the weakest route, which no rule ranks",
+      "weakest_route" in text)
+check("it insists on quoting the brief's own words",
+      "An unquoted objection is not actionable" in text)
+
+guide = ROOT / "workflows" / "creative-static-ad.md"
+check("the workflow guide exists", guide.exists())
+body = guide.read_text(encoding="utf-8") if guide.exists() else ""
+check("...and says the section spends no money",
+      "spends no money" in body)
+check("...and explains the three gate colours",
+      "amber" in body.lower() and "green" in body.lower() and "red" in body.lower())
+check("...and records that critique_static_ad returns no verdict",
+      "no pass, no" in body.lower() or "returns no pass" in body.lower(), body[:0])
+
+
 if fails:
     print("{} failed".format(len(fails)))
     for name in fails:

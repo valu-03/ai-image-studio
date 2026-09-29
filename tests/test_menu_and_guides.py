@@ -144,7 +144,7 @@ print()
 print("=== THE GUIDES ARE THERE AND THEY RENDER ===")
 files = guide_files()
 check("the guides folder is found", guides_dir().exists(), str(guides_dir()))
-check("all sixteen guides are listed", len(files) == 16, str(len(files)))
+check("all seventeen guides are listed", len(files) == 17, str(len(files)))
 check("README comes first - it is the index the others assume",
       files[0].name == "README.md", files[0].name)
 check("each one's title is read from its own first heading",
@@ -155,6 +155,9 @@ check("...rather than from a table that could drift",
 
 dialog = GuidesDialog(win)
 check("the dialog lists every guide", dialog.list.count() == len(files))
+check("the new static-ad guide is picked up with no code change",
+      any(p.name == "creative-static-ad.md" for p in files),
+      str([p.name for p in files]))
 dialog.list.setCurrentRow(1)
 rendered = dialog.view.toPlainText()
 check("selecting one renders it", len(rendered) > 500, str(len(rendered)))

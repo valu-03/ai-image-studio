@@ -268,6 +268,86 @@ def critique_brief(bank):
     )
 
 
+def critique_static_ad(creative_bank):
+    """Critique a static-ad brief against the two commands no rule can judge.
+
+    THE SCOPE IS THE POINT. Eight of the ten creative-direction commands are
+    decided by tools/creative_ad_lint.py: it can see whether an insight names a
+    person and a friction, whether a route's device is really a packshot,
+    whether a cliche is present. A model adds nothing to a rule that already
+    answers the question, and asking it to re-judge those eight would just
+    invite it to disagree with the gate.
+
+    The two it cannot judge are exactly where a second opinion is worth having:
+
+        direction   "Is this directed, or merely described?"
+        premium     "Does this look like the tier it is priced at?"
+
+    Both are asserted by a human in the GUI, which is why they render amber
+    rather than green - amber means somebody said so, green means something
+    checked. This brief argues; it does not tick. The reply carries no pass or
+    fail field at ALL, deliberately, so there is nothing for a caller to wire
+    into a checkbox and quietly turn an assertion back into a verdict. That is
+    the house rule this project runs on, applied to the one gate whose rows a
+    rule cannot fill: a text model suggests, and the human (here) decides.
+    """
+    tiers = {k: v for k, v in (creative_bank.get("tiers") or {}).items()
+             if k != "note"}
+    commands = {c["key"]: c for c in creative_bank.get("commands", [])
+                if c.get("check") == "manual"}
+    tier_lines = "\n".join(
+        "  {:<9} {}".format(name, note) for name, note in tiers.items())
+
+    return build_brief(
+        purpose=(
+            "Judge a static advert brief on the two things a rule cannot check: "
+            "whether it is directed rather than merely described, and whether it "
+            "reads as the tier it is priced at."
+        ),
+        role=(
+            "You are an art director reviewing a colleague's board. You have "
+            "killed more of your own ideas than you have shipped, and you can "
+            "tell the difference between a picture of a product and a picture "
+            "with an argument in it."
+        ),
+        structure=(
+            "Reply with a single JSON object and nothing else:\n"
+            '{"directed": "<2-3 sentences: is there a point of view here, or is '
+            'this a description of a scene? Quote the words that decide it>",\n'
+            ' "tier": "<2-3 sentences: does the execution match the stated tier? '
+            'Say which way it misses if it misses>",\n'
+            ' "weakest_route": "<the name of the route that is carrying the least, '
+            'and one sentence on why>",\n'
+            ' "one_change": "<the single edit that would most improve this>"}'
+        ),
+        tone="Specific and unsentimental. No praise, no summary of what you read.",
+        constraints=[
+            # The refusals that keep this advisory.
+            "Do NOT return a pass, fail, score or boolean of any kind. You are "
+            "arguing, not grading - a human signs these two off.",
+            "Do not comment on the other eight commands. They are checked by a "
+            "rule that has already run, and second-guessing it is not your job.",
+            "Quote the brief's own words when you say something is not working. "
+            "An unquoted objection is not actionable.",
+            "'Directed' means a decision is visible: what is left out, what is "
+            "lit, what the viewer is made to notice. Describing a scene in more "
+            "detail is not direction.",
+            "The tiers mean:\n" + tier_lines,
+            "`one_change` is one edit, not a list. If everything needs work, say "
+            "which to do first.",
+            "Never suggest a different product, brand or medium. The brief is "
+            "the brief.",
+        ],
+        examples=[
+            'A brief whose idea is "show the bottle looking premium" gets: '
+            '{"directed": "Not directed. \'Looking premium\' names a feeling and '
+            'no decision - nothing is left out, nothing is chosen. Compare the '
+            'route device, which says \'on a white background\': that is a '
+            'studio default, not a point of view.", ...}'
+        ],
+    )
+
+
 def analyze_photo_brief(bank):
     """The brief for reverse-engineering a spec from an uploaded photo.
 
