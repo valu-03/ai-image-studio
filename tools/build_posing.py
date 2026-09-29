@@ -26,7 +26,7 @@ relaxed-hands, soft-eyed-expression, negative-space-limbs, relaxed-posture.
 Posing is NOT one of realism_lint.py's 8 gated photorealism layers - it is
 descriptive spec content like wardrobe/setting/mood, so there is no
 conflicts list and no DETECT keyword requirement here. The composed phrase
-is meant to be typed straight into Compose's own Action field (ui/spec_editor.py)
+is meant to be typed straight into Compose's own Posing field (ui/spec_editor.py)
 - see CompositionView's own precedent, PosingView.apply_to_compose() /
 SpecEditor.set_action_override().
 

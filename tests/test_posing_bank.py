@@ -3,7 +3,7 @@ composer. Posing is deliberately NOT one of realism_lint.py's 8 gated
 photorealism layers (it's descriptive spec content, like wardrobe/setting/
 mood), so this suite does not run a detectability audit against DETECT the
 way test_lighting_bank.py/test_composition_bank.py do - instead it confirms
-a posed action field never interferes with the 8 layers that ARE gated.
+a posed posing field never interferes with the 8 layers that ARE gated.
 """
 import subprocess
 import sys
@@ -37,13 +37,13 @@ for key, cfg in bpo.poses(bank).items():
     check("pose '{}' phrase matches the bank entry".format(key), phrase == cfg["phrase"], phrase)
 
 print()
-print("=== a posed action field never interferes with the 8 gated layers ===")
+print("=== a posed posing field never interferes with the 8 gated layers ===")
 for key in list(bpo.poses(bank))[:3]:
     phrase, _ = bpo.compose_posing(bank, pose=key)
-    spec = {"subject": "a woman in her thirties", "seed": 1, "action": phrase}
+    spec = {"subject": "a woman in her thirties", "seed": 1, "posing": phrase}
     prompt, _ = bp.compose(image_bank, spec)
     present, missing, banned, _, _ = rl.lint(prompt.lower(), image_bank)
-    check("pose '{}' in the action field still scores 8/8 on the other layers".format(key),
+    check("pose '{}' in the posing field still scores 8/8 on the other layers".format(key),
           len(present) == 8 and not banned, "missing: {}".format(missing))
     check("the pose phrase itself appears in the composed prompt", phrase.lower() in prompt.lower())
 

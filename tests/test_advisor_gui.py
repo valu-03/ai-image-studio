@@ -220,10 +220,15 @@ check("colour landed in the Scene tab's Colour combo",
 check("composition landed as custom framing text",
       "rule of thirds" in editor.composition.currentText().lower(),
       editor.composition.currentText())
-check("posing landed in the Subject tab's Action field",
-      "forward lean" in editor.action.text().lower()
-      or "forward-lean" in editor.action.text().lower()
-      or "lean toward" in editor.action.text().lower(), editor.action.text())
+check("posing landed in the Subject tab's Posing field",
+      "forward lean" in editor.posing.text().lower()
+      or "forward-lean" in editor.posing.text().lower()
+      or "lean toward" in editor.posing.text().lower(), editor.posing.text())
+# Where the pose USED to land. Posing and Action are separate spec keys now,
+# and this payload names no action - so a pose reaching Action again would
+# mean the setter had been repointed back at the field it used to overwrite.
+check("...and Action is untouched - a pose no longer invents one",
+      editor.action.text() == "", editor.action.text())
 check("the core spec's own shot preset was left alone (camera_angle never touched it)",
       editor.shot.currentText() == "Portrait" or "portrait" in editor.shot.currentText().lower(),
       editor.shot.currentText())

@@ -132,6 +132,15 @@ class SpecEditor(QWidget):
         self.subject.setFixedHeight(64)
         self.wardrobe = QLineEdit(placeholderText="an oversized cream knit sweater")
         self.action = QLineEdit(placeholderText="leaning against the counter with a mug")
+        # Posing is NOT Action, and the split is the whole point of this field.
+        # Action is what they are DOING - an event a viewer could name. Posing is
+        # how the body is ARRANGED while doing it: weight, shoulders, hands, chin.
+        # They were one field until now, which meant the Posing section's Apply
+        # button overwrote the thing the shot was about in order to say how the
+        # body sat. Neither is one of realism_lint's 8 gated layers - both are
+        # descriptive spec content, like wardrobe and mood.
+        self.posing = QLineEdit(
+            placeholderText="weight on the back foot, shoulders turned away from the camera")
         self.mood = QLineEdit(placeholderText="calm and unhurried")
 
         self.setting = QLineEdit(placeholderText="a bright apartment kitchen, mid-morning")
@@ -213,7 +222,7 @@ class SpecEditor(QWidget):
         self.slug = QLineEdit(placeholderText="(auto from subject)")
 
         for field in [self.subject, self.extra, self.wardrobe, self.setting,
-                      self.action, self.mood, self.slug, self.shot,
+                      self.action, self.posing, self.mood, self.slug, self.shot,
                       self.aspect, self.lighting, self.colour, self.composition,
                       self.purpose]:
             field.setMinimumWidth(140)
@@ -244,11 +253,12 @@ class SpecEditor(QWidget):
         open_posing.setToolTip(
             "Named poses by shot type (portrait, editorial, headshot, group, candid) plus "
             "opt-in posing realism techniques - applying one writes straight into the "
-            "Action field above.")
+            "Posing field above, leaving Action alone.")
         open_posing.clicked.connect(self.open_posing_requested)
         self.tabs.addTab(
             _tab([("Subject", self.subject), ("Wardrobe", self.wardrobe),
-                  ("Action", self.action), ("Mood", self.mood)],
+                  ("Action", self.action), ("Posing", self.posing),
+                  ("Mood", self.mood)],
                  [open_posing]),
             "Subject",
         )
@@ -309,7 +319,8 @@ class SpecEditor(QWidget):
     def _connect_signals(self):
         for widget in [self.subject, self.extra]:
             widget.textChanged.connect(self.changed)
-        for widget in [self.wardrobe, self.setting, self.action, self.mood, self.slug]:
+        for widget in [self.wardrobe, self.setting, self.action, self.posing,
+                       self.mood, self.slug]:
             widget.textChanged.connect(self.changed)
         self.purpose.currentIndexChanged.connect(self.changed)
         # Editable combos must watch text, not index — a typed value never
@@ -480,14 +491,19 @@ class SpecEditor(QWidget):
         """
         self.composition.setCurrentText((phrase or "").strip())
 
-    def set_action_override(self, phrase):
-        """Load a composed phrase from the Posing section into the Action
-        field. `action` is a plain QLineEdit already wired to `changed` via
+    def set_posing_override(self, phrase):
+        """Load a composed phrase from the Posing section into the Posing
+        field. `posing` is a plain QLineEdit already wired to `changed` via
         textChanged, so setText() alone is enough - no new signal plumbing,
         the same reasoning set_lighting_override()/set_composition_override()
         already document for their own combos.
+
+        This used to write into `action`, which made the two Apply buttons
+        fight: a pose overwrote what the subject was doing. Now every
+        set_X_override() lands in the field named after its own section, and
+        the REPLACE semantic is safe because the field belongs to it alone.
         """
-        self.action.setText((phrase or "").strip())
+        self.posing.setText((phrase or "").strip())
 
     def set_colour_override(self, phrase):
         """Load a composed phrase from the Color Grading section into this
@@ -501,7 +517,7 @@ class SpecEditor(QWidget):
         """Load a composed description from Influencer Studio into the
         Subject field. `subject` is a plain QPlainTextEdit already wired to
         `changed` via textChanged, so setPlainText() alone is enough - same
-        reasoning set_action_override() already documents for its own field.
+        reasoning set_posing_override() already documents for its own field.
         Replaces the whole box rather than appending, the same "typed text
         wins outright" precedence every other set_X_override() follows.
         """
@@ -571,6 +587,7 @@ class SpecEditor(QWidget):
             ("wardrobe", self.wardrobe),
             ("setting", self.setting),
             ("action", self.action),
+            ("posing", self.posing),
             ("mood", self.mood),
             ("slug", self.slug),
         ]:
@@ -633,8 +650,8 @@ class SpecEditor(QWidget):
         """Populate every field, then emit `changed` once — not a dozen times."""
         widgets = [
             self.subject, self.extra, self.wardrobe, self.setting, self.action,
-            self.mood, self.slug, self.shot, self.aspect, self.lighting, self.colour,
-            self.composition, self.purpose, self.seed,
+            self.posing, self.mood, self.slug, self.shot, self.aspect,
+            self.lighting, self.colour, self.composition, self.purpose, self.seed,
         ]
         for widget in widgets:
             widget.blockSignals(True)
@@ -649,6 +666,7 @@ class SpecEditor(QWidget):
         self.wardrobe.setText(spec.get("wardrobe", ""))
         self.setting.setText(spec.get("setting", ""))
         self.action.setText(spec.get("action", ""))
+        self.posing.setText(spec.get("posing", ""))
         self.mood.setText(spec.get("mood", ""))
         self.slug.setText(spec.get("slug", ""))
         self.extra.setPlainText("\n".join(spec.get("extra", [])))

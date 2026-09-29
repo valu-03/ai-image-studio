@@ -97,7 +97,7 @@ them all.
    *Camera*, *Color*, *Posing*, *Style* (24 named looks). Each builds one
    phrase and its "Apply to Compose" writes it into the Images spec (Lighting
    → lighting override, Composition → composition combo, Camera → shot text,
-   Color → colour override, Posing → Action field, Style →
+   Color → colour override, Posing → Posing field, Style →
    `overrides["style"]`). None of these owns domain logic — each calls a
    `tools/build_*.py`.
 3. **Videos** — the Kling 3.0 motion toolkit (40 camera movements, a 6-field

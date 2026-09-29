@@ -31,8 +31,8 @@ ROOT = Path(__file__).resolve().parent.parent
 # Only these may come back from a model and be written into a spec. Seed,
 # reference, overrides and lock_identity are the user's machinery, not the
 # model's to set.
-SPEC_KEYS = {"subject", "wardrobe", "setting", "action", "mood", "shot", "aspect",
-             "purpose", "extra", "slug"}
+SPEC_KEYS = {"subject", "wardrobe", "setting", "action", "posing", "mood", "shot",
+             "aspect", "purpose", "extra", "slug"}
 
 MAX_UPGRADE_WORDS = 320
 
@@ -114,6 +114,7 @@ def idea_brief(bank):
             "  wardrobe  (string) what they are wearing\n"
             "  setting   (string) where they are, and the time of day\n"
             "  action    (string) what they are physically doing\n"
+            "  posing    (string) how the body is arranged - weight, shoulders, hands\n"
             "  mood      (string) expression, in two or three words\n"
             "  shot      (string) one of: " + ", ".join(bank["shot_presets"]) + "\n"
             "  purpose   (string) one of: " + ", ".join(bank.get("purposes", {})) + "\n"
@@ -167,6 +168,7 @@ def autofill_brief(bank):
             "  wardrobe  (string) what they are wearing\n"
             "  setting   (string) where they are, and the time of day\n"
             "  action    (string) what they are physically doing\n"
+            "  posing    (string) how the body is arranged - weight, shoulders, hands\n"
             "  mood      (string) expression, in two or three words\n"
             "  shot      (string) one of: " + ", ".join(bank["shot_presets"]) + "\n"
             "  purpose   (string) one of: " + ", ".join(bank.get("purposes", {})) + "\n"
@@ -290,6 +292,7 @@ def analyze_photo_brief(bank):
             ' "wardrobe": "<string, optional>",\n'
             ' "setting": "<string, optional - where and when>",\n'
             ' "action": "<string, optional - what they are physically doing>",\n'
+            ' "posing": "<string, optional - how the body is arranged>",\n'
             ' "mood": "<string, optional - expression, two or three words>",\n'
             ' "shot": "<optional, one of: ' + ", ".join(bank["shot_presets"]) + '>",\n'
             ' "analysis": "<2-4 sentences: what is good about this photo, what is '
@@ -428,7 +431,7 @@ PLACEHOLDER_SUBJECT = "a person"
 def _describe_current(spec):
     """What the user has already written, as the brief the model works from."""
     lines = []
-    for key in ("subject", "wardrobe", "setting", "action", "mood", "shot",
+    for key in ("subject", "wardrobe", "setting", "action", "posing", "mood", "shot",
                 "shot_custom", "purpose", "aspect"):
         value = str(spec.get(key) or "").strip()
         if key == "subject" and value == PLACEHOLDER_SUBJECT:

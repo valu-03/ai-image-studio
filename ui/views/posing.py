@@ -11,7 +11,7 @@ Posing is NOT one of realism_lint.py's 8 gated photorealism layers - it is
 descriptive spec content like wardrobe/setting/mood, so nothing here is
 scored against the 8/8 gate the way Lighting/Composition phrases are.
 
-Nothing here replaces Compose's own Action field (ui/spec_editor.py); this
+Nothing here replaces Compose's own Posing field (ui/spec_editor.py); this
 is the deeper tool behind an "Open Posing" link next to it, the same
 relationship Lighting/Composition's own sections already have to their combos.
 """

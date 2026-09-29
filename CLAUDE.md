@@ -853,7 +853,7 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
      posing is descriptive spec content like wardrobe/setting/mood, so it carries no
      `DETECT` requirement; `tests/test_posing_bank.py` instead confirms a posed action field
      never interferes with the 8 layers that ARE gated. Apply to Compose writes into the
-     Subject tab's Action field (`SpecEditor.set_action_override()`, new - a plain
+     Subject tab's Posing field (`SpecEditor.set_posing_override()` - a plain
      `QLineEdit`, already wired to `changed`, so `setText()` alone was enough, no new signal
      plumbing needed). **A base pose is recommended but NOT required** (fixed after a repeat
      of the "no prompt below" report): `compose_posing()` composes from any of pose /
@@ -1035,7 +1035,7 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   `spec_suggested` and the new `sections_suggested(dict)` together -
   `MainWindow.apply_advisor_sections()` routes each phrase to the exact same
   `SpecEditor.set_X_override()` each section's own Apply button already calls, via a small
-  `ADVISOR_SECTION_SETTERS` name map (posing → `set_action_override`, camera_angle →
+  `ADVISOR_SECTION_SETTERS` name map (posing → `set_posing_override`, camera_angle →
   `set_shot_override` - not a 1:1 name match, since posing is descriptive spec content and an
   angle lands as typed custom shot text, exactly like every other section's own precedent).
 - **Influencer Studio is a persona builder, not a second character-spec system.** No structured
@@ -1540,7 +1540,7 @@ one-line "what this is for" header, and where it has one, a **Library** tab of e
    combo as custom text), **Camera** (vertical + side + size axes → shot field as custom
    text; a pure angle can honestly score the camera check 0/8), **Color** (12 moods + 10
    film looks + techniques → colour override), **Posing** (poses by shot type + techniques
-   → Action field, not a gated layer), **Style** (24 named looks from the course's Style
+   → Posing field, not a gated layer), **Style** (24 named looks from the course's Style
    Reference Library → `overrides["style"]`, which `build_prompt.free_overrides()` folds
    into the free trailing segment; stylised looks warn that they fight the realism
    vocabulary). Each is Library + Build and calls a `tools/build_*.py`.

@@ -251,6 +251,11 @@ def subject_clause(spec):
         parts.append("wearing " + spec["wardrobe"])
     if spec.get("action"):
         parts.append(spec["action"])
+    # Posing rides straight after the action it qualifies: what the body is
+    # doing, then how it is arranged while doing it. Before the setting,
+    # because both belong to the person and "in <setting>" closes that group.
+    if spec.get("posing"):
+        parts.append(spec["posing"])
     if spec.get("setting"):
         parts.append("in " + spec["setting"])
     if spec.get("mood"):
@@ -445,6 +450,7 @@ def parse_args(argv):
     p.add_argument("--wardrobe", help="what they are wearing")
     p.add_argument("--setting", help="where they are")
     p.add_argument("--action", help="what they are doing")
+    p.add_argument("--posing", help="how the body is arranged - weight, shoulders, hands")
     p.add_argument("--mood", help="expression / mood")
     p.add_argument(
         "--shot",
@@ -515,7 +521,7 @@ def spec_from_args(args):
             sys.exit("Give either --spec <path> or --subject \"...\". See --help.")
         spec = {}
 
-    for field in ["subject", "wardrobe", "setting", "action", "mood", "shot", "slug",
+    for field in ["subject", "wardrobe", "setting", "action", "posing", "mood", "shot", "slug",
                   "purpose", "composition_guide", "shot_custom",
                   "composition_guide_custom"]:
         value = getattr(args, field, None)

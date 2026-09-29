@@ -115,7 +115,7 @@ ADVISOR_SECTION_SETTERS = {
     "lighting": "set_lighting_override",
     "composition": "set_composition_override",
     "color": "set_colour_override",
-    "posing": "set_action_override",
+    "posing": "set_posing_override",
     "camera_angle": "set_shot_override",
 }
 
@@ -576,8 +576,8 @@ class MainWindow(QMainWindow):
 
     def apply_posing_phrase(self, phrase):
         """Posing's "Apply to Compose" - identical shape to
-        apply_lighting_phrase(), landing in the Action field instead."""
-        self.compose_view.editor.set_action_override(phrase)
+        apply_lighting_phrase(), landing in the Posing field instead."""
+        self.compose_view.editor.set_posing_override(phrase)
         self.go_to("images")
         self.images_view.show_compose()
 
