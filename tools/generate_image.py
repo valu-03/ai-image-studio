@@ -117,6 +117,37 @@ def env_value(name, env=None):
     return env.get(name) or os.environ.get(name, "")
 
 
+def write_env_value(name, value, path=None):
+    """Set one variable in .env, preserving every other line. Returns the path.
+
+    Lives beside read_env() deliberately: the reader strips quotes and ignores
+    comments, so the writer has to agree with it about the format, and two
+    functions in two modules would eventually disagree.
+
+    A key is a secret, so this NEVER returns or logs the value, and it
+    rewrites the file rather than appending - appending a second
+    KIE_API_KEY=... line would leave read_env() silently preferring whichever
+    came last, which is the sort of thing that looks like an expired key.
+
+    An empty `value` removes the variable instead of writing a blank one, so
+    "clear this key" is expressible and does not leave `NAME=` behind for
+    env_value() to return as falsy-but-present.
+    """
+    path = Path(path) if path else ENV_PATH
+    lines = []
+    if path.exists():
+        lines = path.read_text(encoding="utf-8").splitlines()
+
+    prefix = name + "="
+    kept = [line for line in lines
+            if not line.strip().startswith(prefix)]
+    if value:
+        kept.append("{}={}".format(name, value))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(kept) + "\n", encoding="utf-8")
+    return path
+
+
 def credentials(cfg, env=None):
     """(key, secret) for a provider. `secret` is "" for single-key providers."""
     env = read_env() if env is None else env

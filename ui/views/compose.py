@@ -224,11 +224,8 @@ class ComposeView(QWidget):
             "against this spec - lighting, composition, wardrobe, and (with a "
             "reference set) whether the character still looks like the same "
             "one. Uses {}, same as Brief - optional everywhere.".format(al.KEY_VAR))
-        if not gi.env_value(al.KEY_VAR):
-            self.vision_qc_checkbox.setEnabled(False)
-            self.vision_qc_checkbox.setToolTip(
-                "No {} set in .env - get one at {} to use this.".format(
-                    al.KEY_VAR, al.KEY_URL))
+        # Kept so refresh_key_state() can put it back when a key appears.
+        self._vision_tip = self.vision_qc_checkbox.toolTip()
         self.vision_lint = LintPanel({})
         vision_tab = QWidget()
         vision_tab_layout = QVBoxLayout(vision_tab)
@@ -244,12 +241,9 @@ class ComposeView(QWidget):
             "scene, not a list of trigger words stitched together - "
             "realism_lint checks structure, this checks sense. Uses {}, "
             "same as Brief.".format(al.KEY_VAR))
-        if not gi.env_value(al.KEY_VAR):
-            self.coherence_button.setEnabled(False)
-            self.coherence_button.setToolTip(
-                "No {} set in .env - get one at {} to use this.".format(
-                    al.KEY_VAR, al.KEY_URL))
+        self._coherence_tip = self.coherence_button.toolTip()
         self.coherence_button.clicked.connect(self.request_coherence_check)
+        self.refresh_key_state()
         self.coherence_lint = LintPanel({})
         coherence_tab = QWidget()
         coherence_tab_layout = QVBoxLayout(coherence_tab)
@@ -1062,6 +1056,24 @@ class ComposeView(QWidget):
             self.status.emit("Generate or load an image first")
             return
         self.refine_requested.emit()
+
+    def refresh_key_state(self):
+        """Re-evaluate the two controls that need a text-model key.
+
+        Both used to decide ONCE, in setup_ui, and stay that way for the life
+        of the window - so adding a key and pressing Settings' "Re-check .env"
+        refreshed two badges over there and left these disabled until the app
+        was restarted. They are the only two pre-disabled controls in the app,
+        which is why this is a method rather than a broadcast.
+        """
+        ready = bool(gi.env_value(al.KEY_VAR))
+        for widget, enabled_tip in (
+                (self.vision_qc_checkbox, self._vision_tip),
+                (self.coherence_button, self._coherence_tip)):
+            widget.setEnabled(ready)
+            widget.setToolTip(enabled_tip if ready else (
+                "No {} set - add one in Settings, or get one at {}.".format(
+                    al.KEY_VAR, al.KEY_URL)))
 
     def update_cost_note(self):
         """What one more generation would cost. Silent with no provider set,

@@ -42,6 +42,10 @@ class SettingsView(QWidget):
     theme_toggled = pyqtSignal()
     image_options_changed = pyqtSignal()
     status = pyqtSignal(str)
+    # Emitted when a key is saved or re-checked, so the controls that
+    # disabled themselves at construction can un-disable. "Re-check"
+    # used to refresh these badges and nothing else in the app.
+    keys_changed = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -70,13 +74,40 @@ class SettingsView(QWidget):
         self.secret_badge.hide()
         recheck = QPushButton("Re-check .env")
         recheck.clicked.connect(self.refresh_key_state)
+        recheck.clicked.connect(self.keys_changed)
+
+        # KEY ENTRY, because until now the only way to give this app a key
+        # was to create a .env file by hand next to the source - which the
+        # frozen .exe does not even sit beside. EchoMode.Password, and the
+        # value is never echoed into a status message or a log: the one
+        # confirmation is the badge flipping to "set".
+        self.key_input = QLineEdit()
+        self.key_input.setEchoMode(QLineEdit.EchoMode.Password)
+        self.key_input.setPlaceholderText("paste a key to save it into .env")
+        self.key_input.setToolTip(
+            "Saved into .env next to the app. Stored in plain text, exactly "
+            "as a hand-written .env would be - this changes who has to write "
+            "the file, not how it is stored.")
+        self.key_input.returnPressed.connect(self.save_key)
+        save_key_button = QPushButton("Save key")
+        save_key_button.setProperty("class", "primary")
+        save_key_button.clicked.connect(self.save_key)
+        self.get_key_button = QPushButton("Get a key…")
+        self.get_key_button.setProperty("class", "ghost")
+        self.get_key_button.clicked.connect(self.open_key_page)
 
         key_row = QHBoxLayout()
         key_row.setSpacing(T.SPACE["sm"])
         key_row.addWidget(self.key_badge)
         key_row.addWidget(self.secret_badge)
         key_row.addWidget(recheck)
+        key_row.addWidget(self.get_key_button)
         key_row.addStretch(1)
+
+        entry_row = QHBoxLayout()
+        entry_row.setSpacing(T.SPACE["sm"])
+        entry_row.addWidget(self.key_input, 1)
+        entry_row.addWidget(save_key_button)
 
         self.reference_note = MutedLabel("")
 
@@ -112,6 +143,7 @@ class SettingsView(QWidget):
         form.addRow("Resolution", self.resolution)
         form.addRow("Image format", self.output_format)
         form.addRow("API key", key_row)
+        form.addRow("Paste a key", entry_row)
         form.addRow("Appearance", theme_button)
 
         provider_card = Card()
@@ -265,6 +297,45 @@ class SettingsView(QWidget):
         return {"resolution": self.resolution.currentData() or "1K",
                 "output_format": self.output_format.currentData() or "png"}
 
+    def save_key(self):
+        """Write whatever is in the box into .env for the chosen provider.
+
+        The value never appears in the status message - "saved" is all the
+        confirmation there is, because the badge going green is the real
+        one. Empty input is a no-op rather than a way to blank the key by
+        accident.
+        """
+        value = self.key_input.text().strip()
+        if not value:
+            self.status.emit("Paste a key first")
+            return
+        cfg = gi.PROVIDERS.get(self.provider.currentText(), {})
+        variable = cfg.get("key")
+        if not variable:
+            self.status.emit("This provider has no key variable")
+            return
+        try:
+            gi.write_env_value(variable, value)
+        except OSError as exc:
+            self.status.emit("Could not write .env: {}".format(exc))
+            return
+        self.key_input.clear()
+        self.refresh_key_state()
+        self.keys_changed.emit()
+        self.status.emit("{} saved to {}".format(variable, gi.ENV_PATH))
+
+    def open_key_page(self):
+        """The provider's own key page. Every PROVIDERS entry has carried a
+        `where` URL all along and nothing ever rendered it.
+        """
+        cfg = gi.PROVIDERS.get(self.provider.currentText(), {})
+        where = cfg.get("where")
+        if not where:
+            self.status.emit("No key page recorded for this provider")
+            return
+        QDesktopServices.openUrl(QUrl(where))
+        self.status.emit("Opened " + where)
+
     def refresh_key_state(self):
         """Presence only - the value is read but never surfaced."""
         name = self.provider.currentText()
@@ -291,6 +362,9 @@ class SettingsView(QWidget):
             "This provider takes no reference image, so a locked face cannot be carried "
             "over. Generating with a reference set is refused rather than silently ignored."
         )
+        where = cfg.get("where")
+        self.get_key_button.setEnabled(bool(where))
+        self.get_key_button.setToolTip(where or "No key page recorded")
         badge(self.text_key_badge, ask_llm.KEY_VAR)
         badge(self.sound_key_badge, gsnd.KEY_VAR)
 

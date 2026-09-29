@@ -438,6 +438,14 @@ class MainWindow(QMainWindow):
         self.compose_view.generate_requested.connect(self.generate_single)
         self.compose_view.upscale_requested.connect(self.upscale_image)
         self.compose_view.refine_requested.connect(self.refine_image)
+        # Settings' "Re-check .env" and its new Save-key both reach the two
+        # controls that disabled themselves at construction. Before this the
+        # re-check refreshed two badges in Settings and nothing else in the
+        # app, so a key added while running stayed unusable until restart.
+        self.settings_view.keys_changed.connect(self.compose_view.refresh_key_state)
+        self.settings_view.keys_changed.connect(self.refresh_credits)
+        self.settings_view.keys_changed.connect(self.compose_view.update_cost_note)
+
         # The estimate Settings promises next to Generate.
         self.compose_view.cost_provider = self.image_cost_note
         self.compose_view.update_cost_note()
