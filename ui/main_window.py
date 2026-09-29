@@ -806,7 +806,7 @@ class MainWindow(QMainWindow):
                 "Fixed after {} attempt(s) ({}/8)".format(len(attempts), score))
 
     def on_refine_failed(self, reason):
-        self.statusBar().showMessage("Refine failed: {}".format(reason))
+        self.report_failure(reason, "Refine did not finish")
 
     def generate_batch(self, jobs):
         """Variants. The default click sampled SIX paid images with no
@@ -963,7 +963,7 @@ class MainWindow(QMainWindow):
         if self._video is not None and self._video.target is not None:
             self._video.target.on_video_failed(index, reason)
         else:
-            self.statusBar().showMessage(reason[:160])
+            self.report_failure(reason, "That clip did not generate")
 
     def _record_measured_cost(self, model, index, used):
         units = self._video.seconds_by_index.get(index) if self._video else None
@@ -1097,9 +1097,48 @@ class MainWindow(QMainWindow):
         if self._batch.sequence_rest:
             self._batch.sequence_reference = path
 
+    def report_failure(self, reason, title="That did not work"):
+        """A failure the user has to act on, shown somewhere they can read it.
+
+        The status bar is one line and every failure path trimmed to 160
+        characters before reaching it, which is fine for "no movement picked"
+        and actively harmful for the messages that carry the fix: a missing key
+        names the env var, the file to put it in, the URL to get one, AND the
+        whole prompt to paste elsewhere meanwhile. That message is roughly 400
+        characters and the remedy is at the end, so truncation removed exactly
+        the part worth reading.
+
+        The rule is the length, not the caller: a one-line reason still just
+        goes to the status bar, because a modal for "pick a movement first"
+        would be worse than a truncated one. Anything multi-line - which, after
+        generate_image.remedy_for(), is every 401/402/403/429/5xx - opens a box
+        that shows all of it.
+
+        AIVS_ASSUME_YES suppresses the box for the same reason confirm_spend()
+        honours it: a modal nobody can answer is a hang, not a diagnostic.
+        """
+        text = (reason or "").strip()
+        if not text:
+            return
+        first = text.splitlines()[0]
+        self.statusBar().showMessage(first[:160])
+        if os.environ.get("AIVS_ASSUME_YES"):
+            return
+        if "\n" not in text and len(text) <= 160:
+            return
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Icon.Warning)
+        box.setWindowTitle(title)
+        box.setText(first)
+        rest = text[len(first):].strip()
+        if rest:
+            box.setInformativeText(rest)
+        box.setStandardButtons(QMessageBox.StandardButton.Ok)
+        box.exec()
+
     def on_item_failed(self, index, reason):
         if self._batch is None or self._batch.target is None:
-            self.statusBar().showMessage(reason)
+            self.report_failure(reason, "That image did not generate")
             return
         self._batch.target.on_item_failed(index, reason)
         if self._batch.sequence_rest:
@@ -1107,9 +1146,15 @@ class MainWindow(QMainWindow):
             # Generating them anyway would spend the money and produce a
             # different character in every frame.
             self._batch.sequence_rest = []
-            self.statusBar().showMessage(
-                "The first shot failed, so the rest were not generated - "
-                "there would be nothing to lock them to. " + reason[:100])
+            self.report_failure(
+                "The first shot failed, so the rest were not generated - there "
+                "would be nothing to lock them to.\n\n" + reason,
+                "The sequence stopped at the first shot")
+            return
+        # The target shows its own inline state (a badge, a result card); this is
+        # the only place the WHOLE reason is readable, and after remedy_for() the
+        # whole reason is where the fix lives.
+        self.report_failure(reason, "That image did not generate")
 
     def on_batch_finished(self):
         if self._batch is not None and self._batch.sequence_rest and self._batch.sequence_reference:

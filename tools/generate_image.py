@@ -163,6 +163,50 @@ def describe_api_error(payload, raw):
     return (raw or "")[:400]
 
 
+def remedy_for(status, cfg):
+    """The one actionable line for an HTTP status, or "".
+
+    A bad key used to read `API error 401: Unauthorized` and stop there, which
+    tells a user what happened and nothing about what to do. Every provider
+    config already carries the env var its key lives in AND a `where` URL to get
+    one - both were sitting unused at exactly the moment they were needed.
+
+    Only the 400/404 model-id hint existed before; the rest of this table is new.
+    Kept here rather than in the GUI because the GUI is not the only caller: the
+    CLI tools print these too, and a remedy that only appeared in one of them
+    would be the more confusing outcome.
+    """
+    key_var = cfg.get("key", "the API key")
+    where = cfg.get("where", "")
+    # Two different suggestions, because 401 is about the key itself and
+    # 402/403 are about the account behind it - the same page, a different verb.
+    get_one = ("\nGet one at {}".format(where)) if where else ""
+    check_account = ("\nCheck the account at {}".format(where)) if where else ""
+
+    if status == 401:
+        return ("\n{} is set but the provider rejected it. Check it for a typo or a "
+                "trailing space, or issue a new one.{}".format(key_var, get_one))
+    if status == 403:
+        return ("\nThe key is valid but not allowed to do this. Usually that means no "
+                "credit left, or this model is not enabled on the account.{}".format(
+                    check_account))
+    if status == 402:
+        return "\nThe account is out of credit.{}".format(check_account)
+    if status == 429:
+        return ("\nToo many requests, or the balance ran out mid-batch. Wait a minute "
+                "and try a smaller batch.")
+    if status in (400, 404):
+        return "\nIf the model id is wrong, set {}=<id> in .env.".format(
+            cfg.get("model_var", "the model var"))
+    if status >= 500:
+        # Deliberately not "just retry": open_with_retry() does not retry an
+        # HTTPError precisely because the server received the request and may
+        # already have started a paid job.
+        return ("\nThat is the provider's side, not yours. It may still have started "
+                "the job, so check the account before resubmitting.")
+    return ""
+
+
 # A transport-level failure (URLError - DNS, timeout, connection reset: no
 # response ever arrived) is retried with backoff; an HTTPError - even a
 # 5xx - is not, and never was: the server received and possibly acted on the
@@ -645,9 +689,7 @@ def generate(provider=DEFAULT_PROVIDER, prompt="", out_name=None, references=(),
         status, payload, raw = post_json(url, body, headers)
         if status >= 400:
             message = "API error {}: {}".format(status, describe_api_error(payload, raw))
-            if status in (400, 404):
-                message += "\nIf the model id is wrong, set {}=<id> in .env.".format(
-                    cfg["model_var"])
+            message += remedy_for(status, cfg)
             return None, GenerationError(message, 3)
 
         if provider == "kie":

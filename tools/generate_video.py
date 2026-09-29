@@ -228,8 +228,9 @@ def generate(prompt="", out_name=None, image=None, duration=5, aspect_ratio=None
     stage("Submitting to {}...".format(model))
     status, payload, raw = gi.post_json(url, body, headers)
     if status != 200:
-        return None, gi.GenerationError("API error {}: {}".format(
-            status, gi.describe_api_error(payload, raw)), 4), None
+        return None, gi.GenerationError("API error {}: {}{}".format(
+            status, gi.describe_api_error(payload, raw),
+            gi.remedy_for(status, cfg)), 4), None
     task_id = gi.parse_kie_submit(payload)
     if not task_id:
         return None, gi.GenerationError(
