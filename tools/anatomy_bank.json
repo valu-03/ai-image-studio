@@ -1,6 +1,6 @@
 {
   "source": "This app's own 8-layer prompt system (tools/prompt_bank.json + tools/realism_lint.py), plus slot structure reverse-engineered from worked prompts - the `beauty-macro` and `macro-insert` templates from a community-supplied macro/beauty-portrait prompt contributed by the user (the same prompt tools/macro_insert_bank.json harvests its vocabulary from), and `photoreal-portrait` from this app's own build_prompt.py compose order. The `video-sequence` template is reverse-engineered from a community-supplied luxury-vlog video prompt contributed by the user, and `video-shot` from this app's own tools/motion_lint.py rules (which DO transcribe the bootcamp's Kling camera-movement toolkit, via tools/motion_bank.json). The `action-commercial` template is reverse-engineered from a second, different community-supplied video prompt contributed by the user (a high-action car commercial) - see its own `source_note` for how its shape differs from video-sequence. The `product-campaign` template is reverse-engineered from a THIRD community-supplied prompt contributed by the user (a confectionery campaign portrait), and is the image-side sibling of `action-commercial`: the same banded-brief house style, but one still frame with a person and a package in it. Everything else here is NOT AI Video Bootcamp course material.",
-  "version": 9,
+  "version": 10,
   "note": "A template is an ORDERED list of slots - the skeleton of a prompt, not its words. This bank teaches structure; the vocabulary banks (prompt_bank, lighting_bank, style_bank, macro_insert_bank, ...) supply what goes in each slot. Every template also declares `kind` - 'image' or 'video' - so the Anatomy tab's picker can group them instead of listing all five as one undifferentiated list; a template produces exactly one kind of prompt, never both, so this is a fixed fact about the template rather than a per-run choice. Detection is deliberately split: a slot that maps onto one of the eight gated realism layers declares `layer` and is detected by tools/realism_lint.py's OWN DETECT table - never a second copy of those keywords, the same no-duplication rule tools/relight_bank.json follows for lighting and camera-angle phrases. Only slots the eight layers do not cover carry their own `detect` list - and a slot whose vocabulary already lives in ANOTHER linter borrows it by name instead: a `borrow` of 'motion-verbs' takes tools/motion_lint.py's own MOTION_VERBS, so the camera-movement slots cannot drift away from what that linter actually gates on. The video templates also record two facts about this app that a prompt written elsewhere will trip over: tools/sound_bank.json is effects-only and its linter rejects music vocabulary outright (hence a separate `music` slot), and tools/build_story.py distinguishes clip_seconds from edit_seconds (hence the shot-sequence slot's warning that two-second beats are edit lengths, not generation lengths). `analyse()` is keyword presence, not parsing: it answers 'which slots does this prompt appear to fill', which is honest, rather than pretending to segment free prose into semantic regions.",
 
   "templates": {
@@ -1469,6 +1469,171 @@
           "does": "The one line that says a sensor recorded this, not a renderer.",
           "why": "Last, and short. It is also where two of the source's own words were dropped: '4K' and 'hyper-detailed' are both on prompt_bank.json's `warn` list, and a template whose whole argument is 'make it photographic' is the worst possible place to ask for the two adjectives that most reliably produce the opposite.",
           "example": "fine sensor noise in the shadows, sharp focus on the near eye, not overly polished"
+        }
+      ]
+    },
+    "one-take-gag": {
+      "label": "One-take animal gag (a whole joke in a single shot)",
+      "kind": "video",
+      "summary": "Eleven slots for a complete comic beat sheet that happens in ONE continuous take: the animal tries something, succeeds, is annoyed by its own success, saves face and leaves. Every arc in tools/story_bank.json cuts between its beats - short is 3 scenes, classic 5, escalating 7, epic 9 - so this is the first shape in the bank where the beats are BLOCKING inside one unbroken frame rather than separate generations to be edited together. That single constraint is what most of these slots exist to protect, because a model handed a five-beat description will otherwise invent five cuts.",
+      "source_note": "Reverse-engineered from a community-supplied video prompt contributed by the user - a cat chasing and catching its own tail. NOT AI Video Bootcamp course material. Verified against the app's own gates before being written: as supplied it scores 1/8 on realism_lint (lighting only) and a clean 4/4 on tools/safety_lint.py, which is the gate that actually governs this kind of work - `check_distress` passes it because the anger is performed rather than real, exactly the distinction that bank was built to make. TWO editorial calls. '4K clarity' is gone: `4k` is on tools/prompt_bank.json's `warn` list, the same cut already made for '8K' in product-campaign, candid-editorial and macro_insert_bank, and for '4K'/'hyper-detailed' in anthro-character. And the source's '[VARIABLE]' placeholder became a named `trigger` slot, because the one thing the shot needs to be told is what starts it.",
+      "slots": [
+        {
+          "key": "take",
+          "label": "One take",
+          "does": "The instruction that this is a single continuous shot, stated before any beat is described.",
+          "why": "The slot this template exists for. Five beats read as five shots unless you say otherwise, and a cut is exactly what kills this kind of joke - the comedy is that you watch the animal realise something in real time, uninterrupted. Say 'single continuous take, no cuts' first, so everything after it is understood as blocking within one frame rather than as a shot list.",
+          "detect": [
+            "single continuous take",
+            "one unbroken shot",
+            "no cuts",
+            "real time",
+            "uninterrupted",
+            "single shot"
+          ],
+          "example": "A single continuous take, no cuts - the whole moment plays out in one unbroken shot in real time"
+        },
+        {
+          "key": "device",
+          "label": "Device and framing",
+          "detect": [
+            "handheld smartphone",
+            "phone camera",
+            "filmed on a phone",
+            "floor level",
+            "low and close",
+            "subtle unsteadiness",
+            "handheld"
+          ],
+          "does": "What is filming, how it is held, and where it sits.",
+          "why": "A handheld phone is the genre's own signature: it reads as something a person happened to catch rather than something that was staged, and that is most of why the joke lands. Naming the device also gives realism_lint's camera layer something real to find - the source prompt scored 1/8 largely because it named no capture device at all.",
+          "example": "Filmed on a handheld smartphone at floor level, the camera resting low and close, subtle unsteadiness throughout"
+        },
+        {
+          "key": "subject",
+          "label": "The one animal",
+          "does": "The animal, named as a single individual, and what it looks like.",
+          "why": "'A single cat' is doing real work: a second animal turns this into a different joke, one about the two of them, and the reaction beat stops being about self-inflicted indignity. Say one, and say enough of the coat and build that the same animal is recognisable from the first frame to the last - there are no cuts to hide a change behind.",
+          "detect": [
+            "a single",
+            "one cat",
+            "alone in frame",
+            "no other animals"
+          ],
+          "example": "A single adult tabby cat alone in frame, dense brown-grey coat, standing squarely on the floor"
+        },
+        {
+          "key": "setting",
+          "label": "Room",
+          "does": "The domestic room, and the time of day that lights it.",
+          "why": "An ordinary lived-in room is what makes this footage rather than a production. Name furniture the animal can move around and behind; it gives the spin something to read against, which is what stops a rotating animal looking like a rotating asset.",
+          "detect": [
+            "living room",
+            "rug",
+            "sofa",
+            "daytime",
+            "domestic",
+            "floor"
+          ],
+          "example": "Inside a lived-in living room during the day, a worn rug and a sofa edge behind, a coffee table leg in the near foreground"
+        },
+        {
+          "key": "trigger",
+          "label": "What starts it",
+          "does": "The specific action that begins the gag - the source's [VARIABLE].",
+          "why": "The one slot that changes between uses, which is why the source left it as a placeholder. Keep it PHYSICAL and observable: 'notices its own tail twitch' is something a camera can see, where 'decides to play' is a state of mind it cannot. Everything downstream is a consequence of this line, so a vague trigger produces a shot with no cause in it.",
+          "detect": [
+            "suddenly",
+            "notices",
+            "catches sight of",
+            "starts",
+            "begins to",
+            "twitch"
+          ],
+          "example": "Suddenly notices its own tail twitch behind it and begins chasing it"
+        },
+        {
+          "key": "attempt",
+          "label": "The attempt",
+          "does": "The effort itself: the movement, the speed, and the commitment.",
+          "why": "The beat that earns the payoff, and the one a model shortens if you let it. Give it real duration and real effort - tight circles, claws finding the rug, weight low - because the joke is proportional to how seriously the animal is taking it. Deadpan commitment, the same reason anthro-character's `expression` slot refuses to name humour.",
+          "detect": [
+            "spins",
+            "tight circles",
+            "focused",
+            "determined",
+            "claws",
+            "committed"
+          ],
+          "example": "Spinning in tight circles after it, utterly focused and determined, claws scrabbling for grip on the rug, weight low over the front legs"
+        },
+        {
+          "key": "catch",
+          "label": "The turn",
+          "does": "The moment it succeeds - which is the moment the problem starts.",
+          "why": "The reversal, and it has to be a distinct instant rather than a gradual state, or there is nothing for the reaction to be a reaction TO. This is the beat a cut would normally carry, so inside one take it needs a physical marker: the spin stops dead.",
+          "detect": [
+            "catches",
+            "closes its jaws",
+            "stops dead",
+            "freezes",
+            "mid-spin"
+          ],
+          "example": "Catches it - jaws closing on the tip - and the spin stops dead mid-turn"
+        },
+        {
+          "key": "reaction",
+          "label": "Performed outrage",
+          "does": "The confusion and indignation, and who it is aimed at.",
+          "why": "This is the joke, and it is also the slot that has to stay on the right side of tools/safety_lint.py. That gate distinguishes PERFORMED outrage from real distress - `check_distress` is looking for genuine fear - so the wording must read as comic indignation, never pain. 'Reacts with confusion and mild annoyance, glaring at its own tail as though it were to blame' passes 4/4; anything about hurting reads as injury and fails. Aim the blame at the tail, not the animal: the misattribution IS the comedy.",
+          "detect": [
+            "confusion",
+            "indignant",
+            "annoyance",
+            "glaring",
+            "as if blaming",
+            "meowing",
+            "affronted"
+          ],
+          "example": "Releases it instantly and reacts with confusion and mild indignation, meowing once and glaring back at its own tail as though the tail were to blame"
+        },
+        {
+          "key": "exit",
+          "label": "Saving face",
+          "does": "The pause, then the deliberate walk away from the evidence.",
+          "why": "The button on the joke, and the beat most often left off. The laugh is not the catch, it is the dignity afterwards - the decision to pretend none of it happened. It also gives the take a natural end, which matters when there is no cut to end on: walking out of frame is the shot's own full stop.",
+          "detect": [
+            "pauses",
+            "walks away",
+            "as if nothing",
+            "unhurried",
+            "tail lowered",
+            "out of frame"
+          ],
+          "example": "Pauses for a beat, then walks away unhurried and dignified as if nothing had happened, tail lowered, leaving frame"
+        },
+        {
+          "key": "audio",
+          "label": "Audio",
+          "does": "What is on the soundtrack, and explicitly what is not.",
+          "why": "A human voice or a music cue turns caught footage into a produced clip and deflates it. The negative is the load-bearing half - 'no human voices, no music' - the same reason tools/motion_bank.json keeps its own negatives list. Name the real sounds too: claws on a rug is a sound only a real room makes.",
+          "detect": [
+            "natural sound",
+            "no human voices",
+            "no music",
+            "no narration",
+            "claws on",
+            "meow"
+          ],
+          "example": "Natural sound only - claws on the rug, one short indignant meow, the room's own quiet. No human voices, no music, no narration"
+        },
+        {
+          "key": "finish",
+          "label": "Finish",
+          "layer": "texture",
+          "does": "The coat, the light and the timing - what says a camera saw this.",
+          "why": "Last and short. It is also where the source's '4K clarity' was dropped: `4k` is on prompt_bank.json's `warn` list, and a shot whose entire argument is 'this looks like something you filmed' is the worst place to ask for a resolution number. Individual guard hairs and honest natural light do the work the number was standing in for, and 'realistic timing' is worth keeping - it is the instruction against a gag played at cartoon speed.",
+          "example": "Natural window light with realistic shadows, dense fur in realistic surface detail with individual guard hairs catching the light, slight imperfections in the coat, realistic timing throughout and slight motion blur on the fast turns"
         }
       ]
     }

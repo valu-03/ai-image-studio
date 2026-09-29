@@ -170,6 +170,13 @@ def main(argv):
     print("")
     print("TOTAL: {} passed, {} failed across {} suite(s)".format(
         total_ok, total_fail, len(suites)))
+    # A suite can exit non-zero having printed no FAIL line at all - a crash
+    # during teardown, an import error, a hang killed from outside. The counts
+    # above are parsed from FAIL lines, so they read "0 failed" while the run is
+    # genuinely broken; the exit code below has always been right, but the line
+    # a human reads was not. Name them.
+    if failed_suites:
+        print("SUITES THAT EXITED NON-ZERO: " + ", ".join(failed_suites))
 
     # Tests write into temp/outputs; leave no synthetic ratings behind - but
     # RESTORE the real log rather than deleting it. This used to unlink the whole

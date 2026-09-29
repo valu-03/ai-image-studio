@@ -29,7 +29,7 @@ def check(name, cond, detail=""):
 bank = pa.load_bank()
 
 print("=== the bank is well-formed ===")
-check("twelve templates", len(pa.templates(bank)) == 12, str(sorted(pa.templates(bank))))
+check("thirteen templates", len(pa.templates(bank)) == 13, str(sorted(pa.templates(bank))))
 for name, cfg in pa.templates(bank).items():
     check("'{}' has label and summary".format(name), bool(cfg.get("label")) and bool(cfg.get("summary")))
     check("'{}' has slots".format(name), bool(cfg.get("slots")))
@@ -70,9 +70,9 @@ check("the eight still-image templates are grouped as 'image'",
                                         "influencer-series", "inventory-selfie",
                                         "anthro-character"},
       str(sorted(pa.image_templates(bank))))
-check("the four video templates are grouped as 'video'",
+check("the five video templates are grouped as 'video'",
       set(pa.video_templates(bank)) == {"video-sequence", "video-shot", "action-commercial",
-                                        "selfie-monologue"},
+                                        "selfie-monologue", "one-take-gag"},
       str(sorted(pa.video_templates(bank))))
 
 print()
@@ -425,6 +425,90 @@ check("--analyse on a missing file exits non-zero", p.returncode != 0)
 
 p = run(["--template", "beauty-macro", "--analyse", "-"], stdin="   ")
 check("an empty prompt exits non-zero", p.returncode != 0)
+
+import json as _json
+import safety_lint as sfl
+bank_image = _json.loads((ROOT / "tools" / "prompt_bank.json").read_text(
+    encoding="utf-8"))
+
+print()
+print("=== one-take-gag: the first template whose beats do NOT become cuts ===")
+# Every arc in story_bank.json cuts between beats - short is 3 scenes, classic 5,
+# escalating 7, epic 9. This template's whole reason to exist is that its five
+# beats are blocking inside ONE unbroken frame, and a model handed five beats
+# will invent five cuts unless told not to.
+gag = pa.templates(bank)["one-take-gag"]
+slots = {sl["key"]: sl for sl in gag["slots"]}
+check("it is a video template", gag["kind"] == "video")
+check("the one-take instruction is the FIRST slot, before any beat",
+      gag["slots"][0]["key"] == "take", gag["slots"][0]["key"])
+check("...and it actually forbids cuts",
+      "no cuts" in slots["take"]["example"].lower(), slots["take"]["example"][:60])
+
+story = _json.loads((ROOT / "tools" / "story_bank.json").read_text(encoding="utf-8"))
+check("every story_bank arc is multi-scene, which is what this is NOT",
+      all(len(a["beats"]) > 1 for a in story["arcs"].values()),
+      str({k: len(v["beats"]) for k, v in story["arcs"].items()}))
+
+# The five comic beats, in the only order that works: you cannot react to a
+# catch that has not happened, and the exit is the button on the joke.
+order = [sl["key"] for sl in gag["slots"]]
+for earlier, later in [("trigger", "attempt"), ("attempt", "catch"),
+                       ("catch", "reaction"), ("reaction", "exit")]:
+    check("{} comes before {}".format(earlier, later),
+          order.index(earlier) < order.index(later))
+
+print()
+print("--- the reaction slot has to stay on the right side of safety_lint ---")
+# This is the joke AND the thing that could fail the animal-content gate. The
+# distinction safety_lint draws is performed outrage vs real distress, so the
+# worked example must pass its own gate - not be assumed to.
+sbank = sfl.load_bank()
+rows = sfl.lint(sbank, {"subject": slots["subject"]["example"],
+                        "action": " ".join(slots[k]["example"] for k in
+                                           ("trigger", "attempt", "catch",
+                                            "reaction", "exit")),
+                        "setting": slots["setting"]["example"]})
+got, total = sfl.score(rows)
+check("the worked beats clear safety_lint in full", got == total,
+      "{}/{}: {}".format(got, total,
+                         [r[0] for r in rows if not r[2]]))
+check("...and the why says which gate it is protecting",
+      "safety_lint" in slots["reaction"]["why"])
+check("the blame lands on the tail, not on the animal",
+      "blame" in slots["reaction"]["example"].lower())
+
+print()
+print("--- the audio negative is the load-bearing half ---")
+check("it names what must NOT be on the track",
+      "no human voices" in slots["audio"]["example"].lower()
+      and "no music" in slots["audio"]["example"].lower(),
+      slots["audio"]["example"][:70])
+
+print()
+print("--- 4K is gone, for the fourth time in this bank ---")
+warn = _json.loads((ROOT / "tools" / "prompt_bank.json").read_text(
+    encoding="utf-8"))["warn"]
+check("'4k' really is a warn term, so dropping it was not taste",
+      "4k" in [w.lower() for w in warn], str(warn))
+joined = " ".join(sl.get("example", "") for sl in gag["slots"]).lower()
+check("no worked example asks for a resolution number",
+      not any(term in joined for term in ("4k", "8k", "1080p")), joined[:80])
+check("...and none trips any warn term at all",
+      not [w for w in warn if w.lower() in joined],
+      str([w for w in warn if w.lower() in joined]))
+
+print()
+print("--- the device slot owns its keys, like selfie-monologue's optics ---")
+# realism_lint's camera layer only knows named cinema and photo bodies; a phone
+# held at floor level is the entire premise here, so the slot brings its own
+# vocabulary rather than borrowing a layer that cannot see it.
+check("device declares its own detect keys", slots["device"].get("detect"))
+check("...and claims no realism layer it cannot satisfy",
+      "layer" not in slots["device"], str(slots["device"].get("layer")))
+camera_terms = [t.lower() for t in bank_image["layers"]["camera"]["terms"]]
+check("...because no camera-layer term could describe a phone",
+      not any(t in slots["device"]["example"].lower() for t in camera_terms))
 
 print()
 if fails:

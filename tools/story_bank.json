@@ -1,6 +1,6 @@
 {
   "source": "Story structure for short-form animal video. NOT transcribed from the course: its Cats Niche, Storytelling and CapCut lessons are video files. The Kling movement keys and the realism vocabulary this builds on ARE from the course (motion_bank.json, prompt_bank.json).",
-  "version": 3,
+  "version": 4,
   "note": "A scene is one clip. Kling 3.0 generates any whole second from 3 to 15, so clip_seconds is what the scene keeps, rounded up to a whole second. The hook is a real 3-second clip rather than a 5-second one trimmed to 3. edit_seconds still exists because a trim is sometimes wanted, but generated and kept are now nearly the same number instead of differing by 2x. The scene COUNT comes from the runtime, not from the arc: the arc gives the shape and its repeatable beat expands to fill the time, because a beat that will not fit in one clip has to become two scenes.",
   "clip_seconds": {
     "min": 3,
@@ -1057,7 +1057,8 @@
     "surrender": {
       "seed": "falling asleep mid-lecture, the ultimate surrender",
       "short": "the bedtime surrender"
-    }
+    },
+    "tail-chase": {"seed": "the tail is chased, caught, and immediately resented", "short": "its own tail"}
   },
   "premises_note": "Vocabulary, not scripts - the same role `trades_note` describes. `seed` is one line that fills the Idea box and reads as a sentence; `short` is the same episode as a two-to-four word noun phrase, which is what tools/build_social.py's title patterns take. The split exists because a sentence dropped into a title pattern truncates into a fragment - 'Last warning, little one: a piece of cat grass is refused on' - and a cut at a word boundary cannot find a sense boundary. The scene words are still written and still gated; fifty hand-written five-stage scripts would be 600 lines of unaudited content pretending to be a bank.",
   "ui_note": "Which rows a format shows, and what it calls them. This lived in cats.py as an is_trade() boolean, which worked for exactly two formats and silently had no answer for a third: every branch would have had to be re-read as 'trade or sitcom?' one at a time. A format declares its own form now."

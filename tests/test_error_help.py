@@ -173,6 +173,18 @@ check("...which no longer prefixes and then truncates", "Refine" in seen[-1][1],
 
 
 print()
+# Tear the window down explicitly. Left to interpreter exit this suite crashed
+# INTERMITTENTLY on Windows (0xC0000409) after printing its results - Qt
+# destroying widgets in an order Python's own teardown had already started
+# unpicking, made likelier here because report_failure is monkeypatched onto the
+# instance above. run_all.py exits non-zero on that, so it is a flaky red build
+# rather than a cosmetic one. Closing and dropping the reference first, while
+# the interpreter is still whole, is the standard remedy; tests/test_layout.py
+# already did this for the same reason.
+win.close()
+app.processEvents()
+del win
+
 if fails:
     print("{} failed".format(len(fails)))
     for name in fails:
