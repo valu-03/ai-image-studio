@@ -102,6 +102,40 @@ check("CLI output carries --ar", "--ar 9:16" in p.stdout, p.stdout[-160:])
 SPEC_PATH.unlink()
 
 print()
+print("=== --sref: a STYLE reference, which is not the same as spec['reference'] ===")
+# A style reference is a token (a job id, an --sref number, an image URL), so it
+# CAN ride in the text. spec["reference"] is an image a human must attach in
+# Discord, which is why that one stays a note and this one is a parameter.
+out = mx.to_midjourney(bank, SPEC, prompt, sref="553469723")
+check("--sref is emitted when given", "--sref 553469723" in out, out[-120:])
+check("--sw is NOT emitted without a value", "--sw" not in out, out[-120:])
+
+out = mx.to_midjourney(bank, SPEC, prompt, sref="553469723", sw=400)
+check("--sw rides alongside --sref", "--sref 553469723" in out and "--sw 400" in out,
+      out[-120:])
+
+out = mx.to_midjourney(bank, SPEC, prompt, sw=400)
+check("--sw alone is dropped - it means nothing without --sref",
+      "--sw" not in out, out[-120:])
+
+out = mx.to_midjourney(bank, SPEC, prompt)
+check("no --sref by default, so every existing call is unchanged",
+      "--sref" not in out and "--sw" not in out, out[-120:])
+
+# This tool takes --spec or --prompt-file; it has no --subject of its own.
+SREF_SPEC = ROOT / "temp" / "resources" / "characters" / "_test-mj-sref.json"
+SREF_SPEC.parent.mkdir(parents=True, exist_ok=True)
+SREF_SPEC.write_text(json.dumps(SPEC), encoding="utf-8")
+p2 = subprocess.run([sys.executable, str(TOOL), "--spec", str(SREF_SPEC),
+                     "--sref", "553469723", "--sw", "250", "--version", "7"],
+                    capture_output=True, text=True, cwd=str(ROOT))
+check("the CLI carries --sref, --sw and an explicit --v", p2.returncode == 0
+      and "--sref 553469723" in p2.stdout and "--sw 250" in p2.stdout
+      and "--v 7" in p2.stdout, (p2.stdout[-160:] or p2.stderr[:160]))
+SREF_SPEC.unlink()
+
+
+print()
 if fails:
     print("FAILED: {}".format(", ".join(fails)))
 else:

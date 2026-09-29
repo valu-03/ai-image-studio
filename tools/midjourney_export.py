@@ -49,7 +49,7 @@ def negatives_to_no(bank):
 
 
 def to_midjourney(bank, spec, prompt, version=DEFAULT_VERSION, style=DEFAULT_STYLE,
-                   stylize=DEFAULT_STYLIZE):
+                   stylize=DEFAULT_STYLIZE, sref=None, sw=None):
     """An already-built prompt + its spec -> the same prompt with Midjourney's
     own parameter syntax appended.
 
@@ -84,6 +84,16 @@ def to_midjourney(bank, spec, prompt, version=DEFAULT_VERSION, style=DEFAULT_STY
         params.append("--no {}".format(", ".join(no_terms)))
     if version:
         params.append("--v {}".format(version))
+    # --sref is a STYLE reference (a job id, a --sref number, or an image URL),
+    # which is a different thing from spec["reference"] below: that one is a
+    # character/scene reference the user has to attach in Discord themselves.
+    # A style reference is just a token, so unlike an image it CAN be carried
+    # in the text - which is why this one is a parameter and that one is a note.
+    if sref:
+        params.append("--sref {}".format(sref))
+    # --sw only means anything alongside --sref, so it is not emitted alone.
+    if sref and sw is not None:
+        params.append("--sw {}".format(sw))
 
     text = prompt.strip()
     if params:
@@ -111,6 +121,11 @@ def main(argv=None):
     p.add_argument("--style", default=DEFAULT_STYLE,
                     help="'raw' (photoreal-leaning, the default) or 'default' for MJ's own look")
     p.add_argument("--stylize", type=int, default=DEFAULT_STYLIZE, help="--stylize value (0-1000)")
+    p.add_argument("--sref",
+                   help="style reference to match: a job id, an --sref number or an "
+                        "image URL. Carried as a parameter, not as an attachment.")
+    p.add_argument("--sw", type=int,
+                   help="how strongly to apply --sref (0-1000). Ignored without it.")
     args = p.parse_args(argv if argv is not None else sys.argv[1:])
 
     bank = bp.load_bank()
@@ -140,7 +155,7 @@ def main(argv=None):
 
     style = None if args.style == "default" else args.style
     print(to_midjourney(bank, spec, prompt, version=args.version, style=style,
-                        stylize=args.stylize))
+                        stylize=args.stylize, sref=args.sref, sw=args.sw))
     return 0
 
 

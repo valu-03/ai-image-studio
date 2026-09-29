@@ -50,7 +50,15 @@ def score(phrase):
 
 
 print("=== the bank is well-formed ===")
-check("27 styles total", len(bstyle.all_styles(bank)) == 27, str(len(bstyle.all_styles(bank))))
+check("28 styles total", len(bstyle.all_styles(bank)) == 28, str(len(bstyle.all_styles(bank))))
+# emotive-sketch and pencil-sketch are deliberately both here: one is a
+# MEDIUM (visible graphite on cream paper), the other a REGISTER (fine
+# linework, soft natural light, calm). Each one's `when` points at the other.
+check("the two sketch styles are distinct entries, not a duplicate",
+      bank["stylised"]["emotive-sketch"]["keywords"]
+      != bank["stylised"]["pencil-sketch"]["keywords"])
+check("...and each says when to use the other instead",
+      "pencil-sketch" in bank["stylised"]["emotive-sketch"]["when"])
 check("both groups are non-empty",
       bool(bstyle.photoreal(bank)) and bool(bstyle.stylised(bank)))
 for key, cfg in bstyle.all_styles(bank).items():

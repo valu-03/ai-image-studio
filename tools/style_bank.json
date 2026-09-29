@@ -1,6 +1,6 @@
 {
   "source": "AI Video Bootcamp Phase 3 'Style Reference Library' (AVB_Style_Reference_Library_clean.pdf) - 24 visual styles, each with the look, when to reach for it, and an example prompt. The course's own rule: add the style keywords at the END of the prompt, after the scene description, never lead with them. Version 2 added 2 `photoreal` entries (`iphone-ugc-realism`, `on-camera-flash-candid`) sourced from community UGC/avatar prompt-bank material, not the course PDF - each says so via its own `source` field. Version 3 adds 1 more `photoreal` entry, `universal-realism-lock`, sourced from a DIFFERENT official course lesson (\"Removing the 'AI' Look\", not the Style Reference Library PDF) - its `source` field says so. Version 4 refines the existing `tilt-shift` entry's `keywords`/`look`/`when`/`example` using community reference material identifying the two details that actually drive the miniature illusion (a high angle looking down, and a specific top/bottom-heavy sharp-middle blur shape, not generic shallow depth of field) - its own `source` field says so; no new style added, still 27 total.",
-  "version": 4,
+  "version": 5,
   "note": "Two groups. `photoreal` styles are compatible with the 8/8 realism gate - they describe a real camera/film/lighting look. `stylised` styles deliberately are NOT photographic (anime, oil painting, watercolour); applying one drops the realism score on purpose, the same way tools/story_bank.json's animated look does, and the Style section warns before it is applied. `keywords` is the phrase that gets appended (spec['overrides']['style'], folded into the free extra segment by build_prompt.free_overrides). `custom` typed text always beats a picked style. `photoreal` now holds the course's original 14, 2 community-sourced additions, and 1 more addition from a different course lesson (each addition says which via its own `source` field) - 27 styles total, still 10 `stylised`.",
 
   "photoreal": {
@@ -199,6 +199,13 @@
       "look": "Clean, simple, lots of negative space, one focal point.",
       "when": "Clean brand content, modern design, luxury - when less is more.",
       "example": "A single red chair in the centre of a vast white room, soft even lighting, minimalist, clean"
-    }
+    },
+      "emotive-sketch": {
+        "label": "Emotive sketch",
+        "keywords": "a fine-linework sketch illustration, delicate strokes and thoughtful shading, soft natural light, a quiet natural setting behind",
+        "look": "Fine linework and delicate shading rather than a hard graphite medium, softly lit, calm and reflective.",
+        "when": "When the FEELING is the brief rather than the medium - a quiet, intimate subject in a natural setting. Pick pencil-sketch instead when you want visible graphite on paper.",
+        "example": "A woman sitting alone on a wooden bench in late autumn, a fine-linework sketch illustration, delicate strokes and thoughtful shading, soft natural light through the leaves behind her"
+      }
   }
 }
