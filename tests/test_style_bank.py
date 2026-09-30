@@ -50,7 +50,7 @@ def score(phrase):
 
 
 print("=== the bank is well-formed ===")
-check("28 styles total", len(bstyle.all_styles(bank)) == 28, str(len(bstyle.all_styles(bank))))
+check("29 styles total", len(bstyle.all_styles(bank)) == 29, str(len(bstyle.all_styles(bank))))
 # emotive-sketch and pencil-sketch are deliberately both here: one is a
 # MEDIUM (visible graphite on cream paper), the other a REGISTER (fine
 # linework, soft natural light, calm). Each one's `when` points at the other.
@@ -59,8 +59,36 @@ check("the two sketch styles are distinct entries, not a duplicate",
       != bank["stylised"]["pencil-sketch"]["keywords"])
 check("...and each says when to use the other instead",
       "pencil-sketch" in bank["stylised"]["emotive-sketch"]["when"])
+# travel-editorial sits between four existing photoreal styles, each of which
+# misses the register in a DIFFERENT direction - editorial-fashion is a
+# controlled set, vintage-magazine is graded retro, golden-hour-portrait is
+# about the hour, street-photography is deliberately unpolished. A style that
+# lands between four others is only useful if all five say so, otherwise the
+# picker just gets longer.
+TRAVEL_NEIGHBOURS = ("editorial-fashion", "vintage-magazine",
+                     "golden-hour-portrait", "street-photography")
+check("travel-editorial names every neighbour it could be confused with",
+      all(n in bank["photoreal"]["travel-editorial"]["when"]
+          for n in TRAVEL_NEIGHBOURS))
+for _n in TRAVEL_NEIGHBOURS:
+    check("...and '{}' points back at it".format(_n),
+          "travel-editorial" in bank["photoreal"][_n]["when"],
+          bank["photoreal"][_n]["when"][-70:])
+check("travel-editorial does not lean on the banned/warn skin vocabulary",
+      not any(t in bank["photoreal"]["travel-editorial"]["keywords"].lower()
+              for t in ("flawless", "poreless", "glowing skin")))
 check("both groups are non-empty",
       bool(bstyle.photoreal(bank)) and bool(bstyle.stylised(bank)))
+# The `note` and `source` fields state the counts in prose, and both had
+# gone stale by two versions before anything noticed - they still claimed
+# 27 styles after two were added. A number written in prose next to the
+# data it describes is a number that drifts, so it is checked.
+check("the note's own counts match the data",
+      all(t in bank["note"] for t in
+          ("{} styles total".format(len(bstyle.all_styles(bank))),
+           "{} `photoreal`".format(len(bstyle.photoreal(bank))),
+           "{} `stylised`".format(len(bstyle.stylised(bank))))),
+      bank["note"][-90:])
 for key, cfg in bstyle.all_styles(bank).items():
     check("'{}' has every field".format(key),
           all(cfg.get(f) for f in ("label", "keywords", "look", "when", "example")),

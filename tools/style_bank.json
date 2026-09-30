@@ -1,7 +1,7 @@
 {
-  "source": "AI Video Bootcamp Phase 3 'Style Reference Library' (AVB_Style_Reference_Library_clean.pdf) - 24 visual styles, each with the look, when to reach for it, and an example prompt. The course's own rule: add the style keywords at the END of the prompt, after the scene description, never lead with them. Version 2 added 2 `photoreal` entries (`iphone-ugc-realism`, `on-camera-flash-candid`) sourced from community UGC/avatar prompt-bank material, not the course PDF - each says so via its own `source` field. Version 3 adds 1 more `photoreal` entry, `universal-realism-lock`, sourced from a DIFFERENT official course lesson (\"Removing the 'AI' Look\", not the Style Reference Library PDF) - its `source` field says so. Version 4 refines the existing `tilt-shift` entry's `keywords`/`look`/`when`/`example` using community reference material identifying the two details that actually drive the miniature illusion (a high angle looking down, and a specific top/bottom-heavy sharp-middle blur shape, not generic shallow depth of field) - its own `source` field says so; no new style added, still 27 total.",
-  "version": 5,
-  "note": "Two groups. `photoreal` styles are compatible with the 8/8 realism gate - they describe a real camera/film/lighting look. `stylised` styles deliberately are NOT photographic (anime, oil painting, watercolour); applying one drops the realism score on purpose, the same way tools/story_bank.json's animated look does, and the Style section warns before it is applied. `keywords` is the phrase that gets appended (spec['overrides']['style'], folded into the free extra segment by build_prompt.free_overrides). `custom` typed text always beats a picked style. `photoreal` now holds the course's original 14, 2 community-sourced additions, and 1 more addition from a different course lesson (each addition says which via its own `source` field) - 27 styles total, still 10 `stylised`.",
+  "source": "AI Video Bootcamp Phase 3 'Style Reference Library' (AVB_Style_Reference_Library_clean.pdf) - 24 visual styles, each with the look, when to reach for it, and an example prompt. The course's own rule: add the style keywords at the END of the prompt, after the scene description, never lead with them. Version 2 added 2 `photoreal` entries (`iphone-ugc-realism`, `on-camera-flash-candid`) sourced from community UGC/avatar prompt-bank material, not the course PDF - each says so via its own `source` field. Version 3 adds 1 more `photoreal` entry, `universal-realism-lock`, sourced from a DIFFERENT official course lesson (\"Removing the 'AI' Look\", not the Style Reference Library PDF) - its `source` field says so. Version 4 refines the existing `tilt-shift` entry's `keywords`/`look`/`when`/`example` using community reference material identifying the two details that actually drive the miniature illusion (a high angle looking down, and a specific top/bottom-heavy sharp-middle blur shape, not generic shallow depth of field) - its own `source` field says so; no new style added, still 27 total. Version 5 adds `emotive-sketch` to `stylised` - a REGISTER (fine linework, soft natural light, calm and reflective) distinct from `pencil-sketch`, which is a MEDIUM (visible graphite on paper); each one's `when` points at the other. Version 6 adds `travel-editorial` to `photoreal`, the on-location bright-daylight lifestyle look that four existing styles each miss in a different direction - all five entries cross-reference each other so a longer picker stays decidable.",
+  "version": 6,
+  "note": "Two groups. `photoreal` styles are compatible with the 8/8 realism gate - they describe a real camera/film/lighting look. `stylised` styles deliberately are NOT photographic (anime, oil painting, watercolour); applying one drops the realism score on purpose, the same way tools/story_bank.json's animated look does, and the Style section warns before it is applied. `keywords` is the phrase that gets appended (spec['overrides']['style'], folded into the free extra segment by build_prompt.free_overrides). `custom` typed text always beats a picked style. `photoreal` now holds the course's original 14, 2 community-sourced additions, and 2 more app-original additions (`universal-realism-lock`, `travel-editorial`; each addition says which via its own `source` field) - 29 styles total: 18 `photoreal`, 11 `stylised`.",
 
   "photoreal": {
     "35mm-film": {
@@ -36,21 +36,29 @@
       "label": "Vintage magazine",
       "keywords": "styled like a 1960s magazine editorial, warm muted tones, fine grain, clean composition",
       "look": "Clean composition, warm muted tones, grain, 1960s editorial styling.",
-      "when": "Fashion content, lifestyle brands, retro-inspired projects.",
+      "when": "Fashion content, lifestyle brands, retro-inspired projects. Pick travel-editorial instead for the same walk-through-a-city shot graded bright and contemporary rather than muted and retro.",
       "example": "A woman in a trench coat walking through a Paris street market, styled like a 1960s magazine editorial"
     },
     "editorial-fashion": {
       "label": "Editorial fashion",
       "keywords": "editorial fashion photography, high-end styling, a dramatic pose, controlled directional lighting, magazine quality",
       "look": "High-end styling, dramatic poses, controlled light, magazine quality.",
-      "when": "Fashion brands, luxury products, high-end social content.",
+      "when": "Fashion brands, luxury products, high-end social content. Pick travel-editorial instead when the shot is on location in daylight rather than on a controlled set.",
       "example": "Model in an oversized blazer standing in an empty white studio, strong directional light from the left, editorial fashion photography"
+    },
+    "travel-editorial": {
+      "label": "Travel editorial",
+      "keywords": "luxury travel editorial photography, on location in bright midday daylight, a candid stride caught mid-movement, vibrant balanced colour, magazine-cover polish",
+      "look": "On location in bright daylight, movement caught candidly, vibrant but balanced colour, magazine-cover polish.",
+      "when": "Lifestyle, travel and creator content shot somewhere real - the look most influencer briefs are actually asking for. Pick editorial-fashion for a controlled studio set-up, vintage-magazine for a retro muted grade, golden-hour-portrait when the light itself is the subject, or street-photography when it should look caught rather than commissioned.",
+      "example": "A woman in a white linen dress walking through a Parisian cafe street, wind moving her hair and the hem of the dress, luxury travel editorial photography, bright midday daylight, vibrant balanced colour",
+      "source": "App-original addition. The four nearest styles each miss this register in a different direction; every influencer-style reference prompt that arrives asking for 'luxury travel editorial' and 'high-end magazine cover' lands between them."
     },
     "street-photography": {
       "label": "Street photography",
       "keywords": "candid street photography, a real-world setting, raw, a decisive moment caught, natural light",
       "look": "Candid, urban, raw, the decisive moment, real-world setting.",
-      "when": "Authentic-feeling content, urban stories, real-world scenes.",
+      "when": "Authentic-feeling content, urban stories, real-world scenes. Pick travel-editorial instead when the result should look commissioned and polished rather than caught and raw.",
       "example": "A delivery driver checking his phone on a busy corner, steam rising from a manhole, golden hour, street photography"
     },
     "drone-photography": {
@@ -86,7 +94,7 @@
       "label": "Golden hour portrait",
       "keywords": "golden hour portrait, warm backlight, golden skin tones, a gentle sun flare, magic-hour glow",
       "look": "Warm backlight, golden skin tones, sun flare, magic-hour glow.",
-      "when": "Portraits, lifestyle, any content that needs warmth and beauty.",
+      "when": "Portraits, lifestyle, any content that needs warmth and beauty. Pick travel-editorial instead when the location matters as much as the light and the hour is the middle of the day.",
       "example": "A woman laughing with her eyes closed in a wheat field, golden hour backlight catching her hair, warm and joyful"
     },
     "studio-lighting": {
