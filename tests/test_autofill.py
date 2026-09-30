@@ -114,8 +114,13 @@ check("the disagreement is reported, not fixed", any("typed your own" in n for n
       str(notes))
 
 print()
-print("=== THE BANK, v10 ===")
-check("version bumped", bank["version"] == 10, str(bank["version"]))
+print("=== THE BANK: the six soft-warn terms ===")
+# `>= 10`, not `== 10`: this suite added the six terms below at v10 and
+# they are what it is really testing. Pinning the exact number here made
+# every later bank change look like this feature regressing - it does not
+# own the bank, only its own six entries.
+check("the bank is at or past the version that carried these",
+      bank["version"] >= 10, str(bank["version"]))
 for term in ("cinematic masterpiece", "hyper-detailed", "ultra-glossy", "award-winning",
              "perfect lighting", "cinematic lighting"):
     check("'{}' is a soft warn, not a hard ban".format(term),

@@ -147,7 +147,36 @@ HASHES = {
     # running lint() against every shot preset's assembled phrase, not
     # assumed - see tests/test_style_bank.py's own 8/8 checks). No layer
     # term, negative or DETECT key changed.
-    "tools/prompt_bank.json": "0830bfd4b16f76da",
+    # Bumped again (version 10 -> 11) for five terms added to `banned` and two
+    # to `warn`, from two real influencer-style reference prompts. The split is
+    # the whole decision, and it was made by reading the app's own banks rather
+    # than by taste:
+    #
+    #   banned  "flawless skin", "flawless glowing skin", "poreless",
+    #           "perfect skin", "blemish-free" - each is the direct negation of
+    #           the texture layer, whose own note calls it "the single biggest
+    #           defence against the plastic AI look", and whose own terms
+    #           already argue the point in words ("authentic pores visible, not
+    #           airbrushed smooth"). They sit in exactly the company this list
+    #           already keeps: airbrushed, beauty filter, glamour retouching,
+    #           plastic skin.
+    #   warn    "glowing skin" - NOT banned, deliberately. anatomy_bank.json's
+    #           post-workout skin slot had already diagnosed it in prose:
+    #           "'Post-workout glow' is doing real work ... where 'glowing
+    #           skin' names a wish." A wish is a warn row - "this does nothing
+    #           on its own" - not a hard reject, because unlike "poreless" it
+    #           is not self-contradictory, and the remedy is to name the state
+    #           instead. "ultra-detailed" joins its own sibling
+    #           "hyper-detailed", which was already listed.
+    #
+    # No layer term, negative, DETECT key or shot preset changed. Confirmed
+    # rather than assumed that nothing the app can itself compose newly trips
+    # any of the seven: tests/test_skin_negatives.py lints every generatable
+    # phrase in every layer, every shot preset, every style keyword and every
+    # anatomy/lighting/capture example against the new lists. The two prose
+    # hits for "glowing skin" and "perfect skin" are in `why` documentation
+    # fields, which are shown in the GUI and never composed into a prompt.
+    "tools/prompt_bank.json": "0206df1f73c49b26",
     # Bumped for the new Lighting section's DETECT["lighting"]["keys"]
     # additions (rembrandt, split lighting, catchlight, colour temperature,
     # falling off, ...) - every one of tools/lighting_bank.json's phrases

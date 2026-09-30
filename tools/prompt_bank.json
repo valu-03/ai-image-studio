@@ -1,6 +1,6 @@
 {
   "source": "AI Video Bootcamp - Phase 2 ARCHITECT - Lesson 20: Creating More Realistic Avatars",
-  "version": 10,
+  "version": 11,
   "default_model": "Nano Banana Pro",
   "layers": {
     "core": {
@@ -174,6 +174,11 @@
     "no text, logo or watermark"
   ],
   "banned": [
+    "flawless skin",
+    "flawless glowing skin",
+    "poreless",
+    "perfect skin",
+    "blemish-free",
     "neon glow",
     "magical light",
     "fantasy lighting",
@@ -195,6 +200,8 @@
     "glamour retouching"
   ],
   "warn": [
+    "glowing skin",
+    "ultra-detailed",
     "8k",
     "4k",
     "masterpiece",

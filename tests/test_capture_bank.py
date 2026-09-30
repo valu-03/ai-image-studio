@@ -151,8 +151,17 @@ check("and actually carries the vocabulary",
 check("the plain prompt carried neither",
       "portra" not in plain.lower() and "halation" not in plain.lower())
 
-check("prompt_bank.json's version is untouched, so ratings survive",
-      IMAGE_BANK["version"] == 10, str(IMAGE_BANK["version"]))
+# A FLOOR, NOT AN EQUALITY. This line used to read `== 10`, which quietly
+# asserted that nobody may ever change prompt_bank.json again - a claim this
+# suite has no business making, and one that broke the moment a later feature
+# changed the bank on purpose (v11, the skin-perfection negatives; see
+# tests/test_skin_negatives.py, which measures the rating cost rather than
+# assuming it). What this suite actually cares about is that ITS OWN
+# vocabulary never leaked into the shared bank, and that is checked directly,
+# term by term, below. A floor still catches the thing worth catching: a
+# rollback, which would silently revalidate stale ratings.
+check("prompt_bank.json's version never rolls back, so ratings stay honest",
+      IMAGE_BANK["version"] >= 10, str(IMAGE_BANK["version"]))
 # Word-boundary matched, not substring: "portra" is inside "portrait", which
 # prompt_bank.json says constantly.
 import re  # noqa: E402
