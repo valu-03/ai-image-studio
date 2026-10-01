@@ -29,7 +29,7 @@ def check(name, cond, detail=""):
 bank = pa.load_bank()
 
 print("=== the bank is well-formed ===")
-check("thirteen templates", len(pa.templates(bank)) == 13, str(sorted(pa.templates(bank))))
+check("fourteen templates", len(pa.templates(bank)) == 14, str(sorted(pa.templates(bank))))
 for name, cfg in pa.templates(bank).items():
     check("'{}' has label and summary".format(name), bool(cfg.get("label")) and bool(cfg.get("summary")))
     check("'{}' has slots".format(name), bool(cfg.get("slots")))
@@ -64,11 +64,11 @@ check("image_templates() and video_templates() partition every template, no over
       set(pa.image_templates(bank)) | set(pa.video_templates(bank)) == set(pa.templates(bank))
       and not set(pa.image_templates(bank)) & set(pa.video_templates(bank)),
       "{} / {}".format(sorted(pa.image_templates(bank)), sorted(pa.video_templates(bank))))
-check("the eight still-image templates are grouped as 'image'",
+check("the nine still-image templates are grouped as 'image'",
       set(pa.image_templates(bank)) == {"beauty-macro", "macro-insert", "photoreal-portrait",
                                         "product-campaign", "candid-editorial",
                                         "influencer-series", "inventory-selfie",
-                                        "anthro-character"},
+                                        "anthro-character", "mythic-illustration"},
       str(sorted(pa.image_templates(bank))))
 check("the five video templates are grouped as 'video'",
       set(pa.video_templates(bank)) == {"video-sequence", "video-shot", "action-commercial",

@@ -46,6 +46,7 @@ ORDER = [
     "test_color_bank.py",
     "test_style_bank.py",
     "test_skin_negatives.py",
+    "test_anatomy_guard.py",
     "test_posing_bank.py",
     "test_posing_field.py",
     "test_purpose_custom.py",

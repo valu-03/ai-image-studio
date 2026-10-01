@@ -176,7 +176,25 @@ HASHES = {
     # anatomy/lighting/capture example against the new lists. The two prose
     # hits for "glowing skin" and "perfect skin" are in `why` documentation
     # fields, which are shown in the GUI and never composed into a prompt.
-    "tools/prompt_bank.json": "0206df1f73c49b26",
+    # Bumped again (version 11 -> 12) for ONE NEW TOP-LEVEL KEY, `anatomy_guard`
+    # - five phrases guarding the body: no warped face, no distorted hands or
+    # extra fingers, no floating or extra limbs, no duplicated figures, no
+    # morphing. Of the three paths in this app that compose a prompt, the
+    # ordinary image path was the only one with no anatomy guard: motion_bank
+    # has `avatar_guard` for video, anatomy_bank has carried this exact
+    # vocabulary all along inside one template's own guard slot, and
+    # prompt_bank's seven `negatives` defend the LOOK while saying nothing
+    # about the body - which is where a generated image is most often caught.
+    #
+    # OPT-IN AND OFF BY DEFAULT, exactly like motion_bank's avatar_guard and
+    # for the same reason: "no distorted hands" is noise on a product shot with
+    # nobody in it, and a guard that is always on is a guard nobody can aim.
+    # `negatives`, every layer's terms, the banned/warn lists, the shot presets
+    # and the purposes are all untouched, so compose() without the new flag
+    # returns byte-identical output - asserted directly in
+    # tests/test_anatomy_guard.py rather than assumed, which is why this bump
+    # changed no other suite's expected prompt.
+    "tools/prompt_bank.json": "e258cb883c0007b4",
     # Bumped for the new Lighting section's DETECT["lighting"]["keys"]
     # additions (rembrandt, split lighting, catchlight, colour temperature,
     # falling off, ...) - every one of tools/lighting_bank.json's phrases

@@ -1,6 +1,6 @@
 {
   "source": "This app's own 8-layer prompt system (tools/prompt_bank.json + tools/realism_lint.py), plus slot structure reverse-engineered from worked prompts - the `beauty-macro` and `macro-insert` templates from a community-supplied macro/beauty-portrait prompt contributed by the user (the same prompt tools/macro_insert_bank.json harvests its vocabulary from), and `photoreal-portrait` from this app's own build_prompt.py compose order. The `video-sequence` template is reverse-engineered from a community-supplied luxury-vlog video prompt contributed by the user, and `video-shot` from this app's own tools/motion_lint.py rules (which DO transcribe the bootcamp's Kling camera-movement toolkit, via tools/motion_bank.json). The `action-commercial` template is reverse-engineered from a second, different community-supplied video prompt contributed by the user (a high-action car commercial) - see its own `source_note` for how its shape differs from video-sequence. The `product-campaign` template is reverse-engineered from a THIRD community-supplied prompt contributed by the user (a confectionery campaign portrait), and is the image-side sibling of `action-commercial`: the same banded-brief house style, but one still frame with a person and a package in it. Everything else here is NOT AI Video Bootcamp course material.",
-  "version": 10,
+  "version": 11,
   "note": "A template is an ORDERED list of slots - the skeleton of a prompt, not its words. This bank teaches structure; the vocabulary banks (prompt_bank, lighting_bank, style_bank, macro_insert_bank, ...) supply what goes in each slot. Every template also declares `kind` - 'image' or 'video' - so the Anatomy tab's picker can group them instead of listing all five as one undifferentiated list; a template produces exactly one kind of prompt, never both, so this is a fixed fact about the template rather than a per-run choice. Detection is deliberately split: a slot that maps onto one of the eight gated realism layers declares `layer` and is detected by tools/realism_lint.py's OWN DETECT table - never a second copy of those keywords, the same no-duplication rule tools/relight_bank.json follows for lighting and camera-angle phrases. Only slots the eight layers do not cover carry their own `detect` list - and a slot whose vocabulary already lives in ANOTHER linter borrows it by name instead: a `borrow` of 'motion-verbs' takes tools/motion_lint.py's own MOTION_VERBS, so the camera-movement slots cannot drift away from what that linter actually gates on. The video templates also record two facts about this app that a prompt written elsewhere will trip over: tools/sound_bank.json is effects-only and its linter rejects music vocabulary outright (hence a separate `music` slot), and tools/build_story.py distinguishes clip_seconds from edit_seconds (hence the shot-sequence slot's warning that two-second beats are edit lengths, not generation lengths). `analyse()` is keyword presence, not parsing: it answers 'which slots does this prompt appear to fill', which is honest, rather than pretending to segment free prose into semantic regions.",
 
   "templates": {
@@ -1469,6 +1469,173 @@
           "does": "The one line that says a sensor recorded this, not a renderer.",
           "why": "Last, and short. It is also where two of the source's own words were dropped: '4K' and 'hyper-detailed' are both on prompt_bank.json's `warn` list, and a template whose whole argument is 'make it photographic' is the worst possible place to ask for the two adjectives that most reliably produce the opposite.",
           "example": "fine sensor noise in the shadows, sharp focus on the near eye, not overly polished"
+        }
+      ]
+    },
+    "mythic-illustration": {
+      "label": "Mythic illustration (a figure in a scene, not a portrait)",
+      "kind": "image",
+      "scaffold": "inline",
+      "summary": "Twelve slots for a full-colour cinematic illustration of a known figure - mythological, legendary or folkloric - placed in an original scene rather than cut out against a background. The first slot is the load-bearing one: it declares the register as illustration, because every other slot in this template would otherwise be read as a photographic instruction.",
+      "source_note": "App-original template, built from a reference prompt for premium mythological illustration. THE FIRST IMAGE TEMPLATE THAT IS NOT PHOTOREAL, and the only one that deliberately declares no camera, no lens and no grain slot: those three layers describe a capture device, and an illustration was not captured. It keeps lighting, colour and texture, which mean exactly as much to a painting as to a photograph. It is the mirror of anthro-character, whose own `frame` slot exists to insist 'a photograph rather than an illustration' - same tension, opposite resolution, and both have to state it before the premise or the model splits the difference. Because it is not photoreal it is NOT one of the scaffolds held to the 8/8 realism gate; the gate measures photographic vocabulary, and scoring an illustration against it would be measuring the wrong thing rather than measuring badly.",
+      "slots": [
+        {
+          "key": "register",
+          "label": "Register and frame",
+          "does": "Declares this an illustration, in full colour, at a stated aspect - before anything else is said.",
+          "why": "The single most important slot here, and it has to come first. Every instruction below - cinematic lighting, realistic material definition, polished textures - is vocabulary a model will happily resolve toward a photograph if nothing has told it otherwise, and a half-photographic illustration is the exact look this template exists to avoid. anthro-character sets its register first for the same reason, pointing the other way.",
+          "detect": [
+            "illustration",
+            "full-colour",
+            "full-color",
+            "illustrated",
+            "not a photograph",
+            "portrait format"
+          ],
+          "example": "A premium full-colour cinematic illustration in 4:5 portrait format, illustrated rather than photographed"
+        },
+        {
+          "key": "figure",
+          "label": "The figure",
+          "does": "Names the figure and demands their identity survive.",
+          "why": "A known figure is the whole subject, so the failure mode is not a bad picture but a picture of somebody else. Naming the figure is not enough on its own - the instruction has to say that the recognisable identity is preserved, or a model will produce a generic armoured woman with an owl somewhere and call it Athena.",
+          "detect": [
+            "recognisable",
+            "recognizable",
+            "unmistakable",
+            "identity preserved",
+            "the focal point"
+          ],
+          "example": "Athena as the unmistakable focal point, her recognisable identity preserved, fully visible and correctly proportioned"
+        },
+        {
+          "key": "attributes",
+          "label": "Attributes and symbols",
+          "does": "The traditional attributes, symbolic objects and powers that make the figure legible at a glance.",
+          "why": "This is what 'recognisable' actually resolves to, and listing it separately is what stops the figure slot from being a wish. An owl, an aegis, a spear: a viewer identifies the figure from the objects long before the face. Name them, or the model chooses, and what it chooses is usually generic.",
+          "detect": [
+            "attributes",
+            "symbolic",
+            "emblem",
+            "carrying",
+            "bearing",
+            "at her side"
+          ],
+          "example": "bearing her traditional attributes - the crested helm, the aegis at her shoulder, a bronze-tipped spear - with an owl perched in the shadow behind her"
+        },
+        {
+          "key": "action",
+          "label": "Action and pose",
+          "does": "What the figure is doing, and how the body carries it.",
+          "why": "A mythological figure standing still is an illustration of a statue. The action has to be a moment with a before and an after, and the pose has to be dynamic rather than merely described - the same distinction the Posing field draws against Action elsewhere in this app.",
+          "detect": [
+            "mid-",
+            "dynamically posed",
+            "weight",
+            "turning",
+            "stepping",
+            "raised"
+          ],
+          "example": "stepping down from the temple steps mid-stride, dynamically posed with her weight already on the forward foot and the spear arm dropping"
+        },
+        {
+          "key": "scene",
+          "label": "The scene",
+          "does": "A complete original setting the figure belongs to - not a backdrop placed behind them.",
+          "why": "The commonest failure in figure illustration is a character cut out and pasted onto scenery, which reads instantly and cheaply. Asking for a COMPLETE scene, and saying 'not an isolated character' out loud, is what buys the figure a place to stand.",
+          "detect": [
+            "complete scene",
+            "not an isolated",
+            "original scene",
+            "belongs",
+            "surrounding"
+          ],
+          "example": "a complete original scene of a storm-lit hilltop temple, not an isolated character - broken columns, wet stone, olive trees bent in the wind"
+        },
+        {
+          "key": "depth",
+          "label": "Depth construction",
+          "does": "Foreground, middle-ground and background, and the specific devices that build them.",
+          "why": "'Add depth' is not an instruction; overlap, scale, perspective, framing and negative space are. Naming the three planes and the devices that separate them is the difference between a deep image and a busy one. composition_bank.json carries the same five ideas as pickable techniques for photographic work - this slot is where an illustration states them inline.",
+          "detect": [
+            "foreground",
+            "middle-ground",
+            "midground",
+            "background",
+            "overlap",
+            "negative space"
+          ],
+          "example": "strong depth across three planes - wet foreground stone overlapping her trailing foot, the temple in middle-ground, a lightning-lit valley far behind, with negative space held open above her"
+        },
+        {
+          "key": "atmosphere",
+          "label": "Light and atmosphere",
+          "layer": "lighting",
+          "does": "The light, and the mood it carries.",
+          "why": "Kept as a gated realism layer even though nothing here was photographed, because light behaves the same way in a painting: it has a direction, a quality and a source, and an illustration that ignores that reads flat. This is one of the three layers this template keeps.",
+          "example": "lit by a single break in the storm cloud above and behind her - hard directional light raking across the wet stone with realistic shadows under the aegis, a cold fill bounced off the rain, a thin rim light along the crest of the helm, the whole scene falling off into haze toward the valley"
+        },
+        {
+          "key": "palette",
+          "label": "Colour and palette",
+          "layer": "colour",
+          "does": "Rich, controlled colour held to one coherent palette.",
+          "why": "The stated requirement is a contradiction worth holding: the figure, surroundings, clothing, weapons and supernatural elements must all read as visually DISTINCT while sharing ONE palette. Distinctness without a palette is the muddy, every-colour-at-once look that makes generated illustration recognisable at a glance.",
+          "example": "a controlled palette of bronze, storm-grey and olive - natural colour grading with realistic contrast, deep shadows holding detail, the bronze the only warm accent colour against the cold, highlights rolling off short of clipping"
+        },
+        {
+          "key": "materials",
+          "label": "Material definition",
+          "layer": "texture",
+          "does": "What each surface is made of, and how it takes light.",
+          "why": "The third layer this template keeps, and for the same reason it is the most load-bearing layer in the photographic path: bronze, wet wool, olive wood and stone are different materials before they are different colours. 'Polished textures' alone gets everything the same plastic sheen.",
+          "example": "hammered bronze with real surface detail and fine scratches, wet wool heavy and dark where it clings at the hem, open fabric grain in the chiton, tactile olive wood in the spear shaft, tonal variation across every surface rather than one uniform polish"
+        },
+        {
+          "key": "separation",
+          "label": "Subject separation",
+          "does": "Keeps the focal point uncluttered against everything the scene slot just added.",
+          "why": "This slot exists to argue with the two above it. A rich scene and a clear subject pull in opposite directions, and without an explicit instruction the detail wins, because detail is what a model is rewarded for. Say which one yields.",
+          "detect": [
+            "uncluttered",
+            "clear separation",
+            "reads clearly",
+            "without competing",
+            "subject separation"
+          ],
+          "example": "clear subject separation - the background atmospheric and tonally simplified so it never competes, the focal point uncluttered"
+        },
+        {
+          "key": "negatives",
+          "label": "Negative guard",
+          "does": "The trailing guard: anatomy, duplication, clutter and any rendered text.",
+          "why": "The body is where an illustrated figure is caught, exactly as in a photograph, and this slot carries the same vocabulary build_prompt.anatomy_guard_tail() appends on the image path - no extra fingers, no floating or extra limbs, no duplicated figures, no morphing. The clutter and text halves are this template's own: a crowded illustration and a rendered caption are both failures a portrait prompt never has to name.",
+          "detect": [
+            "no extra fingers",
+            "no extra limbs",
+            "no duplicated",
+            "no morphing",
+            "no distorted",
+            "no text",
+            "no watermark",
+            "no clutter"
+          ],
+          "example": "no distorted anatomy, no extra limbs, no extra fingers, no duplicated figures, no morphing, no visual clutter, no muddy colours, no text, letters, logos or watermarks, nothing important cropped"
+        },
+        {
+          "key": "priority",
+          "label": "Priority rule",
+          "does": "Says which way to resolve a conflict between the slots.",
+          "why": "Every slot above asks for more - more detail, more depth, more atmosphere - and they cannot all win. One line stating that clarity beats detail when they conflict is worth more than any additional adjective, because it is the only instruction in the template that applies to the other eleven. It is the same shape as the house rule this whole app runs on: when two things disagree, say in advance which one decides.",
+          "detect": [
+            "choose clarity",
+            "clarity over",
+            "when in doubt",
+            "prioritise",
+            "prioritize",
+            "takes precedence"
+          ],
+          "example": "where detail conflicts with clarity, choose clarity; character recognition and composition take precedence over density"
         }
       ]
     },

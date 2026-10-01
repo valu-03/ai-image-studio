@@ -183,10 +183,22 @@ class ComposeView(QWidget):
         # this card about 238px, eliding both buttons down to roughly a third
         # of their label. Neither button even fits paired with the other at
         # that floor, so each gets its own row rather than a shared one.
+        # Opt-in, and off by default, because build_prompt.anatomy_guard_tail()
+        # is: "no distorted hands" is noise on a shot with no person in it. The
+        # label says BODY rather than "anatomy" because the thing it prevents is
+        # the sixth finger, and nobody scanning this row reads "anatomy" as that.
+        self.anatomy_guard = QCheckBox("Body guard")
+        self.anatomy_guard.setToolTip(
+            "Append: no warped face, no distorted hands or extra fingers, no "
+            "floating or extra limbs, no duplicated figures, no morphing. "
+            "Leave it off for shots with nobody in them.")
+        self.anatomy_guard.toggled.connect(self.schedule_rebuild)
+
         controls = QHBoxLayout()
         controls.setSpacing(T.SPACE["sm"])
         controls.addWidget(QLabel("Form"))
         controls.addWidget(self.form_mode)
+        controls.addWidget(self.anatomy_guard)
         controls.addStretch(1)
 
         self.prompt_view = QPlainTextEdit()
@@ -932,7 +944,8 @@ class ComposeView(QWidget):
                 return
         weights = hist.weights() if self.use_learned else None
         prompt, layers = bp.compose(
-            self.bank, spec, detailed=bool(self.form_mode.currentData()), weights=weights
+            self.bank, spec, detailed=bool(self.form_mode.currentData()), weights=weights,
+            anatomy_guard=self.anatomy_guard.isChecked(),
         )
         self.prompt_view.setPlainText(prompt)
         self.passing = self.lint.update_result(prompt, self.bank, layers)

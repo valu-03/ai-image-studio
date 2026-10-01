@@ -80,8 +80,13 @@ for term in NEW_BANNED:
 for term in NEW_WARN:
     check("'{}' is a warning".format(term), term in bank["warn"])
     check("...and is deliberately NOT banned", term not in bank["banned"])
-check("prompt_bank is at the version that carries them", bank["version"] == 11,
-      str(bank["version"]))
+# A FLOOR, and the irony is recorded on purpose: the commit that added this
+# file also replaced `== 10` with a floor in four other suites, for exactly
+# this reason - and then pinned `== 11` here. The very next bank change
+# (v12, the opt-in anatomy guard) broke it. The lesson does not stick by
+# being written down somewhere else.
+check("prompt_bank is at or past the version that carries them",
+      bank["version"] >= 11, str(bank["version"]))
 
 print()
 print("=== the two prompts that prompted the change are now caught ===")

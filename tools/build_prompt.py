@@ -349,6 +349,34 @@ def build_detailed(bank, spec, selected, preset):
     return " ".join(sentences)
 
 
+DEFAULT_ANATOMY_GUARD = [
+    "no warped face", "no distorted hands or extra fingers",
+    "no floating or extra limbs", "no duplicated figures", "no morphing",
+]
+
+
+def anatomy_guard_tail(bank):
+    """An OPT-IN guard against the anatomy failures `negatives` does not name.
+
+    The standing negatives list defends the LOOK - no cartoon style, no CGI,
+    no plastic skin. None of its seven entries says anything about the body,
+    and the body is where a generated image is most often caught: a sixth
+    finger, a hand that melts into a sleeve, a second copy of the subject in
+    the background. anatomy_bank.json has carried this vocabulary all along
+    ("no warped face, no floating limbs, no distorted hands, no morphing"),
+    but only inside one template's own guard slot, and motion_bank.json has
+    its own version for video - so of the three paths that compose a prompt,
+    the ordinary image path was the only one with no anatomy guard at all.
+
+    OPT-IN, off by default, exactly like build_motion.avatar_guard_tail(),
+    and for the same reason: "no distorted hands" is noise on a product shot
+    with no person in it. A guard that is always on is a guard nobody can
+    aim. Callers that never ask are byte-for-byte unaffected, which is why
+    adding this changed no existing test's expected output.
+    """
+    return ", ".join(bank.get("anatomy_guard") or DEFAULT_ANATOMY_GUARD)
+
+
 def validate_shot(bank, shot):
     """Return an error message for an unknown shot preset, or None."""
     if shot and shot not in bank["shot_presets"]:
@@ -420,12 +448,14 @@ def purpose_conflicts(bank, spec):
     return notes
 
 
-def compose(bank, spec, detailed=False, weights=None):
+def compose(bank, spec, detailed=False, weights=None, anatomy_guard=False):
     """Spec -> (prompt text, chosen layer terms).
 
     The single entry point for anything that needs a prompt — the CLI below and
     gui.py both call this, so prompt logic lives in exactly one place.
     `weights` biases vocabulary toward terms that have rated well (history.py).
+    `anatomy_guard=True` appends anatomy_guard_tail(bank) - opt-in, off by
+    default; see that function's docstring for why it is not always on.
     """
     spec = apply_purpose(bank, spec)
     spec = apply_variation(spec)
@@ -436,6 +466,13 @@ def compose(bank, spec, detailed=False, weights=None):
         if detailed
         else build_compact(bank, spec, selected, preset)
     )
+    # Before the aspect, which stays last: it is a framing parameter, not
+    # part of the description, and every reader of these prompts expects to
+    # find it at the end.
+    if anatomy_guard:
+        guard = anatomy_guard_tail(bank)
+        prompt += (" Anatomy must be correct: {}.".format(guard)
+                   if detailed else ", " + guard)
     if spec.get("aspect"):
         joiner = " Aspect ratio {}." if detailed else ", aspect ratio {}"
         prompt += joiner.format(spec["aspect"])
@@ -511,6 +548,9 @@ def parse_args(argv):
     )
     p.add_argument("--slug", help="output filename slug (defaults to the spec slug or subject)")
     p.add_argument("--detailed", action="store_true", help="emit the long paragraph form")
+    p.add_argument("--anatomy-guard", action="store_true",
+                   help="append the body guard (no extra fingers/limbs, no duplicated "
+                        "figures, no morphing) - off by default, see anatomy_guard_tail()")
     p.add_argument("--seed", type=int, help="seed for word choice; same seed = same prompt")
     p.add_argument("--no-write", action="store_true", help="print only, do not write a file")
     p.add_argument(
@@ -598,7 +638,8 @@ def main(argv=None):
     base_seed = spec.get("seed") or 0
     for index in range(max(1, args.variants)):
         variant = dict(spec, seed=base_seed + index)
-        prompt, layers = compose(bank, variant, detailed=args.detailed, weights=weights)
+        prompt, layers = compose(bank, variant, detailed=args.detailed, weights=weights,
+                                 anatomy_guard=args.anatomy_guard)
 
         if args.variants > 1:
             print("\n=== seed {} ===".format(variant["seed"]))
