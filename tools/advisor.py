@@ -27,6 +27,7 @@ import brief
 import build_camera_angle as bca
 import build_color as bcol
 import build_composition as bc
+import build_evidence as bev
 import build_lighting as bl
 import build_posing as bpo
 import build_prompt as bp
@@ -38,7 +39,7 @@ ROOT = Path(__file__).resolve().parent.parent
 # technique sections, each validated against that section's own bank and
 # composed by that section's own compose_X(). See _finalize_sections().
 SECTIONS_KEY = "sections"
-SECTION_NAMES = ("lighting", "composition", "color", "posing", "camera_angle")
+SECTION_NAMES = ("lighting", "composition", "color", "posing", "camera_angle", "evidence")
 
 # Optional, per-turn persona overlays for the Chat tab's "Ask as..." picker -
 # a curated subset of the AI Video Bootcamp "AI Chat Cheat Sheet" 's 20 named
@@ -156,16 +157,20 @@ NAV_MAP = [
              "sources, named setups + techniques), Composition (7 framing geometries + "
              "techniques), Camera (vertical/side/size axes), Color (12 moods, 10 film "
              "looks + techniques), Posing (21 poses by shot type + techniques), Style "
-             "(24 named looks). Each builds a phrase you Apply into the Images prompt."),
-    ("Videos", "The Kling 3.0 motion toolkit - 40 camera movements, image-to-video."),
+             "(24 named looks), Capture (film stock, lens artefacts, exposure), Evidence "
+             "(lived-in details with a cause - a sunglasses dent, shed hairs on a cushion, a "
+             "thumbprint on gloss). Each builds a phrase you Apply into the Images prompt."),
+    ("Videos", "The Kling 3.0 motion toolkit - 40 camera movements, image-to-video, a "
+               "timed beat line (0-2s: ...) and an ENDS ON end state so the clip does not drift."),
     ("Personas", "A saved persona roster (name/gender/age/style/hair/eye/details) "
                  "composed into one Subject description."),
     ("Ads", "The five-beat UGC advert structure."),
     ("Cats", "A cat story in scenes, or working-cat one-take gags."),
     ("Sound", "ElevenLabs sound-effect prompts (three layers per scene), TTS, voice cloning."),
-    ("Assistant", "Chat (a running conversation with the in-app expert) and Prompt tools "
+    ("Assistant", "Chat (a running conversation with the in-app expert), Prompt tools "
                   "(one-shot helpers: idea -> spec, upgrade a prompt, critique an image, "
-                  "reverse-engineer a photo)."),
+                  "reverse-engineer a photo) and Prompt Bank (the user's own saved image and "
+                  "video prompts with their example images, kept exactly as given)."),
     ("Activity", "History (every generated prompt, its rating, what worked) and What "
                  "works (which vocabulary the ratings favour)."),
     ("Settings", "Provider, model and key status."),
@@ -210,6 +215,10 @@ def _technique_banks_summary():
         _bank_summary("Camera angle - side", bca.sides(camera_angle)),
         _bank_summary("Camera angle - size", bca.sizes(camera_angle)),
     ]
+    evidence = bev.load_bank()
+    for kind, cfg in evidence["kinds"].items():
+        blocks.append(_bank_summary(
+            "Evidence - {} (kind '{}')".format(cfg["label"], kind), cfg["options"]))
     return "\n\n".join(blocks)
 
 
@@ -244,7 +253,7 @@ def advisor_brief(bank):
         "prompt - do not bother proposing seed, reference, lock_identity or "
         "overrides, they are the user's own machinery, never the model's to set.\n\n"
         "The same object may ALSO carry one more optional key, \"sections\", to "
-        "propose a value for one or more of the five technique sections - use ONLY "
+        "propose a value for one or more of the six technique sections - use ONLY "
         "the exact keys and bank entries listed further below under each "
         "section's own heading, never an invented one:\n"
         "```\n"
@@ -259,7 +268,9 @@ def advisor_brief(bank):
         "\"techniques\": [\"<key>\", ...],\n"
         "  \"posing\": {\"pose\": \"<a Poses key>\", \"techniques\": [\"<key>\", ...]},\n"
         "  \"camera_angle\": {\"vertical\": \"<key>\", \"side\": \"<key>\", "
-        "\"size\": \"<key>\"} - any subset\n"
+        "\"size\": \"<key>\"} - any subset,\n"
+        "  \"evidence\": {\"kind\": \"human|animal|object|place\", \"details\": "
+        "[\"<an Evidence key of that kind>\", ...]} - two or three at most\n"
         "}\n```\n"
         "Every value must be one of the exact keys named in this brief, not the "
         "human-readable label - keys are the short hyphenated form (e.g. "
@@ -306,8 +317,9 @@ def advisor_brief(bank):
             "bring it back to how it applies here.",
             "Never use these words: " + ", ".join(bank["banned"]) + ".",
             "Once you have enough to describe the avatar, don't stop at the core "
-            "spec - also propose one entry for every one of the five technique "
-            "sections (Lighting, Composition, Color Grading, Posing, Camera Angle) "
+            "spec - also propose one entry for every one of the six technique "
+            "sections (Lighting, Composition, Color Grading, Posing, Camera Angle, "
+            "Evidence) "
             "inside \"sections\", picking whichever single entry per section best "
             "fits what was described. Leave a section out only when the request "
             "genuinely gives you nothing to base a pick on for it.",
@@ -361,7 +373,8 @@ def advisor_brief(bank):
             '"color": {"mood": "melancholy-lonely"}, '
             '"posing": {"pose": "forward-lean", "techniques": ["relaxed-hands"]}, '
             '"camera_angle": {"vertical": "eye-level", "side": "three-quarter", '
-            '"size": "medium-close-up"}}}\n'
+            '"size": "medium-close-up"}, '
+            '"evidence": {"kind": "human", "details": ["hair-tie", "strap-crease"]}}}\n'
             "```",
 
             'user: "Ultra-realistic close-up portrait of Mara, a 29-year-old woman '
@@ -388,7 +401,8 @@ def advisor_brief(bank):
             '"color": {"mood": "romantic-dreamy"}, '
             '"posing": {"pose": "mid-gesture"}, '
             '"camera_angle": {"vertical": "eye-level", "side": "three-quarter", '
-            '"size": "medium"}}}\n'
+            '"size": "medium"}, '
+            '"evidence": {"kind": "human", "details": ["ink-smudge", "lint"]}}}\n'
             "```",
         ],
     )
@@ -505,6 +519,14 @@ def _compose_section(bank, name, block):
             techniques_=_picked_list(bpo.techniques(posing), block.get("techniques")),
         )[0]
 
+    if name == "evidence":
+        evidence = bev.load_bank()
+        kind = _picked(evidence["kinds"], block.get("kind"))
+        if not kind:
+            raise bev.EvidenceError("no valid kind")
+        return bev.compose_evidence(
+            evidence, kind, _picked_list(bev.options(evidence, kind), block.get("details")))[0]
+
     camera_angle = bca.load_bank()
     return bca.compose_camera_angle(
         camera_angle,
@@ -550,7 +572,7 @@ def _finalize_sections(bank, payload, spec=None):
         try:
             phrase = _compose_section(bank, name, block)
         except (bl.LightingError, bc.CompositionError, bcol.ColorError,
-                bpo.PosingError, bca.CameraAngleError):
+                bpo.PosingError, bca.CameraAngleError, bev.EvidenceError):
             continue
         if phrase and phrase.strip():
             out[name] = phrase.strip()

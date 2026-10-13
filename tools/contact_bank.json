@@ -1,0 +1,136 @@
+{
+  "source": "Written for this project, NOT AI Video Bootcamp material: the physical consequences of weight and touch that image models leave out - a cushion that does not dip under a body, a hand that holds a mug without pressing into it, a sleeve that never creases at the elbow. Each phrase names something a camera would record.",
+  "version": 1,
+  "note": "Read from Subject, Action, Posing and Setting (build_contact.py). `supports` are what the subject rests on, `actions` what it is doing; each entry is matched by whole-word keywords and carries one phrase per subject kind it applies to - an entry with no phrase for a kind is skipped for that kind, so a table never gets 'forearms resting' on a perfume bottle. Matches are used in the order the text mentions them, at most `max_phrases`. With no match, `by_kind` supplies `default_count` phrase(s), picked reproducibly by seed. A place has no defaults: an empty street has nothing pressing on anything. Deformation only - contact SHADOWS belong to scene_light_bank.json.",
+  "max_phrases": 2,
+  "default_count": 1,
+  "supports": {
+    "sofa": {
+      "label": "Sofa / cushions",
+      "keywords": ["sofa", "couch", "settee", "armchair", "cushion", "cushions", "beanbag"],
+      "human": "the seat cushion dipping and creasing under the body's weight, fabric pulled taut around the hollow",
+      "animal": "the cushion dipping into a soft hollow beneath it, fabric creased around the body",
+      "object": "the cushion dipping slightly under the object's weight, fabric creased around its base"
+    },
+    "bed": {
+      "label": "Bed / duvet",
+      "keywords": ["bed", "duvet", "mattress", "pillow", "pillows", "blanket", "sheets", "quilt"],
+      "human": "the bedding pressed into soft hollows under the body, rumpled where it was moved",
+      "animal": "the bedding sinking into a shallow nest under the body, rumpled around it",
+      "object": "the bedding sinking slightly under the object, the fabric creased around it"
+    },
+    "lap": {
+      "label": "Lap",
+      "keywords": ["lap"],
+      "human": "the fabric across the lap pulled and creased under the weight resting on it",
+      "animal": "the body settled heavily into the lap, fur flattened against the fabric beneath"
+    },
+    "grass": {
+      "label": "Grass",
+      "keywords": ["grass", "grassy", "lawn", "meadow"],
+      "human": "the grass bent flat and pressed down where the body's weight rests on it",
+      "animal": "the grass flattened and bent under the paws and body, blades poking up around them",
+      "object": "the grass bent and pushed aside around the object's base"
+    },
+    "sand": {
+      "label": "Sand",
+      "keywords": ["sand", "sandy", "dunes", "dune"],
+      "human": "feet and hands sinking slightly into the sand, the grains pushed up in small ridges around them",
+      "animal": "paws sinking into the sand, grains pushed up in small ridges around each one",
+      "object": "the object settled into the sand, grains piled slightly against its base"
+    },
+    "snow": {
+      "label": "Snow",
+      "keywords": ["snow", "snowy", "snowfield"],
+      "human": "boots pressed into the snow, compacted footprints with crisp edges around them",
+      "animal": "paws sinking into the snow, compacted prints with crumbling edges around them",
+      "object": "the object pressed into the snow, a compacted rim around its base"
+    },
+    "water": {
+      "label": "Water",
+      "keywords": ["pool", "bath", "bathtub", "lake", "river", "sea", "ocean", "puddle"],
+      "human": "the water surface displaced around the body, small ripples spreading from where it meets the skin",
+      "animal": "the water displaced around the legs, small ripples spreading from where it touches the fur",
+      "object": "the water displaced around the object, small ripples spreading from where it meets the surface"
+    },
+    "chair": {
+      "label": "Chair / stool / bench",
+      "keywords": ["chair", "stool", "bench", "seat"],
+      "human": "the body's weight settled into the seat, clothing pulled and creased where it meets the chair",
+      "animal": "the body settled onto the seat, fur flattened where it presses against it"
+    },
+    "table": {
+      "label": "Table / counter / desk",
+      "keywords": ["table", "counter", "countertop", "desk", "worktop"],
+      "human": "forearms resting on the surface with real weight, skin pressed slightly flat where it meets it",
+      "animal": "paws spread with the pads pressed flat where they meet the surface",
+      "object": "the object sitting with real weight where it stands, a thin dark line where its base meets the surface"
+    },
+    "floor": {
+      "label": "Floor / rug",
+      "keywords": ["floor", "floorboards", "rug", "carpet", "ground"],
+      "human": "the body's weight settled onto the floor, clothing pooling and creasing where it meets the ground",
+      "animal": "the body settled onto the floor, fur flattened and parted where it presses down",
+      "object": "the object resting with real weight on the floor, a thin dark line where it meets the ground"
+    },
+    "wall": {
+      "label": "Wall",
+      "keywords": ["wall"],
+      "human": "the shoulder pressed against the wall, jacket fabric bunching where the weight leans into it"
+    }
+  },
+  "actions": {
+    "holding": {
+      "label": "Holding / gripping",
+      "keywords": ["holding", "holds", "hold", "held", "gripping", "grips", "clutching", "cradling"],
+      "human": "fingers pressing into what they hold, the skin around the knuckles tightening with the grip"
+    },
+    "hugging": {
+      "label": "Hugging",
+      "keywords": ["hugging", "hug", "hugs", "embracing", "embrace", "cuddling", "cuddles"],
+      "human": "clothing pulled and bunched where the arms wrap around, fabric pressed flat between the bodies"
+    },
+    "carrying": {
+      "label": "Carrying",
+      "keywords": ["carrying", "carries", "carry", "lifting"],
+      "human": "the arms and shoulders visibly taking the load, fabric pulled taut across the back"
+    },
+    "sitting": {
+      "label": "Sitting",
+      "keywords": ["sitting", "sits", "seated", "sat", "perched"],
+      "human": "clothing creasing at the hips and behind the knees where the body folds as it sits",
+      "animal": "the haunches settled heavily, fur bunching where the body folds as it sits"
+    },
+    "lying": {
+      "label": "Lying / asleep",
+      "keywords": ["lying", "lies", "asleep", "sleeping", "napping", "curled", "lounging", "sprawled"],
+      "human": "hair spreading out and clothing gathering in folds on the side the body rests on",
+      "animal": "fur pressed flat and parted on the side it lies on, the body heavy and loose"
+    },
+    "leaning": {
+      "label": "Leaning",
+      "keywords": ["leaning", "leans", "lean", "propped"],
+      "human": "weight shifted onto the side that leans, clothing pulled across the body in the direction of the weight"
+    },
+    "kneeling": {
+      "label": "Kneeling",
+      "keywords": ["kneeling", "kneels", "crouching", "crouched", "squatting"],
+      "human": "trousers stretched tight across the bent knees, fabric bunching at the backs of the legs"
+    }
+  },
+  "by_kind": {
+    "human": [
+      "clothing creasing and bunching naturally where the body bends at the elbows and waist",
+      "hair falling with real weight, resting on the shoulders and parting where it lies",
+      "fabric hanging with real weight, pulled taut at the shoulders and loose where it falls"
+    ],
+    "animal": [
+      "fur flattened and parted where the body presses against the surface beneath",
+      "the paws spreading slightly under the body's weight, pads pressed flat"
+    ],
+    "object": [
+      "the object sitting with real weight on its surface, a thin dark line where its base meets it"
+    ],
+    "place": []
+  }
+}

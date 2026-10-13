@@ -106,13 +106,15 @@ print("--- (auto) means no override ---")
 ed.lighting.setCurrentIndex(0)
 app.processEvents()
 cv.rebuild()
-check("auto has no override", "overrides" not in ed.spec())
+# Face micro-detail rides overrides too now, so ask about LIGHTING, not
+# about overrides as a whole.
+check("auto has no lighting override", "lighting" not in (ed.spec().get("overrides") or {}))
 check("auto still 8/8", cv.passing)
 
 print("--- blank text is treated as auto ---")
 ed.lighting.setCurrentText("   ")
 app.processEvents()
-check("blank -> auto", "overrides" not in ed.spec())
+check("blank -> auto", "lighting" not in (ed.spec().get("overrides") or {}))
 
 print("--- variants view inherits the custom source ---")
 ed.lighting.setCurrentText("a single bare bulb overhead")

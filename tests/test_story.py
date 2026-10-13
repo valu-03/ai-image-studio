@@ -194,7 +194,12 @@ HASHES = {
     # returns byte-identical output - asserted directly in
     # tests/test_anatomy_guard.py rather than assumed, which is why this bump
     # changed no other suite's expected prompt.
-    "tools/prompt_bank.json": "e258cb883c0007b4",
+    # Bumped again (version 12 -> 13) for an eighth composition guide,
+    # `dynamic-symmetry`, appended after harmonic-armature. Opt-in like the
+    # other seven: no layer's terms, no shot preset and no auto pool gained it,
+    # so an unguided compose() is byte-identical - tests/test_composition.py's
+    # 480-prompt leak sweep now includes "dynamic symmetry" to prove it.
+    "tools/prompt_bank.json": "81966f054a78bdf5",
     # Bumped for the new Lighting section's DETECT["lighting"]["keys"]
     # additions (rembrandt, split lighting, catchlight, colour temperature,
     # falling off, ...) - every one of tools/lighting_bank.json's phrases
@@ -367,7 +372,17 @@ HASHES = {
     # legal line" and were silently invisible until that check caught them.
     # prompt_bank.json is untouched again: its version stays 10, no rated
     # history entry is invalidated.
-    "tools/realism_lint.py": "26a74202ba52c785",
+    #
+    # Bumped a fifth time for one `composition` key, "dynamic symmetry", so the
+    # new composition guide of that name is visible to the gate. Purely
+    # ADDITIVE - the same reason every other guide's name is in that list: a
+    # picked guide pins the first composition slot, and an undetectable one
+    # could zero the layer.
+    #
+    # Bumped a sixth time for one `lighting` key, "caustic light", so the
+    # Lighting bank's opt-in caustics technique is visible to the gate. Purely
+    # ADDITIVE - it names no source of its own, so no existing key covered it.
+    "tools/realism_lint.py": "108580c44f78a9b6",
     # Bumped for a larger style_presets list (version 2 -> 3) - ten more
     # camera/lighting/grade combinations drawn from the same PDF vocabulary
     # the image side already had, cycled by seed the same way the original
@@ -584,6 +599,27 @@ else:
 coat_stripped = photoreal[0]["prompt"]
 for phrase in bs.pet_realism_phrases("natural")[0]:
     coat_stripped = coat_stripped.replace(phrase, "")
+# Photoreal scenes also carry weight & contact and material lines
+# (build_prompt.apply_physical), and "fur pressed flat" honestly names fur
+# too - strip those as well, so this still tests the coat vocabulary alone.
+import build_contact as _bct  # noqa: E402
+import build_material as _bmt  # noqa: E402
+_cb = _bct.load_bank()
+_physical = [c.get("animal", "") for t in ("supports", "actions") for c in _cb[t].values()]
+_physical += _cb["by_kind"]["animal"]
+_physical += [c["phrase"] for c in _bmt.load_bank()["materials"].values()]
+# ...and the unstaged-background and moment lines (build_snapshot), which
+# honestly name whiskers and ears.
+import build_snapshot as _bsn  # noqa: E402
+_sb = _bsn.load_bank()
+_physical += [c.get("animal", "") for c in _sb["moments"]["actions"].values()]
+_physical += _sb["moments"]["by_kind"]["animal"]
+_physical += [x for c in _sb["backgrounds"].values() for part in ("passers", "clutter", "ground")
+              for x in c[part]]
+_physical.sort(key=len, reverse=True)   # longest first, so no phrase is cut in half
+for phrase in _physical:
+    if phrase:
+        coat_stripped = coat_stripped.replace(phrase, "")
 present_stripped, _, _, _, _ = rl.lint(coat_stripped.lower(), image_bank, kind="animal")
 check("without the coat vocabulary the texture layer drops",
       "texture" not in [n for n, _, _ in present_stripped],

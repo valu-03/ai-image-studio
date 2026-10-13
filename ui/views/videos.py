@@ -23,6 +23,7 @@ from PyQt6.QtWidgets import (
     QFileDialog,
     QFormLayout,
     QHBoxLayout,
+    QLabel,
     QLineEdit,
     QMessageBox,
     QPlainTextEdit,
@@ -119,8 +120,9 @@ class VideosView(QWidget):
         picker.body.setSpacing(T.SPACE["sm"])
         picker.body.addWidget(TitleLabel("Camera movement"))
         picker.body.addWidget(MutedLabel(
-            "40 moves from the Kling toolkit. Each one declares what the still "
-            "has to contain before it will work."
+            "{} moves - the Kling toolkit plus a locked-off camera. Each one declares "
+            "what the still has to contain before it will work.".format(
+                len(self.bank["movements"]))
         ))
         picker.body.addWidget(self.tree, 1)
 
@@ -142,11 +144,37 @@ class VideosView(QWidget):
                      self.style_field, self.camera_movement_field):
             field.textChanged.connect(self.refresh)
 
+        # WHAT HAPPENS WHEN, AND WHERE IT STOPS. The first frame already fixes
+        # how the clip looks; what it does not fix is pace and endpoint. One
+        # untimed action lets Kling choose both - it finishes early and invents
+        # motion to fill the rest. A beat per line ("0-2s: lifts the cup") plus
+        # the final pose leaves it nothing to improvise. Drafted from Action and
+        # the clip length (build_motion.split_beats), then yours to edit.
+        self.timing_field = QPlainTextEdit()
+        self.timing_field.setPlaceholderText(
+            "0-2s: lifts the cup and blows across it\n2-4s: glances up at the lens\n"
+            "4-5s: holds still, half-smiling")
+        self.timing_field.setFixedHeight(76)
+        self.timing_field.setToolTip(
+            "One beat per line, as start-end seconds. One action per beat; the beats "
+            "should cover the whole clip with no gaps. Leave empty for an untimed prompt.")
+        self.timing_field.textChanged.connect(self.refresh)
+        self.ends_on_field = QLineEdit(
+            placeholderText="the final pose, e.g. \"still, eyes on camera, steam drifting\"")
+        self.ends_on_field.textChanged.connect(self.refresh)
+        draft_timing_button = QPushButton("Draft timing from Action")
+        draft_timing_button.setProperty("class", "ghost")
+        draft_timing_button.setToolTip(
+            "Split the Action into timed beats across the clip length, with a closing "
+            "hold - a first draft to edit, it replaces what the Timing box says.")
+        draft_timing_button.clicked.connect(self.draft_timing)
+
         template_form = QFormLayout()
         template_form.setHorizontalSpacing(T.COLUMN_GAP)
         template_form.setVerticalSpacing(T.SPACE["sm"])
         for label, widget in (("Shot type", self.shot_type), ("Subject", self.subject_field),
-                              ("Action", self.action_field), ("Style", self.style_field),
+                              ("Action", self.action_field), ("Timing", self.timing_field),
+                              ("Ends on", self.ends_on_field), ("Style", self.style_field),
                               ("Camera movement", self.camera_movement_field)):
             template_form.addRow(label, widget)
 
@@ -161,6 +189,46 @@ class VideosView(QWidget):
             "gimbal-smooth camera moves, ...) - pairs well with \"multi-shot "
             "(auto)\" below.")
         self.avatar_guard.stateChanged.connect(self.refresh)
+
+        # Measured from a viral one-take cat clip (video_realism_bank.json):
+        # planted weight, follow-through, real-time speed, a background that
+        # holds - and an ordinary phone instead of a named cinema camera.
+        # HOW THE PROMPT IS WRITTEN. "One-take story" is the shape of the
+        # user's own 150k-view prompt: "Static shot, ..." then the beats as
+        # plain sentences in order with time words, closing on "Subtle, fluid
+        # motion." (build_motion.assemble_story). "Tagged list" is the
+        # original comma template with "0-3s:" codes, unchanged.
+        self.write_as = QComboBox()
+        self.write_as.addItem("One-take story (sentences)", "story")
+        self.write_as.addItem("Tagged list (0-3s: codes)", "tagged")
+        self.write_as.setToolTip(
+            "One-take story: a short camera opening (\"Static shot\" for a still camera), then "
+            "each Timing line as a sentence in order - Initially... Then... Suddenly... Finally... "
+            "- the way viral prompts read. Timing lines can be plain lines or \"0-3s:\" beats; "
+            "the seconds are dropped. Tagged list: the original comma template.")
+        self.write_as.currentIndexChanged.connect(self._on_write_as)
+        # Optional, not standing: the 150k-view prompt had no negatives at all.
+        self.negatives = QCheckBox("Negatives (no warped face, no extra fingers...)")
+        self.negatives.setChecked(False)
+        self.negatives.setToolTip(
+            "Appends the artifact guard - no warped face, no floating limbs, no distorted hands, "
+            "no extra fingers, no morphing. Optional: off by default for a one-take story, on "
+            "for a tagged list. The check reads 'optional' when it is off.")
+        self.negatives.stateChanged.connect(self.refresh)
+        self.real_motion = QCheckBox("Real motion (auto)")
+        self.real_motion.setChecked(True)
+        self.real_motion.setToolTip(
+            "Adds how things really move, for this subject and camera: bodies planted with "
+            "real weight, hair/fur/tails lagging a beat then settling, real-time speed (never "
+            "slow motion) that builds over the first second, and a background that holds still "
+            "or stays solid as the camera passes.")
+        self.real_motion.stateChanged.connect(self.refresh)
+        self.phone_look = QCheckBox("Phone video look")
+        self.phone_look.setChecked(True)
+        self.phone_look.setToolTip(
+            "Style becomes an ordinary phone video with flat natural colours instead of a named "
+            "film or cinema camera and colour grade. Toggling it rewrites the Style field.")
+        self.phone_look.toggled.connect(self._apply_style_choice)
 
         self.prompt_view = QPlainTextEdit()
         self.prompt_view.setReadOnly(True)
@@ -182,7 +250,18 @@ class VideosView(QWidget):
         form_holder_layout.setContentsMargins(0, 0, 0, 0)
         form_holder_layout.setSpacing(T.SPACE["sm"])
         form_holder_layout.addLayout(template_form)
+        draft_row = QHBoxLayout()
+        draft_row.addWidget(draft_timing_button)
+        draft_row.addStretch(1)
+        form_holder_layout.addLayout(draft_row)
         form_holder_layout.addWidget(self.avatar_guard)
+        form_holder_layout.addWidget(self.real_motion)
+        form_holder_layout.addWidget(self.phone_look)
+        form_holder_layout.addWidget(self.negatives)
+        write_row = QHBoxLayout()
+        write_row.addWidget(QLabel("Write as"))
+        write_row.addWidget(self.write_as, 1)
+        form_holder_layout.addLayout(write_row)
         form_holder_layout.addWidget(self.prompt_view)
         form_scroll = QScrollArea()
         form_scroll.setWidgetResizable(True)
@@ -296,6 +375,8 @@ class VideosView(QWidget):
             "Kling 3.0 generates any whole second from {} to {}.".format(
                 gv.DURATION_MIN, gv.DURATION_MAX))
         self.duration.valueChanged.connect(self.update_cost_note)
+        # The beat checks measure the timeline against the clip length.
+        self.duration.valueChanged.connect(self.refresh)
 
         self.aspect = QComboBox()
         for option in gv.ASPECTS:
@@ -546,13 +627,7 @@ class VideosView(QWidget):
         movement = self.bank["movements"][self.movement]
         spec = self._current_spec()
         hints = bm.image_defaults(self.bank, self.movement)
-        mood = str(spec.get("mood", "")).strip()
-        # A named camera + grade, not "cinematic lighting" - vague style words
-        # give a video model nothing to work with. Seeded off the movement key
-        # so the same movement always suggests the same preset.
-        style = bm.style_preset(self.bank, seed=sum(ord(c) for c in self.movement)) + ", natural motion"
-        if mood:
-            style += ", " + mood + " tone"
+        style = self._default_style(spec)
 
         for field, value in (
             (self.shot_type, hints.get("shot", "")),
@@ -567,6 +642,65 @@ class VideosView(QWidget):
             field.blockSignals(True)
             field.setText(value)
             field.blockSignals(False)
+        self._fill_timing(str(spec.get("action", "")).strip())
+
+    def _default_style(self, spec=None):
+        """The Style field's default: the phone look, or a named camera +
+        grade (never "cinematic lighting" - vague style words give a video
+        model nothing to work with), plus the Compose mood."""
+        spec = self._current_spec() if spec is None else spec
+        if self.phone_look.isChecked():
+            style = bm.phone_style(self.bank)
+        else:
+            # Seeded off the movement key so the same movement always
+            # suggests the same preset.
+            style = bm.style_preset(self.bank, seed=sum(ord(c) for c in self.movement))
+        style += ", natural motion"
+        mood = str(spec.get("mood", "")).strip()
+        if mood:
+            style += ", " + mood + " tone"
+        return style
+
+    def _story_opening(self):
+        """A still camera opens on "Static shot"; any other move opens on
+        whatever the Camera movement field says (yours to edit)."""
+        story_leads = (self.bank.get("realism") or {}).get("story", {}).get("leads", {})
+        if self.movement in story_leads:
+            return story_leads[self.movement]
+        return self.camera_movement_field.text().strip() or bm.story_lead(self.bank, self.movement)
+
+    def _on_write_as(self, _index=None):
+        """Switching the style flips the negatives to that style's default."""
+        self.negatives.blockSignals(True)
+        self.negatives.setChecked(self.write_as.currentData() == "tagged")
+        self.negatives.blockSignals(False)
+        self.refresh()
+
+    def _apply_style_choice(self, _checked=None):
+        """Toggling the phone look is an explicit choice, so it rewrites Style."""
+        if self.movement:
+            self.style_field.setText(self._default_style())
+
+    def _fill_timing(self, action):
+        beats = bm.split_beats(action, self.duration.value()) if action else []
+        for field, value in (
+            (self.timing_field, "\n".join(bm.format_beats([b]) for b in beats)),
+            (self.ends_on_field, bm.default_end_state(action) if beats else ""),
+        ):
+            field.blockSignals(True)
+            if isinstance(field, QPlainTextEdit):
+                field.setPlainText(value)
+            else:
+                field.setText(value)
+            field.blockSignals(False)
+
+    def draft_timing(self):
+        action = self.action_field.text().strip()
+        if not action:
+            self.status.emit("Type an Action first - the timing is drafted from it")
+            return
+        self._fill_timing(action)
+        self.refresh()
 
     def refresh(self):
         """Re-assemble and re-check from whatever the six fields currently
@@ -581,11 +715,25 @@ class VideosView(QWidget):
         self.movement_title.setText(movement["name"])
         self.movement_does.setText(movement["does"])
 
-        self.prompt = bm.assemble_template(
-            self.bank,
-            self.shot_type.text(), self.subject_field.text(), self.action_field.text(),
-            self.camera_movement_field.text(), self.style_field.text(),
-            avatar_guard=self.avatar_guard.isChecked())
+        real_motion = (bm.real_motion_line(self.bank, self.subject_field.text(), self.movement)
+                       if self.real_motion.isChecked() else "")
+        if self.write_as.currentData() == "story":
+            self.prompt = bm.assemble_story(
+                self.bank, self.movement, self.subject_field.text(),
+                bm.story_beats(self.timing_field.toPlainText(), self.action_field.text()),
+                end_state=self.ends_on_field.text(), style=self.style_field.text(),
+                negatives=self.negatives.isChecked(),
+                avatar_guard=self.avatar_guard.isChecked(), real_motion=real_motion,
+                opening=self._story_opening())
+        else:
+            self.prompt = bm.assemble_template(
+                self.bank,
+                self.shot_type.text(), self.subject_field.text(), self.action_field.text(),
+                self.camera_movement_field.text(), self.style_field.text(),
+                avatar_guard=self.avatar_guard.isChecked(),
+                beats=bm.parse_beats(self.timing_field.toPlainText()),
+                end_state=self.ends_on_field.text(),
+                real_motion=real_motion, negatives=self.negatives.isChecked())
         self.prompt_view.setPlainText(self.prompt)
 
         cue = self.audio_cues_field.text().strip()
@@ -598,7 +746,9 @@ class VideosView(QWidget):
         else:
             self.audio_badge.set_status("neutral", "-")
 
-        checks, warnings = ml.lint(self.prompt, self.bank, self.movement, spec)
+        checks, warnings = ml.lint(self.prompt, self.bank, self.movement, spec,
+                                   negatives=self.negatives.isChecked(),
+                                   seconds=self.duration.value())
         self.checks.clear()
 
         ok_colour = QColor(self._palette.get("success", "#34D399"))

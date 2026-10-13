@@ -107,6 +107,7 @@ SUBVIEW_ROUTES = {
     "posing": ("look", 4),
     "style": ("look", 5),
     "capture": ("look", 6),
+    "evidence": ("look", 7),
     "relight": ("images", 2),
     "macro_insert": ("images", 3),
     "static_ad": ("ads", 1),
@@ -129,6 +130,7 @@ ADVISOR_SECTION_SETTERS = {
     "color": "set_colour_override",
     "posing": "set_posing_override",
     "camera_angle": "set_shot_override",
+    "evidence": "set_evidence_override",
 }
 
 
@@ -301,6 +303,7 @@ class MainWindow(QMainWindow):
         self.posing_view = self.look_view.posing
         self.style_view = self.look_view.style
         self.capture_view = self.look_view.capture
+        self.evidence_view = self.look_view.evidence
 
         self.assistant_view = AssistantView(self.bank)
         self.advisor_view = self.assistant_view.advisor
@@ -497,6 +500,7 @@ class MainWindow(QMainWindow):
         self.camera_angle_view.angle_applied.connect(self.apply_camera_angle_phrase)
         self.style_view.style_applied.connect(self.apply_style_phrase)
         self.capture_view.capture_applied.connect(self.apply_capture_overrides)
+        self.evidence_view.evidence_applied.connect(self.apply_evidence_phrase)
         self.influencer_studio_view.persona_applied.connect(self.apply_persona_phrase)
         # The sound sheet is generated from whatever story is open in Cats, so
         # the two stay in step without either knowing about the other.
@@ -519,6 +523,7 @@ class MainWindow(QMainWindow):
         self.variants_view.seed_adopted.connect(self.adopt_seed)
 
         self.videos_view.context = lambda: self.compose_view.editor.spec()
+        self.lighting_view.context = lambda: self.compose_view.editor.spec()
         self.videos_view.image_provider = lambda: self.compose_view.current_image
         self.videos_view.hints_applied.connect(self.apply_motion_hints)
         self.videos_view.video_requested.connect(
@@ -707,6 +712,7 @@ class MainWindow(QMainWindow):
         self.camera_angle_view.set_palette_tokens(self.theme.palette)
         self.style_view.set_palette_tokens(self.theme.palette)
         self.capture_view.set_palette_tokens(self.theme.palette)
+        self.evidence_view.set_palette_tokens(self.theme.palette)
         self.influencer_studio_view.set_palette_tokens(self.theme.palette)
         self.insights_view.set_palette_tokens(self.theme.palette)
         self.images_view.set_palette_tokens(self.theme.palette)
@@ -765,6 +771,14 @@ class MainWindow(QMainWindow):
         "shot on Portra 400" does not cancel "soft window light".
         """
         self.compose_view.editor.set_capture_overrides(overrides)
+        self.go_to("images")
+        self.images_view.show_compose()
+
+    def apply_evidence_phrase(self, phrase):
+        """Evidence's "Apply to Compose" - the same shape as the other
+        apply_*_phrase handlers. An explicit pick replaces the auto-picked
+        lived-in details, never adds to them (see set_evidence_override())."""
+        self.compose_view.editor.set_evidence_override(phrase)
         self.go_to("images")
         self.images_view.show_compose()
 

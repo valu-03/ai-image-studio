@@ -1,6 +1,6 @@
 {
   "source": "Extends prompt_bank.json's own composition_guides (rule of thirds, phi grid, diagonals, triangle, golden ratio, golden spiral, harmonic armature) with physically-grounded techniques a working photographer stacks on top of a geometry - not a second, competing taxonomy.",
-  "version": 2,
+  "version": 3,
   "note": "This bank holds only `techniques`. The seven named framing geometries already live in prompt_bank.json's composition_guides and are reused as-is via build_prompt.guides() - duplicating them here would give the two names to keep in sync forever. A guide (or typed custom text) is the base; techniques stack on top of either, additive and opt-in, never required. Unlike lighting's quality x source, the seven guides are already mutually exclusive by construction (one combo, one pin) and no technique here contradicts a guide or another technique - so there is no conflicts list.",
 
   "techniques": {
@@ -22,7 +22,7 @@
     "framing-device": {
       "label": "Frame within a frame",
       "phrase": "a natural frame within the frame - a doorway, window, or archway - surrounding the subject",
-      "note": "An environmental framing device. None of the seven guides are environmental - they're all abstract grids or curves - so this is a genuinely different kind of composition, not a variation on one already there."
+      "note": "An environmental framing device. None of the eight guides are environmental - they're all abstract grids or curves - so this is a genuinely different kind of composition, not a variation on one already there."
     },
     "visual-balance": {
       "label": "Visual balance",
@@ -43,6 +43,16 @@
       "label": "Atmosphere",
       "phrase": "a soft haze in the air separating the frame's foreground, subject, and background",
       "note": "Distinct from depth-layering above: that technique names the three LAYERS, this one names the air BETWEEN them. Real air isn't empty - the more of it sits between the camera and something, the lighter and softer that thing reads, which is exactly what makes distant buildings fade into a city skyline's haze."
+    },
+    "rueckenfigur": {
+      "label": "Rückenfigur",
+      "phrase": "a Rückenfigur - a lone figure seen from behind in the midground, gazing out over the view so the viewer looks with them",
+      "note": "Caspar David Friedrich's device: the face is hidden on purpose, so the view carries the picture and the figure becomes the viewer's stand-in. Pairs with Camera's 'back shot' side, Scale contrast and Atmospheric perspective. Avoid it on a close shot or headshot, where the hidden face would be the whole frame."
+    },
+    "atmospheric-perspective": {
+      "label": "Atmospheric perspective",
+      "phrase": "atmospheric perspective, distant elements growing paler, cooler and lower in contrast as they recede into a pale haze",
+      "note": "Distinct from `atmosphere` above: that one asks for visible haze between the layers, this one is the falloff with DISTANCE - why mountain ridges step back in fading blue layers even on a clear day. Matters most in a wide shot with real distance in it; in a small room there is not enough air for it to show."
     }
   }
 }

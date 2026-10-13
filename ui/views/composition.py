@@ -1,8 +1,8 @@
-"""Composition category - the seven named framing geometries (already in
+"""Composition category - the eight named framing geometries (already in
 Compose's own combo) plus opt-in, physically-grounded techniques stacked on
 top of one.
 
-  Library   the seven guides (rule of thirds, phi grid, diagonals, ...),
+  Library   the eight guides (rule of thirds, phi grid, diagonals, ...),
             browsable, reused straight from prompt_bank.json - not duplicated
   Compose   pick a guide or type your own framing text, stack realism
             techniques on top (or type one more of your own beyond the
@@ -84,7 +84,7 @@ class CompositionView(QWidget):
         use_button.clicked.connect(lambda: self._use_library_guide(self.library.currentItem()))
 
         card = Card()
-        card.body.addWidget(TitleLabel("The seven named geometries"))
+        card.body.addWidget(TitleLabel("The eight named geometries"))
         card.body.addWidget(MutedLabel(
             "The same guides Compose's own Scene tab already offers - browsable here "
             "with what each one does to the frame. Double-click one, or select it and "

@@ -33,12 +33,15 @@ SPECS = [
 ]
 
 print("=== bank integrity ===")
-check("40 movements", len(bank["movements"]) == 40, str(len(bank["movements"])))
+# 40 from the Kling toolkit (motion_bank.json) + the locked-off camera that
+# load_bank() merges in from video_realism_bank.json.
+check("41 movements (40 toolkit + locked-off)", len(bank["movements"]) == 41
+      and "locked-off" in bank["movements"], str(len(bank["movements"])))
 counts = {}
 for movement in bank["movements"].values():
     counts[movement["category"]] = counts.get(movement["category"], 0) + 1
-check("30 core / 6 niche / 4 combo",
-      counts == {"core": 30, "niche": 6, "combo": 4}, str(counts))
+check("31 core / 6 niche / 4 combo",
+      counts == {"core": 31, "niche": 6, "combo": 4}, str(counts))
 
 missing_fields = [k for k, m in bank["movements"].items()
                   if not all(m.get(f) for f in ("name", "does", "lead", "example", "category"))]
@@ -363,6 +366,78 @@ check("50 terms", len(glossary["terms"]) == 50, str(len(glossary["terms"])))
 cats = {t["category"] for t in glossary["terms"]}
 check("every term has a known category", cats <= set(glossary["categories"]), str(cats))
 check("every term has a definition", all(t["definition"] for t in glossary["terms"]))
+
+print()
+print("=== TIMED BEATS AND AN END STATE ===")
+# The gap between "the clip I imagined" and "the clip that came back" is pace
+# and endpoint. These pin the rules that make a beat line safe to send.
+beat_bank = bm.load_bank()
+plain = bm.assemble_template(beat_bank, "close-up shot", "a woman in a cafe", "lifts the cup",
+                             "camera slowly pushes in", "shot on 35mm")
+check("no beats: the prompt is exactly what it always was",
+      plain == bm.assemble_template(beat_bank, "close-up shot", "a woman in a cafe",
+                                    "lifts the cup", "camera slowly pushes in", "shot on 35mm",
+                                    beats=[], end_state=""))
+plain_checks = ml.lint(plain, beat_bank, seconds=5)[0]
+check("no beats: still scored on the original seven rules", len(plain_checks) == 7,
+      str(len(plain_checks)))
+
+beats = [(0, 2, "lifts the cup and blows across it"), (2, 4, "glances up at the lens"),
+         (4, 5, "holds still, half-smiling")]
+timed = bm.assemble_template(beat_bank, "close-up shot", "a woman in a cafe", "lifts the cup",
+                             "camera slowly pushes in", "shot on 35mm",
+                             beats=beats, end_state="still, eyes on camera, steam drifting")
+checks = ml.lint(timed, beat_bank, seconds=5)[0]
+check("a good timed prompt passes all ten", len(checks) == 10 and all(ok for _, ok, _ in checks),
+      str([(n, d) for n, ok, d in checks if not ok]))
+check("the camera still leads", timed.startswith("camera slowly pushes in"))
+check("beats come before the style and the negative guard",
+      timed.index("0-2s:") < timed.index("shot on 35mm") < timed.index("no warped face"))
+check("the untimed action is not repeated in front of the beats",
+      timed.count("lifts the cup") == 1, timed)
+check("parse_beats reads back exactly what format_beats wrote",
+      bm.parse_beats(timed) == beats, str(bm.parse_beats(timed)))
+
+
+def beat_result(name, prompt, seconds=5):
+    return next((ok, d) for n, ok, d in ml.lint(prompt, beat_bank, seconds=seconds)[0] if n == name)
+
+
+gap = timed.replace("2-4s", "3-4s")
+check("a gap between beats fails", beat_result("Beats cover the clip", gap)[0] is False,
+      beat_result("Beats cover the clip", gap)[1])
+overlap = timed.replace("2-4s", "1-4s")
+check("overlapping beats fail", beat_result("Beats cover the clip", overlap)[0] is False)
+late = timed.replace("0-2s", "1-2s")
+check("beats that do not start at 0s fail", beat_result("Beats cover the clip", late)[0] is False)
+check("beats that stop short of the clip fail",
+      beat_result("Beats cover the clip", timed, seconds=8)[0] is False,
+      beat_result("Beats cover the clip", timed, seconds=8)[1])
+chained = timed.replace("glances up at the lens", "glances up while talking while eating")
+check("a chained beat fails", beat_result("One action per beat", chained)[0] is False)
+endless = bm.assemble_template(beat_bank, "close-up shot", "a woman", "", "camera slowly pushes in",
+                               "shot on 35mm", beats=beats)
+check("beats without an end state fail", beat_result("States where it ends", endless)[0] is False)
+
+drafted = bm.split_beats("lifts the cup, then glances up at the lens", 5)
+check("split_beats: a sequenced action becomes one beat per clause",
+      [a for _s, _e, a in drafted] == ["lifts the cup", "glances up at the lens"], str(drafted))
+check("split_beats: covers exactly 0 to the clip length",
+      drafted[0][0] == 0 and drafted[-1][1] == 5
+      and all(a[1] == b[0] for a, b in zip(drafted, drafted[1:])), str(drafted))
+single = bm.split_beats("turns from the window", 5)
+check("split_beats: one action gets a closing hold so the clip cannot drift",
+      len(single) == 2 and single[-1][2] == bm.DEFAULT_HOLD, str(single))
+for seconds in range(3, 16):
+    for action in ("nods", "walks in; sits down; picks up the phone; smiles; waves"):
+        d = bm.split_beats(action, seconds)
+        if not (d[0][0] == 0 and d[-1][1] == seconds
+                and all(a[1] == b[0] and a[0] < a[1] for a, b in zip(d, d[1:]))):
+            check("split_beats covers {}s for {!r}".format(seconds, action), False, str(d))
+check("split_beats covers every legal clip length (3-15s) with no gaps", True)
+check("split_timing_text reads Cats' one-line form",
+      bm.split_timing_text("0-3s: stalks the toy; 3-5s: pounces ENDS ON: sitting beside it")
+      == ([(0, 3, "stalks the toy"), (3, 5, "pounces")], "sitting beside it"))
 
 print()
 if fails:

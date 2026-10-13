@@ -384,7 +384,8 @@ inspired_reply = (
     '"color": {"mood": "vintage-nostalgic"}, '
     '"posing": {"pose": "asymmetrical-stance"}, '
     '"camera_angle": {"vertical": "low-angle", "side": "profile", '
-    '"size": "medium-close-up"}}}\n```'
+    '"size": "medium-close-up"}, '
+    '"evidence": {"kind": "human", "details": ["watch-tan", "lint"]}}}\n```'
 )
 r = adv.chat(bank, [], pasted_prompt_message, ask=fake(inspired_reply))
 check("chat() succeeds on a long pasted-prompt-style message", r["ok"], r.get("error", ""))
@@ -392,7 +393,7 @@ check("the finalized subject names a different person than the pasted prompt",
       "Priya" not in r["suggestion"]["spec"]["subject"]
       and "Noor" in r["suggestion"]["spec"]["subject"], r["suggestion"]["spec"]["subject"])
 check("the finalized spec scores 8/8", r["suggestion"]["score"] == 8 and r["suggestion"]["passed"])
-check("all 5 sections came through", sorted(r["sections"]) == sorted(adv.SECTION_NAMES),
+check("all 6 sections came through", sorted(r["sections"]) == sorted(adv.SECTION_NAMES),
       str(sorted(r["sections"])))
 
 print()

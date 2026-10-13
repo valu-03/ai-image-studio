@@ -21,6 +21,7 @@ Standard library only. No API keys, no network - you paste the result into Kling
 
 import argparse
 import json
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -28,6 +29,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 TOOLS = Path(__file__).resolve().parent
 BANK_PATH = TOOLS / "motion_bank.json"
+# Kept apart from motion_bank.json (hash-pinned by test_story.py): the
+# locked-off movement, real-motion lines and the phone look, measured from a
+# viral one-take cat clip. load_bank() merges its movements in.
+REALISM_PATH = TOOLS / "video_realism_bank.json"
 OUT_DIR = ROOT / "temp" / "outputs" / "prompts"
 
 WATER = ("water", "sea", "ocean", "lake", "river", "pool", "underwater", "waves")
@@ -43,8 +48,51 @@ TIGHT_SHOTS = ("portrait", "selfie", "product-demo")
 
 
 def load_bank():
+    """motion_bank.json, plus video_realism_bank.json's movements (the
+    locked-off camera) and that bank itself under "realism"."""
     with BANK_PATH.open(encoding="utf-8") as fh:
+        bank = json.load(fh)
+    realism = load_realism()
+    bank["movements"].update(realism.get("movements", {}))
+    bank["realism"] = realism
+    return bank
+
+
+def load_realism():
+    with REALISM_PATH.open(encoding="utf-8") as fh:
         return json.load(fh)
+
+
+def _subject_kind(subject):
+    """'human', 'animal', 'object' or 'place' - build_evidence's reading."""
+    sys.path.insert(0, str(TOOLS))
+    import build_evidence as bev
+    return bev.subject_kind(bev.load_bank(), subject)
+
+
+def real_motion_line(bank, subject, movement=None):
+    """How things really move, for this subject and camera - or "".
+
+    Planted weight, follow-through, real-time speed with a ramp, and a
+    background that holds: what a measured viral one-take clip has and a
+    generated clip usually lacks (video_realism_bank.json `source`). A place
+    has no body to plant, so it gets only the tempo and background lines.
+    A still camera says the background does not move at all; a moving one
+    says it stays solid as the camera passes.
+    """
+    cfg = (bank.get("realism") or load_realism()).get("real_motion")
+    if not cfg:
+        return ""
+    kind = _subject_kind(subject)
+    still = movement in (bank.get("realism") or {}).get("static_movements", [])
+    parts = [cfg["planted"].get(kind, ""), cfg["follow_through"].get(kind, ""), cfg["tempo"],
+             cfg["background_still"] if still else cfg["background_moving"]]
+    return ", ".join(p for p in parts if p)
+
+
+def phone_style(bank):
+    """The ordinary-phone style line that replaces the cinema-camera presets."""
+    return (bank.get("realism") or load_realism()).get("phone_style", "")
 
 
 def _text(spec, *fields):
@@ -205,8 +253,12 @@ def style_preset(bank, seed=0):
     return presets[int(seed) % len(presets)]
 
 
-def compose(bank, key, spec, detail=None, avatar_guard=False):
+def compose(bank, key, spec, detail=None, avatar_guard=False, real_motion=False, phone=False):
     """Spec + movement -> (prompt, parts). The camera lead is ALWAYS first.
+
+    `real_motion=True` adds real_motion_line() before the style; `phone=True`
+    swaps the cinema-camera style preset for phone_style(). Both off by
+    default, so existing callers get the prompt they always got.
 
     `avatar_guard=True` appends avatar_guard_tail(bank) as one more segment,
     on top of the standing negative_tail(bank) - opt-in, off by default, for
@@ -219,14 +271,21 @@ def compose(bank, key, spec, detail=None, avatar_guard=False):
 
     segments = [movement["lead"]]
 
+    clause = subject_clause(spec)
     if "subject" in requires:
-        clause = subject_clause(spec)
         if clause:
             segments[0] = movement["lead"] + " " + clause
         if setting:
             segments.append("in " + setting)
     elif setting:
         segments[0] = movement["lead"] + " " + setting
+        # A move that frames the place still has to say who is in it - this
+        # used to drop the Subject and Action entirely ("wide static camera
+        # watching a back alley", and no cats).
+        if clause:
+            segments.append(clause)
+    elif clause:
+        segments[0] = movement["lead"] + " " + clause
 
     segments.append(detail or movement.get("detail", ""))
 
@@ -238,9 +297,12 @@ def compose(bank, key, spec, detail=None, avatar_guard=False):
     if extra:
         segments.append(", ".join(str(e) for e in extra))
 
+    if real_motion:
+        segments.append(real_motion_line(bank, spec.get("subject", ""), key))
     # A named camera and grade, not "cinematic lighting" - keyed off the
     # movement itself so the same movement always gets the same preset.
-    segments.append(style_preset(bank, seed=sum(ord(c) for c in key)) + ", natural motion")
+    style = phone_style(bank) if phone else style_preset(bank, seed=sum(ord(c) for c in key))
+    segments.append(style + ", natural motion")
     segments.append(negative_tail(bank))
     if avatar_guard:
         segments.append(avatar_guard_tail(bank))
@@ -256,11 +318,131 @@ def compose(bank, key, spec, detail=None, avatar_guard=False):
     return prompt, parts
 
 
+# --------------------------------------------------------------------------- #
+# Timed beats and an end state
+# --------------------------------------------------------------------------- #
+# What separates "the clip I imagined" from "the clip that came back" is almost
+# never appearance - the first frame already fixes that - it is TIMING and
+# ENDPOINT. One untimed action lets the model choose the pace: it finishes
+# early, then invents motion to fill the remaining seconds. A time-coded beat
+# line plus a stated final pose leaves it nothing to improvise. Each beat is
+# still ONE action (motion_lint checks that per beat), so the one-action rule
+# holds - the beats happen in sequence, not at once.
+BEAT_RE = re.compile(r"(\d+(?:\.\d+)?)\s*[-–]\s*(\d+(?:\.\d+)?)\s*s\s*:\s*")
+END_RE = re.compile(r"ends on\s*:\s*", re.IGNORECASE)
+# Splits a single Action field into the actions it already chains in order.
+# " then " is a sequence, which is exactly what a beat line is - so here it is
+# the separator, never the chain marker motion_lint warns about.
+SEQUENCE_SPLIT = re.compile(r"\s*(?:;|,?\s+and then\s+|,?\s+then\s+|,?\s+before\s+|,?\s+after that\s+)\s*",
+                            re.IGNORECASE)
+DEFAULT_HOLD = "settles and holds the final position"
+MAX_DRAFT_BEATS = 3
+
+
+def _num(value):
+    value = float(value)
+    return int(value) if value.is_integer() else value
+
+
+def format_beats(beats):
+    """[(start, end, action), ...] -> "0-2s: a; 2-4s: b"."""
+    return "; ".join("{}-{}s: {}".format(_num(start), _num(end), str(action).strip())
+                     for start, end, action in beats if str(action).strip())
+
+
+def parse_beats(text):
+    """Every "0-2s: action" beat in `text`, in order, as (start, end, action).
+
+    Shared by the Videos tab (reading the Timing box) and motion_lint (reading
+    a finished prompt), so the two can never disagree about what a beat is. A
+    beat's action runs to the next beat, an "ENDS ON:" marker, or the end of
+    the text, trimmed of separators.
+    """
+    text = str(text or "")
+    matches = list(BEAT_RE.finditer(text))
+    beats = []
+    for i, match in enumerate(matches):
+        stop = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+        body = text[match.end():stop]
+        end = END_RE.search(body)
+        if end:
+            body = body[:end.start()]
+        beats.append((_num(match.group(1)), _num(match.group(2)), body.strip(" ;,.\n\t")))
+    return beats
+
+
+def has_end_state(text):
+    """Does `text` state an end state - an "ENDS ON:" marker with words after it?
+    Presence only: inside a finished prompt the end state runs straight into
+    the style segment with nothing to mark where it stops, so its exact
+    extent is not recoverable and nothing here pretends otherwise."""
+    match = END_RE.search(str(text or ""))
+    return bool(match) and bool(re.search(r"\w", text[match.end():match.end() + 40]))
+
+
+def split_timing_text(text):
+    """One free-text field -> (beats, end_state).
+
+    For the compact single-line form Cats' scene cards use:
+    "0-3s: stalks the toy; 3-5s: pounces ENDS ON: sitting proudly beside it".
+    Everything after "ENDS ON:" is the end state; beats are read from the rest.
+    """
+    text = str(text or "")
+    match = END_RE.search(text)
+    end_state = text[match.end():].strip(" ;,.\n") if match else ""
+    return parse_beats(text[:match.start()] if match else text), end_state
+
+
+def split_beats(action, seconds):
+    """Draft a 2-3 beat timeline from one Action field and a clip length.
+
+    A first draft for the user to edit, not a decision: clauses the action
+    already sequences ("lifts the cup, then glances up") become beats, the
+    whole seconds are shared out with the last beat absorbing the remainder,
+    and a single action gets a closing hold beat - the hold is what stops the
+    model inventing new motion once the action is done.
+    """
+    seconds = max(1, int(seconds))
+    clauses = [c.strip(" ,.") for c in SEQUENCE_SPLIT.split(str(action or "")) if c.strip(" ,.")]
+    if not clauses:
+        return []
+    # About two seconds per beat is the shortest a beat can be and still read;
+    # past that, the overflow joins the last beat rather than being dropped.
+    limit = max(MAX_DRAFT_BEATS, min(5, seconds // 2))
+    if len(clauses) > limit:
+        clauses = clauses[:limit - 1] + [", then ".join(clauses[limit - 1:])]
+    if len(clauses) == 1 and seconds >= 3:
+        clauses.append(DEFAULT_HOLD)
+    count = min(len(clauses), seconds)
+    clauses = clauses[:count]
+    # The action gets the bulk; a closing hold only needs about a second or two.
+    if clauses[-1] == DEFAULT_HOLD:
+        hold = max(1, seconds // 4)
+        cuts = [0, seconds - hold, seconds]
+    else:
+        step = seconds / count
+        cuts = [0] + [int(round(step * i)) for i in range(1, count)] + [seconds]
+    return [(cuts[i], cuts[i + 1], clauses[i]) for i in range(count)]
+
+
+def default_end_state(action=""):
+    return "the motion settled, holding still in the final position"
+
+
 def assemble_template(bank, shot_type, subject, action, camera_movement, style,
-                      avatar_guard=False):
+                      avatar_guard=False, beats=None, end_state="", real_motion="",
+                      negatives=True):
     """[SHOT TYPE] + [SUBJECT] + [ACTION] + [STYLE] + [CAMERA MOVEMENT] -> one
     prompt - the hands-on template, as an alternative to compose()'s own
     bank-driven assembly.
+
+    `beats` ([(start, end, action), ...]) and `end_state` are optional and
+    land after the subject, before the style - "what happens when, and where
+    it stops". The camera still leads, so motion_lint rule 1 holds. Callers
+    that pass neither get byte-for-byte the prompt they always got.
+    `real_motion` (a real_motion_line()) lands after them, before the style.
+    `negatives=False` leaves negative_tail() out - optional, like the
+    user's own viral prompt, which had none.
 
     Camera movement always opens the assembled text, whatever order the six
     fields are shown in on screen: motion_lint.leads_with_camera() is the
@@ -273,16 +455,113 @@ def assemble_template(bank, shot_type, subject, action, camera_movement, style,
     one. `avatar_guard=True` appends avatar_guard_tail(bank) too - opt-in, off
     by default, same as compose()'s own `avatar_guard` param.
     """
+    timing = format_beats(beats or [])
+    end_state = str(end_state or "").strip().rstrip(".")
     segments = [
         str(camera_movement or "").strip(),
         str(shot_type or "").strip(),
-        subject_clause({"subject": subject, "action": action}),
+        # With beats, the beats ARE the action - saying it once untimed in
+        # front of them invites the model to do it twice.
+        subject_clause({"subject": subject, "action": "" if timing else action}),
+        timing,
+        "ENDS ON: " + end_state if end_state else "",
+        str(real_motion or "").strip(),
         str(style or "").strip(),
-        negative_tail(bank),
+        negative_tail(bank) if negatives else "",
     ]
     if avatar_guard:
         segments.append(avatar_guard_tail(bank))
     return ", ".join(s for s in segments if s)
+
+
+# --------------------------------------------------------------------------- #
+# The one-take story
+# --------------------------------------------------------------------------- #
+# Written the way the user's own 150k-view prompt is: a short camera opening,
+# then the beats as plain sentences in order with time words ("initially...
+# Suddenly... soon after..."), closing on "Subtle, fluid motion." No comma
+# list, no "0-3s:" codes, no negatives unless asked for. The tagged template
+# above stays for anyone who prefers it.
+
+
+def story_beats(text, action=""):
+    """The beats as plain actions, in order.
+
+    Timing lines may be "0-3s: ..." beats (seconds dropped) or plain lines,
+    one per beat. With neither, the Action is the one beat."""
+    timed = parse_beats(text)
+    if timed:
+        return [a for _s, _e, a in timed if a]
+    lines = [ln.strip(" -*\t") for ln in str(text or "").splitlines()]
+    lines = [ln for ln in lines if ln and not END_RE.match(ln)]
+    if lines:
+        return lines
+    action = str(action or "").strip()
+    return [action] if action else []
+
+
+def _sentence(text):
+    text = str(text or "").strip().rstrip(".,;")
+    return text[:1].upper() + text[1:] + "." if text else ""
+
+
+def _starts_with_time_word(text, words):
+    lower = text.lower()
+    return any(re.match(r"{}\b".format(re.escape(w)), lower) for w in words)
+
+
+def story_lead(bank, movement_key):
+    """The short opening for a movement: "Static shot" for a still camera,
+    else the movement's own lead."""
+    story = (bank.get("realism") or {}).get("story", {})
+    lead = story.get("leads", {}).get(movement_key)
+    if lead:
+        return lead
+    movement = bank["movements"].get(movement_key, {})
+    return movement.get("lead", "")
+
+
+def assemble_story(bank, movement_key, subject, beats, end_state="", style="",
+                   close=True, negatives=False, avatar_guard=False, real_motion="",
+                   opening=None):
+    """One-take story prompt: opening, beats as ordered sentences, close.
+
+    The first beat gets "Initially", the middle ones alternate "Then" /
+    "Soon after", the last gets "Finally" - unless a beat already opens with
+    a time word ("Suddenly, a hand enters..."), which is kept as typed. A
+    single beat gets no time word at all.
+    """
+    story = (bank.get("realism") or {}).get("story", {})
+    words = story.get("time_words", [])
+    middle = story.get("middle", ["Then"])
+    beats = [str(b).strip().rstrip(".") for b in beats if str(b).strip()]
+
+    opening = str(opening).strip() if opening else story_lead(bank, movement_key)
+    subject = str(subject or "").strip().rstrip(".")
+    sentences = [_sentence(", ".join(x for x in (opening, subject) if x))]
+    for i, beat in enumerate(beats):
+        if len(beats) == 1 or _starts_with_time_word(beat, words):
+            sentences.append(_sentence(beat))
+            continue
+        if i == 0:
+            word = story.get("first", "Initially")
+        elif i == len(beats) - 1:
+            word = story.get("last", "Finally")
+        else:
+            word = middle[(i - 1) % len(middle)]
+        sentences.append(_sentence("{}, {}".format(word, beat)))
+    end_state = str(end_state or "").strip().rstrip(".")
+    if end_state:
+        sentences.append(_sentence("It ends on " + end_state))
+    for extra in (real_motion, style):
+        sentences.append(_sentence(extra))
+    if close and story.get("close"):
+        sentences.append(_sentence(story["close"]))
+    if negatives:
+        sentences.append(_sentence(negative_tail(bank)))
+    if avatar_guard:
+        sentences.append(_sentence(avatar_guard_tail(bank)))
+    return " ".join(x for x in sentences if x)
 
 
 def write_prompt(spec, prompt, key):

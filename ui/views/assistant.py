@@ -5,15 +5,11 @@ one-shot helpers (BriefView: idea -> spec, upgrade a prompt, critique an
 image, reverse-engineer a photo). Both feed the Images Compose form; grouping
 them means the rail says "ask for help" once, not twice.
 
-Anatomy (AnatomyContainer) is the odd one out and deliberately so: it teaches
-the SHAPE of a prompt rather than writing one. It splits again inside itself,
-into Image prompts and Video prompts, because those two have different slots,
-different sources and barely any vocabulary in common - one picker holding
-both made you read a suffix on every row to find your half of the list. It feeds Compose nothing, calls no
-model, and answers a different question - "what are the parts of a prompt like
-this, and which ones have I actually filled in?" It belongs here because it is
-help with a prompt; it stays read-only because the moment it offered to fix a
-prompt it would stop teaching.
+Prompt Bank (PromptBankContainer) is the user's own library: every prompt they
+supply, saved exactly as given with its example images, split into Image and
+Video. It replaced Anatomy (built-in templates split into teaching slots). It
+feeds Compose nothing and calls no model - it keeps prompts, it does not judge
+them.
 
 Thin container, like ImagesView - MainWindow reaches in for `self.advisor_view`
 and `self.brief_view`.
@@ -25,8 +21,8 @@ from PyQt6.QtWidgets import QTabWidget, QVBoxLayout, QWidget
 from .. import tokens as T
 from ..widgets import MutedLabel
 from .advisor import AdvisorView
-from .anatomy import AnatomyContainer
 from .brief_view import BriefView
+from .prompt_bank import PromptBankContainer
 
 
 class AssistantView(QWidget):
@@ -36,15 +32,15 @@ class AssistantView(QWidget):
         super().__init__(parent)
         self.advisor = AdvisorView(bank)
         self.brief = BriefView(bank)
-        self.anatomy = AnatomyContainer()
+        self.prompt_bank = PromptBankContainer()
         self.advisor.status.connect(self.status)
         self.brief.status.connect(self.status)
-        self.anatomy.status.connect(self.status)
+        self.prompt_bank.status.connect(self.status)
 
         self.tabs = QTabWidget()
         self.tabs.addTab(self.advisor, "Chat")
         self.tabs.addTab(self.brief, "Prompt tools")
-        self.tabs.addTab(self.anatomy, "Anatomy")
+        self.tabs.addTab(self.prompt_bank, "Prompt Bank")
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -55,7 +51,7 @@ class AssistantView(QWidget):
         # tests/test_layout.py catches that; the eye does not.
         layout.addWidget(MutedLabel(
             "Ask the in-app expert for help. Chat is a conversation; Prompt tools "
-            "are one-shot helpers; Anatomy teaches the shape of a prompt."))
+            "are one-shot helpers; Prompt Bank keeps your own prompts and their examples."))
         layout.addWidget(self.tabs)
 
     def show_chat(self):

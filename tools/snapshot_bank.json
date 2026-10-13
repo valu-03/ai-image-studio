@@ -1,0 +1,280 @@
+{
+  "source": "Written for this project, NOT AI Video Bootcamp material: what makes a frame read as an ordinary phone snapshot by a real person - the viral street-cat look - instead of a polished, cinema-camera render. Measured against a reference frame the user supplied (a street cat by an empty steel bowl, shot low on a phone, passers-by blurred behind).",
+  "version": 1,
+  "note": "Three parts, each its own Compose toggle. `snapshot`: with no shot chosen, the camera and lens come from prompt_bank.json's own `phone-candid` preset and the core pick skips its cinema words, then one 'who took it' line by subject kind is added. A chosen shot, typed shot, explicit camera or a film stock is a deliberate look and wins - nothing is narrowed and no phone line is added (except for the phone presets themselves). `backgrounds`: read from the Setting, one passer-by, one unrelated everyday thing and one worn surface, picked by seed; a studio or plain backdrop gets nothing. `moments`: a split second named by the Action, or a kind default by seed. All three land as non-layer overrides on the free tail, so they can only add to a realism score.",
+  "snapshot": {
+    "preset": "phone-candid",
+    "phone_presets": ["phone-candid", "selfie"],
+    "layer_skip": {"core": ["cinematic realism", "ultra-realistic"], "grain": ["cinematic grain"]},
+    "who": {
+      "animal": [
+        "a phone video frame taken by a passer-by who crouched down, the phone held low near the ground at the animal's eye level",
+        "a quick phone clip by someone who stopped to film it, the phone held low and slightly tilted",
+        "filmed on a phone from a few steps away by someone passing, held at knee height"
+      ],
+      "human": [
+        "a quick, unposed phone snapshot a friend took",
+        "a phone photo taken by a friend from across the table, an unplanned moment",
+        "a casual phone picture someone took on the spot, framed a little off"
+      ],
+      "object": [
+        "a casual phone photo taken from just above, the way someone shows a friend what they have",
+        "a quick phone picture taken where it sits, nothing moved for the shot"
+      ],
+      "place": [
+        "a phone photo taken while walking through, the frame slightly off level"
+      ]
+    },
+    "processing": "slightly flat phone colours, everyday smartphone sharpening and processing"
+  },
+  "backgrounds": {
+    "street": {
+      "label": "Street",
+      "keywords": ["street", "pavement", "sidewalk", "market", "alley", "crossing", "road", "downtown", "shopping street"],
+      "passers": [
+        "a passer-by's legs blurred mid-step in the background",
+        "people walking past out of focus behind",
+        "a cyclist passing as a soft blur behind"
+      ],
+      "clutter": [
+        "scooters parked along the kerb, half out of frame",
+        "a shop sign cut off by the top of the frame",
+        "a delivery van partly out of frame in the distance"
+      ],
+      "ground": [
+        "worn, stained paving tiles with grime in the joints",
+        "scuffed pavement with old gum marks and faded stains",
+        "uneven paving with a cracked tile and dust in the corners"
+      ]
+    },
+    "cafe": {
+      "label": "Cafe / restaurant",
+      "keywords": ["cafe", "café", "coffee shop", "restaurant", "diner", "bistro", "canteen"],
+      "passers": [
+        "a server turning away out of focus behind",
+        "other customers chatting, blurred, at a table behind",
+        "someone queuing at the counter, out of focus"
+      ],
+      "clutter": [
+        "a phone charger trailing across the next table",
+        "a crumpled receipt by the sugar jar",
+        "a menu card propped crookedly against the wall"
+      ],
+      "ground": [
+        "a table top with faint cup rings and a few crumbs",
+        "a worn floor with scuff marks by the chair legs"
+      ]
+    },
+    "kitchen": {
+      "label": "Kitchen",
+      "keywords": ["kitchen", "kitchenette"],
+      "passers": [
+        "someone moving out of focus at the far counter",
+        "a family member's arm reaching into frame, blurred"
+      ],
+      "clutter": [
+        "a tea towel hanging crooked off the oven handle",
+        "a phone charging by the kettle",
+        "an open packet left on the counter behind"
+      ],
+      "ground": [
+        "a countertop with a faint water mark and a few crumbs",
+        "a floor tile with a scuff by the cupboard"
+      ]
+    },
+    "home": {
+      "label": "Living room / bedroom",
+      "keywords": ["living room", "bedroom", "apartment", "home", "house", "sofa", "couch"],
+      "passers": [
+        "someone walking past in the doorway behind, out of focus",
+        "a TV glowing softly out of focus in the background"
+      ],
+      "clutter": [
+        "a remote and a charging cable on the side table",
+        "a folded blanket slumped over the armrest",
+        "a pair of shoes kicked off by the door"
+      ],
+      "ground": [
+        "a rug with a slightly flattened, worn patch",
+        "floorboards with small scuffs and dust along the skirting"
+      ]
+    },
+    "office": {
+      "label": "Office",
+      "keywords": ["office", "desk", "workspace", "coworking", "cubicle"],
+      "passers": [
+        "a colleague walking past out of focus behind",
+        "someone on a call at a desk behind, blurred"
+      ],
+      "clutter": [
+        "a tangle of cables behind the monitor",
+        "sticky notes curling at the edge of the screen",
+        "a half-finished cup of coffee left on the next desk"
+      ],
+      "ground": [
+        "a desk with faint mug rings and a scratched edge",
+        "carpet tiles slightly worn by the chair"
+      ]
+    },
+    "park": {
+      "label": "Park / garden",
+      "keywords": ["park", "garden", "lawn", "playground", "courtyard"],
+      "passers": [
+        "a jogger passing out of focus behind",
+        "people sitting on a bench far behind, blurred",
+        "a dog walker crossing in the distance, out of focus"
+      ],
+      "clutter": [
+        "a bin and a lamppost cut off at the edge of the frame",
+        "a bicycle leaning against a railing behind"
+      ],
+      "ground": [
+        "patchy grass worn down to dirt in places",
+        "a gravel path with scattered leaves and footprints"
+      ]
+    },
+    "beach": {
+      "label": "Beach",
+      "keywords": ["beach", "seaside", "shore", "boardwalk", "promenade"],
+      "passers": [
+        "people walking along the waterline, out of focus",
+        "a child running past far behind, blurred"
+      ],
+      "clutter": [
+        "a towel and a pair of flip-flops left behind",
+        "a parasol partly out of frame"
+      ],
+      "ground": [
+        "sand churned with footprints, a few shells and bits of seaweed",
+        "damp sand with uneven footprints leading away"
+      ]
+    },
+    "shop": {
+      "label": "Shop / supermarket",
+      "keywords": ["shop", "store", "supermarket", "grocery", "boutique", "mall"],
+      "passers": [
+        "a shopper pushing a trolley out of focus behind",
+        "someone browsing the shelves behind, blurred"
+      ],
+      "clutter": [
+        "a price label hanging slightly askew on the shelf",
+        "a stack of baskets by the door, cut off by the frame"
+      ],
+      "ground": [
+        "a shiny shop floor with trolley-wheel scuffs",
+        "a mat by the entrance with dusty footprints"
+      ]
+    },
+    "station": {
+      "label": "Station / transport",
+      "keywords": ["station", "platform", "metro", "subway", "train", "bus stop", "airport", "terminal"],
+      "passers": [
+        "commuters hurrying past out of focus",
+        "someone dragging a suitcase past, blurred"
+      ],
+      "clutter": [
+        "a departures board cut off at the top of the frame",
+        "a bin overflowing slightly by the pillar"
+      ],
+      "ground": [
+        "a platform floor with worn yellow edge markings and grime",
+        "scuffed floor tiles with old footprints"
+      ]
+    },
+    "bar": {
+      "label": "Bar / pub",
+      "keywords": ["bar", "pub", "club", "lounge bar", "tavern"],
+      "passers": [
+        "people talking at the bar behind, out of focus",
+        "a bartender reaching for a bottle behind, blurred"
+      ],
+      "clutter": [
+        "a few empty glasses left on the counter",
+        "a beer mat curled at one corner"
+      ],
+      "ground": [
+        "a sticky-looking counter with wet glass rings",
+        "a worn wooden bar top with scratches and dents"
+      ]
+    }
+  },
+  "plain_keywords": ["studio", "backdrop", "seamless", "plain background", "white background", "black background", "solid background", "void"],
+  "moments": {
+    "max_phrases": 1,
+    "actions": {
+      "laugh": {
+        "keywords": ["laughing", "laughs", "laugh", "giggling", "smiling", "smiles"],
+        "human": "caught a split second after laughing, eyes still creased, the smile just starting to fade"
+      },
+      "turn": {
+        "keywords": ["turning", "turns", "turned", "glancing", "glances", "looking back"],
+        "human": "caught mid-turn, hair still swinging back into place",
+        "animal": "caught mid-turn of the head, ears still swivelling"
+      },
+      "walk": {
+        "keywords": ["walking", "walks", "running", "runs", "striding", "stepping", "jogging"],
+        "human": "caught mid-step, one heel just lifting off the ground, clothes swinging with the stride",
+        "animal": "caught mid-stride, one paw lifted off the ground"
+      },
+      "drink": {
+        "keywords": ["drinking", "drinks", "sipping", "sips", "lapping"],
+        "human": "caught just as the cup leaves the lips, a little steam still between them",
+        "animal": "caught mid-lap, the tongue just touching the surface, tiny ripples spreading"
+      },
+      "eat": {
+        "keywords": ["eating", "eats", "chewing", "biting", "munching"],
+        "human": "caught mid-bite, a few crumbs just falling",
+        "animal": "caught mid-chew, whiskers pushed forward"
+      },
+      "stare": {
+        "keywords": ["staring", "stares", "gazing", "gazes", "looking", "looks", "watching", "watches", "waiting", "waits"],
+        "human": "caught in a quiet unguarded second, eyes fixed on something just out of frame",
+        "animal": "caught in a still, intent stare, ears angled forward, whiskers slightly tensed"
+      },
+      "play": {
+        "keywords": ["playing", "plays", "pouncing", "pounces", "chasing", "batting", "jumping", "jumps"],
+        "human": "caught at the top of the movement, a blur at the hands",
+        "animal": "caught mid-pounce, a paw blurred with motion, tail flicked up"
+      },
+      "yawn": {
+        "keywords": ["yawning", "yawns", "stretching", "stretches"],
+        "human": "caught mid-yawn, eyes squeezed half shut",
+        "animal": "caught mid-yawn, teeth and curled tongue showing, eyes squeezed shut"
+      },
+      "sleep": {
+        "keywords": ["sleeping", "asleep", "napping", "dozing", "snoozing"],
+        "human": "a slow breath just leaving, lips slightly parted in sleep",
+        "animal": "a paw twitching in a dream, whiskers flickering"
+      },
+      "talk": {
+        "keywords": ["talking", "talks", "speaking", "explaining", "chatting"],
+        "human": "caught mid-word, the mouth half open, a hand blurred mid-gesture"
+      },
+      "pour": {
+        "keywords": ["pouring", "pours", "splashing", "dripping", "spilling"],
+        "human": "caught mid-pour, the stream of liquid frozen in the air",
+        "object": "caught mid-pour, the stream frozen in the air, a few drops scattered",
+        "animal": "caught with water droplets frozen mid-air around it"
+      }
+    },
+    "by_kind": {
+      "human": [
+        "caught a split second before a blink, the eyelids just starting to lower",
+        "caught as an expression is just changing, mid-way between two looks",
+        "a loose strand of hair just lifting in the air"
+      ],
+      "animal": [
+        "caught with one ear mid-flick",
+        "whiskers caught mid-twitch, the tail tip just curling",
+        "caught as the head is just tilting"
+      ],
+      "object": [
+        "a single drop just sliding down its side",
+        "a faint wisp of steam or dust just drifting past it"
+      ],
+      "place": [
+        "a few leaves or bits of litter just drifting in the air"
+      ]
+    }
+  }
+}

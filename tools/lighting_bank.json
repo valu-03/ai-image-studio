@@ -1,6 +1,6 @@
 {
   "source": "AI Video Bootcamp's Phase 2 lighting cheat-sheet, extended with the standard portrait-photography vocabulary (Rembrandt, split, loop, butterfly, three-point, high-key/low-key - not course material, named studio technique) and physically-grounded realism cues an image model can act on directly. Not guessed: each technique is a specific, checkable phrase, the same standard the original 8 layers already hold to.",
-  "version": 3,
+  "version": 9,
   "note": "Two paths to a lighting phrase. The FAST path picks a named `setup` - a pre-vetted, hand-written recipe that can never contradict itself. The DEEP path picks direction + quality + source independently, the way a working photographer actually thinks, and is checked against `conflicts` because an arbitrary combination CAN fight itself (hard light from an overcast sky, for instance). `realism_techniques` stack on top of either path, additive and opt-in, never required - it also holds light-shaping MODIFIERS (silver/white reflector, direct/diffused/bounced) alongside the photorealism cues; mechanically they stack identically, so they share one dict rather than a second parallel mechanism.",
 
   "directions": {
@@ -176,6 +176,12 @@
       "direction": "short", "quality": "hard", "source": "practical",
       "teaches": "Moody and cinematic - most of the frame does nothing, which is exactly what makes the lit part read as real."
     },
+    "chiaroscuro": {
+      "label": "Chiaroscuro",
+      "phrase": "chiaroscuro lighting, a single strong side key sculpting the face out of deep shadow, a gradual painterly transition from light to dark",
+      "direction": "short", "quality": "hard", "source": "practical",
+      "teaches": "Not the same as low-key: low-key is about how much of the frame stays dark, chiaroscuro is about the gradient - one source modelling form, the light rolling off into shadow the way a Caravaggio does."
+    },
     "clam-shell": {
       "label": "Clam shell",
       "phrase": "clam shell lighting, two soft sources above and below the face filling the shadow a single overhead light would leave",
@@ -193,6 +199,36 @@
       "phrase": "checkerboard lighting, a patterned gobo casting alternating bands of light and shadow across the frame",
       "direction": "split", "quality": "hard", "source": "studio-strobe",
       "teaches": "A graphic, stylised look built from a shaped shadow rather than a face-shaping light - reach for it when the pattern itself is the point."
+    },
+    "dappled": {
+      "label": "Dappled light",
+      "phrase": "dappled sunlight filtering through leaves, irregular patches of light and soft-edged leaf shadow moving across the subject",
+      "direction": "short", "quality": "hard", "source": "direct-sun",
+      "teaches": "Nature's gobo - the irregular pattern is the realism cue; a perfectly even dapple reads as a texture overlay, not foliage."
+    },
+    "window-blinds": {
+      "label": "Window blinds",
+      "phrase": "hard sunlight through window blinds casting parallel bars of light and shadow across the subject and wall",
+      "direction": "split", "quality": "hard", "source": "direct-sun",
+      "teaches": "Motivated gobo - the blinds are a real object in the scene, unlike checkerboard's studio pattern; the bars should wrap around the face and bend over the wall behind it."
+    },
+    "pool-caustics": {
+      "label": "Pool caustics",
+      "phrase": "sunlight refracted through rippling water, a shifting net of bright caustic light dancing across the skin and the surfaces nearby",
+      "direction": "short", "quality": "hard", "source": "direct-sun",
+      "teaches": "Caustics only exist under a hard source - an overcast pool has none. The net should bend over the body's curves, not lie flat on it like a texture."
+    },
+    "light-shaft": {
+      "label": "Light shaft from above",
+      "phrase": "a single shaft of hard sunlight falling from an opening high above, a visible beam pouring through dusty air onto the subject, particles drifting and glittering inside the beam while the surroundings fall away into deep shadow",
+      "direction": "butterfly", "quality": "hard", "source": "direct-sun",
+      "teaches": "God rays that land ON the subject, not behind it: the beam is the spotlight. Needs a reason for the opening (a broken roof, a canopy gap, a high window) and something in the air for the beam to show in - dust, pollen, drifting petals. Everything outside the beam stays dark, or the shaft has nothing to read against."
+    },
+    "volumetric-lighting": {
+      "label": "Volumetric lighting",
+      "phrase": "volumetric lighting, a hard backlight through hazy air, visible shafts of light cutting through it and a bright rim of light around the subject's silhouette",
+      "direction": "rim", "quality": "hard", "source": "direct-sun",
+      "teaches": "Haze plus a hard backlight - the setup behind 'god rays'. The haze is what makes the light visible; without it a hard backlight is just a rim. A real backlit face sits slightly underexposed, not evenly lit from nowhere."
     },
     "old-hollywood": {
       "label": "Old Hollywood hard light",
@@ -267,6 +303,11 @@
       "label": "Material response",
       "phrase": "distinct material response to light - crisp highlights on metal, soft catchlight on glass, matte absorption on fabric",
       "note": "A different cue from `specularity` above, which is about skin specifically - this one is about every OTHER surface in the frame reacting to the same light in its own physically correct way, which is what stops a shot from reading as a uniform render."
+    },
+    "caustics": {
+      "label": "Caustics",
+      "phrase": "faint caustic light patterns thrown onto nearby surfaces where the light passes through glass or water",
+      "note": "Only real under a hard source - pair it with a glass, a bottle or a pool in direct light. On a soft setup it is physically wrong, which is why it is opt-in here and never added automatically by material_bank.json's glass entry. Names no source of its own, so it never puts a second light in the prompt."
     }
   }
 }

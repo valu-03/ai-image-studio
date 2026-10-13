@@ -4,7 +4,7 @@ section's own bank/composer already is: every phrase has to be detectable by
 realism_lint, a full prompt built with a guide or custom text still has to
 score 8/8, and bad input has to be refused rather than silently accepted.
 
-The seven named geometries themselves are NOT retested here - they already
+The eight named geometries themselves are NOT retested here - they already
 live in tools/prompt_bank.json and are covered exhaustively by
 tests/test_composition.py, which this file leaves untouched.
 """

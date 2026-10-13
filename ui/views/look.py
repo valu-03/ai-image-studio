@@ -19,11 +19,15 @@ from .camera_angle import CameraAngleView
 from .capture import CaptureView
 from .color_grading import ColorGradingView
 from .composition import CompositionView
+from .evidence import EvidenceView
 from .lighting import LightingView
 from .posing import PosingView
 from .style import StyleView
 
-_TABS = ("Lighting", "Composition", "Camera", "Color", "Posing", "Style", "Capture")
+# Appended, never inserted: SUBVIEW_ROUTES in main_window.py maps each
+# toolkit to a fixed tab index (see CLAUDE.md on the Capture tab).
+_TABS = ("Lighting", "Composition", "Camera", "Color", "Posing", "Style", "Capture",
+         "Evidence")
 
 
 class LookView(QWidget):
@@ -40,8 +44,10 @@ class LookView(QWidget):
         self.posing = PosingView(palette)
         self.style = StyleView(palette)
         self.capture = CaptureView(palette)
+        self.evidence = EvidenceView(palette)
         self._children = (self.lighting, self.composition, self.camera,
-                          self.color, self.posing, self.style, self.capture)
+                          self.color, self.posing, self.style, self.capture,
+                          self.evidence)
 
         self.tabs = QTabWidget()
         for child, label in zip(self._children, _TABS):
@@ -53,7 +59,7 @@ class LookView(QWidget):
         layout.setSpacing(T.SPACE["sm"])
         layout.addWidget(MutedLabel(
             "Tune how the image looks — light, framing, camera angle, colour, "
-            "pose and the camera itself. Each one builds a phrase you Apply into "
+            "pose, the camera itself and the lived-in details. Each one builds a phrase you Apply into "
             "the Images prompt."))
         layout.addWidget(self.tabs)
 
@@ -78,6 +84,9 @@ class LookView(QWidget):
 
     def show_capture(self):
         self.tabs.setCurrentIndex(6)
+
+    def show_evidence(self):
+        self.tabs.setCurrentIndex(7)
 
     def refresh(self):
         current = self.tabs.currentWidget()

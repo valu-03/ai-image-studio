@@ -49,12 +49,17 @@ guides = bp.guides(bank)
 base = {"subject": "a woman in her thirties with freckles", "setting": "a kitchen", "seed": 3}
 
 print("--- the bank ---")
-check("seven guides", len(guides) == 7, str(len(guides)))
+check("eight guides", len(guides) == 8, str(len(guides)))
 expected = ["rule-of-thirds", "phi-grid", "diagonals", "triangle",
-            "golden-ratio", "golden-spiral", "harmonic-armature"]
+            "golden-ratio", "golden-spiral", "harmonic-armature", "dynamic-symmetry"]
 check("keys as listed", list(guides) == expected, str(list(guides)))
 check("every guide has label, phrase, note",
       all({"label", "phrase", "note"} <= set(g) for g in guides.values()))
+# "Symmetry" alone pulls a model toward a centred, mirrored frame - the opposite
+# of Hambidge's grid. The phrase has to say so, or the name undoes the guide.
+check("dynamic symmetry disowns mirroring",
+      "rather than mirrored" in guides["dynamic-symmetry"]["phrase"],
+      guides["dynamic-symmetry"]["phrase"])
 check("bank version bumped past 1", bank["version"] >= 2, str(bank["version"]))
 
 print("--- every guide scores 8/8, in both forms, under every shot ---")
@@ -69,7 +74,7 @@ for key in guides:
             present, _, banned, _, _ = rl.lint(prompt.lower(), bank)
             if len(present) != 8 or banned:
                 bad.append("{}/{}/{}".format(key, shot or "auto", "long" if detailed else "short"))
-check("84 combinations all 8/8", not bad, ", ".join(bad[:4]))
+check("96 combinations all 8/8", not bad, ", ".join(bad[:4]))
 
 print("--- the linter can see each guide on its own ---")
 for key, guide in guides.items():
@@ -111,7 +116,7 @@ check("no guide phrase leaks", not any(g["phrase"] in plain for g in guides.valu
 # from the bank's own pool or from a shot preset.
 GEOMETRY = ["rule of thirds", "phi grid", "golden ratio", "golden spiral",
             "fibonacci", "harmonic armature", "diagonal composition",
-            "triangular composition"]
+            "triangular composition", "dynamic symmetry"]
 check("the auto pool holds no geometry",
       not any(g in " ".join(bank["layers"]["composition"]["terms"]) for g in GEOMETRY),
       str(bank["layers"]["composition"]["terms"]))
@@ -167,13 +172,13 @@ cv.form_mode.setCurrentIndex(0)
 ed.load_spec({"subject": "a female model in her twenties", "seed": 0})
 
 print("--- the combo ---")
-# Open, not closed: the seven named geometries are starting points, and a typed
+# Open, not closed: the eight named geometries are starting points, and a typed
 # framing instruction is as legitimate as a named grid. It still cannot silently
 # add an item to the list.
 check("open to typed text", ed.composition.isEditable())
 check("typing never grows the list",
       ed.composition.insertPolicy() == ed.composition.InsertPolicy.NoInsert)
-check("auto plus seven", ed.composition.count() == 8, str(ed.composition.count()))
+check("auto plus eight", ed.composition.count() == 9, str(ed.composition.count()))
 check("defaults to none", ed.composition_guide() == "", repr(ed.composition_guide()))
 check("the empty row reads (none)", ed.composition.itemText(0) == "(none)",
       ed.composition.itemText(0))

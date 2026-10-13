@@ -763,7 +763,7 @@ class CatsView(QWidget):
             scene["motion_prompt"] = bm.assemble_template(
                 self.motion_bank, fields.get("shot_type", ""), fields.get("subject", ""),
                 fields.get("action", ""), fields.get("camera_movement", ""),
-                fields.get("style", ""))
+                fields.get("style", ""), **self._timing_kwargs(fields))
 
         card.body.addWidget(MutedLabel("Video prompt ({})".format(scene["movement"] or "no move")))
         form = QFormLayout()
@@ -771,9 +771,23 @@ class CatsView(QWidget):
         form.setVerticalSpacing(T.SPACE["xs"])
         widgets = {}
         for key, label in (("shot_type", "Shot type"), ("subject", "Subject"),
-                           ("action", "Action"), ("style", "Style"),
+                           ("action", "Action"), ("timing", "Timing"), ("style", "Style"),
                            ("camera_movement", "Camera movement")):
             edit = QLineEdit(fields.get(key, ""))
+            if key == "timing":
+                # Optional and empty by default - an untouched scene composes
+                # exactly as it always did. One line holds the beats AND the
+                # end state (build_motion.split_timing_text), to keep the card
+                # inside the height it already had.
+                edit.setPlaceholderText(
+                    "optional - 0-{0}s: one action; ... ENDS ON: the final pose".format(
+                        max(1, int(scene.get("clip_seconds", 5)) - 1)))
+                edit.setToolTip(
+                    "Timed beats stop the clip drifting: Kling otherwise finishes the "
+                    "action early and invents motion for the rest. One action per beat, "
+                    "covering the whole {}s, then where it ends - e.g. \"0-3s: stalks the "
+                    "toy; 3-5s: pounces ENDS ON: sitting proudly beside it\".".format(
+                        scene.get("clip_seconds", 5)))
             edit.textChanged.connect(
                 lambda text, i=index, k=key: self._on_motion_field_edited(i, k, text))
             form.addRow(label, edit)
@@ -849,6 +863,11 @@ class CatsView(QWidget):
             card.body.addWidget(voice_status)
             self._motion_widgets[index]["voice_status"] = voice_status
 
+    @staticmethod
+    def _timing_kwargs(fields):
+        beats, end_state = bm.split_timing_text(fields.get("timing", ""))
+        return {"beats": beats, "end_state": end_state}
+
     def _on_motion_field_edited(self, index, key, text):
         fields = self.custom_motion.setdefault(index, {})
         fields[key] = text
@@ -857,7 +876,7 @@ class CatsView(QWidget):
         self.scenes[index]["motion_prompt"] = bm.assemble_template(
             self.motion_bank, fields.get("shot_type", ""), fields.get("subject", ""),
             fields.get("action", ""), fields.get("camera_movement", ""),
-            fields.get("style", ""))
+            fields.get("style", ""), **self._timing_kwargs(fields))
         widgets = self._motion_widgets.get(index, {})
         if widgets.get("preview") is not None:
             widgets["preview"].setPlainText(self.scenes[index]["motion_prompt"])

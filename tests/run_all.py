@@ -24,6 +24,13 @@ ORDER = [
     "test_realism_lint.py",
     "test_pet_realism.py",
     "test_capture_bank.py",
+    "test_evidence_bank.py",
+    "test_face_detail.py",
+    "test_scene_light.py",
+    "test_physical.py",
+    "test_snapshot.py",
+    "test_video_realism.py",
+    "test_saved_prompts.py",
     "test_typography_bank.py",
     "test_creative_ad.py",
     "test_motion.py",
@@ -59,14 +66,13 @@ ORDER = [
     "test_camera_angle_bank.py",
     "test_relight.py",
     "test_macro_insert.py",
-    "test_anatomy.py",
-    "test_anatomy_gui.py",
     "test_persona_bank.py",
     "test_voice_bank.py",
     "test_autofill.py",
     "test_autofill_gui.py",
     "test_advisor_gui.py",
     "test_style_gui.py",
+    "test_evidence_gui.py",
     "test_library.py",
     "test_influencer_studio_gui.py",
     "test_ads.py",
@@ -148,6 +154,13 @@ def main(argv):
     # forgets its own setdefault still cannot reach the user's real saved
     # provider/model/theme/window geometry.
     env.setdefault("AIVS_SETTINGS_APP", "Studio-Tests")
+    # And the Prompt Bank: the user's own saved prompts and example images.
+    # Every GUI suite builds a MainWindow, which lists that folder; without
+    # this the layout suite measured whatever the user happened to have saved
+    # (their real example images became its thumbnails), and a suite that
+    # ever exercised Delete would be pointed at real prompts.
+    test_bank = empty_env.parent / "aivs-tests-prompt-bank"
+    env.setdefault("AIVS_PROMPT_BANK_DIR", str(test_bank))
 
     total_ok = total_fail = 0
     failed_suites = []

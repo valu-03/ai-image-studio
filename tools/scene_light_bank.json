@@ -1,0 +1,455 @@
+{
+  "source": "Written for this app. NOT AI Video Bootcamp course material. Found by reading the code: with Compose's Lighting on (auto), build_prompt.select_layers() drew one of prompt_bank.json's nine lighting terms at random by seed with no reference to the Setting, so 'a cocktail bar at night' could be lit by 'golden hour sunlight'. A subject lit one way inside a scene that implies another is the classic pasted-in look.",
+  "version": 1,
+  "note": "Three parts. `places` and `times` NARROW the lighting layer's own pick: each lists `allowed`, a subset of prompt_bank.json's lighting.terms, and build_prompt.select_layers() runs the same weighted pick() over that subset - so history.weights() and every rating keep working, and nothing here ever writes a lighting term the bank does not own (tests/test_scene_light.py asserts it). `source` names the actual light in that place. `surfaces` and `shadows` are the two physical consequences generators leave out: colour picked up from nearby surfaces, and one shadow direction for subject and scene with a contact shadow where they meet. The phrase rides spec['overrides']['scene_light'], a non-layer override appended to the free tail, so it can only add to a realism score. No phrase is written as a refusal - realism_lint.is_negated() would discount the keyword next to it. A place may give a `by_time` source that replaces its default when a time is also named - a street at night is lit by street lamps, not by open sky.",
+  "times": {
+    "night": {
+      "keywords": [
+        "night",
+        "midnight",
+        "nighttime",
+        "after dark",
+        "late evening",
+        "neon-lit",
+        "moonlight",
+        "moonlit"
+      ],
+      "allowed": [
+        "practical lighting",
+        "chiaroscuro lighting",
+        "subtle rim light"
+      ],
+      "source": "the warm practical lights of the place and the cooler glow spilling in from outside",
+      "clashes": [
+        "sunlight",
+        "daylight",
+        "midday",
+        "golden hour",
+        "sunny",
+        "overcast"
+      ]
+    },
+    "golden": {
+      "keywords": [
+        "golden hour",
+        "sunset",
+        "sunrise",
+        "dusk",
+        "late afternoon",
+        "magic hour",
+        "evening sun"
+      ],
+      "allowed": [
+        "golden hour sunlight",
+        "subtle rim light"
+      ],
+      "source": "a low, warm sun raking in from the side",
+      "clashes": [
+        "midday",
+        "overcast",
+        "moonlight"
+      ]
+    },
+    "midday": {
+      "keywords": [
+        "midday",
+        "noon",
+        "high noon",
+        "harsh sun",
+        "bright sun",
+        "sunny",
+        "summer afternoon"
+      ],
+      "allowed": [
+        "harsh midday sunlight",
+        "soft natural daylight"
+      ],
+      "source": "a high sun overhead",
+      "clashes": [
+        "golden hour",
+        "moonlight",
+        "night"
+      ]
+    },
+    "overcast": {
+      "keywords": [
+        "overcast",
+        "cloudy",
+        "grey sky",
+        "gray sky",
+        "rainy",
+        "rain",
+        "drizzle",
+        "fog",
+        "foggy",
+        "misty"
+      ],
+      "allowed": [
+        "overcast daylight",
+        "soft natural daylight"
+      ],
+      "source": "a bright, even sky diffused by cloud",
+      "clashes": [
+        "harsh midday sunlight",
+        "golden hour",
+        "hard sun"
+      ]
+    },
+    "morning": {
+      "keywords": [
+        "morning",
+        "dawn",
+        "early light",
+        "breakfast",
+        "mid-morning"
+      ],
+      "allowed": [
+        "soft natural daylight",
+        "soft window light",
+        "golden hour sunlight"
+      ],
+      "source": "clean, cool early daylight",
+      "clashes": [
+        "midday",
+        "moonlight",
+        "night"
+      ]
+    }
+  },
+  "places": {
+    "bar": {
+      "keywords": [
+        "bar",
+        "pub",
+        "club",
+        "nightclub",
+        "lounge",
+        "speakeasy",
+        "cocktail"
+      ],
+      "allowed": [
+        "practical lighting",
+        "chiaroscuro lighting",
+        "subtle rim light"
+      ],
+      "source": "the warm pendant lamps over the bar and the glow of the back shelf"
+    },
+    "candlelit": {
+      "keywords": [
+        "candle",
+        "candles",
+        "candlelit",
+        "candle-lit",
+        "fireplace",
+        "campfire",
+        "bonfire",
+        "firelight"
+      ],
+      "allowed": [
+        "practical lighting",
+        "chiaroscuro lighting"
+      ],
+      "source": "a low, warm, flickering flame close to the subject"
+    },
+    "street": {
+      "keywords": [
+        "street",
+        "alley",
+        "sidewalk",
+        "crosswalk",
+        "city street",
+        "downtown",
+        "parking lot",
+        "bus stop"
+      ],
+      "allowed": [
+        "practical lighting",
+        "subtle rim light",
+        "soft natural daylight",
+        "overcast daylight",
+        "golden hour sunlight",
+        "harsh midday sunlight"
+      ],
+      "source": "open sky above the street, bouncing off the buildings",
+      "by_time": {
+        "night": "street lamps overhead and the glow of shop windows, pooling light on the pavement",
+        "golden": "a low sun raking down the street between the buildings"
+      }
+    },
+    "studio": {
+      "keywords": [
+        "studio",
+        "seamless backdrop",
+        "backdrop",
+        "photo studio",
+        "cyclorama",
+        "plain background",
+        "gray background",
+        "grey background",
+        "white background"
+      ],
+      "allowed": [
+        "studio softbox lighting",
+        "subtle rim light",
+        "chiaroscuro lighting"
+      ],
+      "source": "a large softbox key just off camera"
+    },
+    "window-interior": {
+      "keywords": [
+        "window",
+        "kitchen",
+        "bedroom",
+        "living room",
+        "apartment",
+        "cafe",
+        "café",
+        "coffee shop",
+        "bookshop",
+        "library",
+        "loft",
+        "bathroom"
+      ],
+      "allowed": [
+        "soft window light",
+        "soft natural daylight",
+        "practical lighting"
+      ],
+      "source": "daylight from the nearest window, falling off across the room",
+      "by_time": {
+        "night": "warm table and floor lamps inside, the windows dark",
+        "golden": "low, warm sun slanting in through the window"
+      }
+    },
+    "office": {
+      "keywords": [
+        "office",
+        "desk",
+        "cubicle",
+        "meeting room",
+        "conference room",
+        "classroom",
+        "hospital",
+        "corridor",
+        "hallway"
+      ],
+      "allowed": [
+        "practical lighting",
+        "soft window light",
+        "soft natural daylight"
+      ],
+      "source": "overhead office lighting mixed with daylight from the windows",
+      "by_time": {
+        "night": "overhead office lighting and the glow of desk lamps, the windows dark"
+      }
+    },
+    "forest": {
+      "keywords": [
+        "forest",
+        "woods",
+        "woodland",
+        "jungle",
+        "trees",
+        "park",
+        "garden",
+        "orchard",
+        "meadow"
+      ],
+      "allowed": [
+        "soft natural daylight",
+        "golden hour sunlight",
+        "overcast daylight"
+      ],
+      "source": "sun filtered through the leaves, dappling the ground",
+      "by_time": {
+        "golden": "low sun breaking through the trunks in long shafts",
+        "overcast": "soft, even skylight under the canopy"
+      }
+    },
+    "beach": {
+      "keywords": [
+        "beach",
+        "shore",
+        "seaside",
+        "coast",
+        "ocean",
+        "sea",
+        "pier",
+        "boardwalk",
+        "pool",
+        "poolside"
+      ],
+      "allowed": [
+        "harsh midday sunlight",
+        "golden hour sunlight",
+        "soft natural daylight",
+        "overcast daylight"
+      ],
+      "source": "the open sky and the sun off the water",
+      "by_time": {
+        "golden": "a low sun over the water, warm and raking",
+        "night": "the glow of the boardwalk lights and a pale moon over the water"
+      }
+    },
+    "snow": {
+      "keywords": [
+        "snow",
+        "snowy",
+        "ski",
+        "slope",
+        "glacier",
+        "winter field",
+        "frozen"
+      ],
+      "allowed": [
+        "overcast daylight",
+        "soft natural daylight",
+        "harsh midday sunlight"
+      ],
+      "source": "bright, cool light from the sky bouncing up off the snow"
+    },
+    "desert": {
+      "keywords": [
+        "desert",
+        "dunes",
+        "canyon",
+        "savanna",
+        "mesa"
+      ],
+      "allowed": [
+        "harsh midday sunlight",
+        "golden hour sunlight"
+      ],
+      "source": "a strong sun with nothing to soften it"
+    }
+  },
+  "surfaces": {
+    "wood": {
+      "keywords": [
+        "wood",
+        "wooden",
+        "oak",
+        "walnut",
+        "timber",
+        "parquet",
+        "floorboards"
+      ],
+      "phrase": "warm bounce light off the wooden surfaces lifting the shadows with a faint amber tint"
+    },
+    "grass": {
+      "keywords": [
+        "grass",
+        "lawn",
+        "meadow",
+        "field",
+        "park"
+      ],
+      "phrase": "a faint green tint in the shadows from light bouncing off the grass"
+    },
+    "brick": {
+      "keywords": [
+        "brick",
+        "terracotta"
+      ],
+      "phrase": "a warm reddish spill from the brick walls on the near side of the face"
+    },
+    "snow": {
+      "keywords": [
+        "snow",
+        "snowy",
+        "ice",
+        "frozen"
+      ],
+      "phrase": "cool light bouncing up off the snow, filling under the chin and brows"
+    },
+    "sand": {
+      "keywords": [
+        "sand",
+        "sandy",
+        "dunes",
+        "beach"
+      ],
+      "phrase": "warm light reflected up off the sand, softening the shadows under the chin"
+    },
+    "water": {
+      "keywords": [
+        "water",
+        "pool",
+        "sea",
+        "ocean",
+        "lake",
+        "river",
+        "wet"
+      ],
+      "phrase": "faint moving reflections from the water playing across the skin"
+    },
+    "concrete": {
+      "keywords": [
+        "concrete",
+        "pavement",
+        "asphalt",
+        "tarmac",
+        "stone",
+        "marble"
+      ],
+      "phrase": "a neutral grey bounce off the hard ground, flat and cool in the shadows"
+    },
+    "neon": {
+      "keywords": [
+        "neon",
+        "led sign",
+        "signage",
+        "sign glow"
+      ],
+      "phrase": "a coloured spill from the neon sign along one side of the face and hair"
+    },
+    "fire": {
+      "keywords": [
+        "candle",
+        "candles",
+        "candlelit",
+        "fireplace",
+        "campfire",
+        "bonfire",
+        "firelight"
+      ],
+      "phrase": "a warm orange flicker on the skin, strongest on the side nearest the flame"
+    },
+    "foliage": {
+      "keywords": [
+        "leaves",
+        "trees",
+        "forest",
+        "woods",
+        "jungle",
+        "foliage",
+        "garden"
+      ],
+      "phrase": "a soft green cast in the shade under the trees"
+    },
+    "screen": {
+      "keywords": [
+        "laptop",
+        "screen",
+        "monitor",
+        "phone screen",
+        "tv",
+        "television"
+      ],
+      "phrase": "a cool blue glow from the screen on the face"
+    }
+  },
+  "shadows": {
+    "coherence": [
+      "the subject's shadow falling in the same direction as every other shadow in the scene",
+      "one consistent light direction across the subject and the background, shadows agreeing",
+      "shadows on the subject and the surroundings cast by the same source, at the same angle"
+    ],
+    "contact": [
+      "a soft contact shadow where the subject meets the surface beneath them",
+      "a dark, soft-edged contact shadow where hands and feet touch the surfaces they rest on",
+      "a grounded contact shadow under the subject, darkest right where they touch"
+    ]
+  },
+  "max_surfaces": 2
+}

@@ -1,6 +1,6 @@
 {
   "source": "AI Video Bootcamp - Phase 2 ARCHITECT - Lesson 20: Creating More Realistic Avatars",
-  "version": 12,
+  "version": 13,
   "default_model": "Nano Banana Pro",
   "layers": {
     "core": {
@@ -160,7 +160,12 @@
       "harmonic-armature": {
         "label": "Harmonic Armature",
         "phrase": "harmonic armature composition, the subject placed where the frame's diagonals and reciprocals cross",
-        "note": "The most structured of the seven. The weakest signal to an image model - judge the result, do not assume it landed."
+        "note": "The most structured of the guides. The weakest signal to an image model - judge the result, do not assume it landed."
+      },
+      "dynamic-symmetry": {
+        "label": "Dynamic Symmetry",
+        "phrase": "dynamic symmetry composition, the subject's lines and gestures running parallel to the frame's diagonal with a reciprocal line crossing it at a right angle, energetic rather than mirrored or centred",
+        "note": "Hambidge's grid. A close cousin of the harmonic armature, but about aligning angles rather than landing on a point. 'Symmetry' is misleading - nothing is mirrored. As weak a signal as the armature: judge the result."
       }
     }
   },

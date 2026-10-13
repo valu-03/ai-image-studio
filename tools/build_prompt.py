@@ -15,9 +15,19 @@ Standard library only. No API keys, no network.
 import argparse
 import json
 import random
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import build_contact as bct  # noqa: E402
+import build_evidence as bev  # noqa: E402
+import build_face_detail as bfd  # noqa: E402
+import build_material as bmt  # noqa: E402
+import build_scene_light as bsl  # noqa: E402
+import build_snapshot as bsn  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 BANK_PATH = Path(__file__).resolve().parent / "prompt_bank.json"
@@ -29,6 +39,205 @@ LAYER_ORDER = ["core", "camera", "lens", "lighting", "texture", "colour", "compo
 def load_bank():
     with BANK_PATH.open(encoding="utf-8") as fh:
         return json.load(fh)
+
+
+_SCENE_LIGHT_BANK = None
+
+
+def _scene_light_bank():
+    global _SCENE_LIGHT_BANK
+    if _SCENE_LIGHT_BANK is None:
+        _SCENE_LIGHT_BANK = bsl.load_bank()
+    return _SCENE_LIGHT_BANK
+
+
+_FACE_BANK = None
+_EVIDENCE_BANK = None
+
+
+def _face_bank():
+    global _FACE_BANK
+    if _FACE_BANK is None:
+        _FACE_BANK = bfd.load_bank()
+    return _FACE_BANK
+
+
+def _evidence_bank():
+    global _EVIDENCE_BANK
+    if _EVIDENCE_BANK is None:
+        _EVIDENCE_BANK = bev.load_bank()
+    return _EVIDENCE_BANK
+
+
+def apply_subject_detail(spec):
+    """Resolve the `face_detail` and `lived_in` flags against THIS spec.
+
+    Resolved here, at compose time, rather than by the form that set the
+    flag: Variants copies one spec and changes its seed or its shot, and a
+    detail baked in beforehand would give every seed the same details and a
+    full-body angle the close-up's pores. After apply_purpose(), so a shot
+    the purpose supplies picks the tier too.
+
+    Both land as non-layer overrides (free tail, additive). An explicit
+    overrides["face_detail"] or overrides["evidence"] already present wins -
+    a deliberate pick is never replaced by an automatic one.
+    """
+    if not (spec.get("face_detail") or spec.get("lived_in")):
+        return spec
+    overrides = dict(spec.get("overrides") or {})
+    kind = bev.subject_kind(_evidence_bank(), spec.get("subject", ""))
+    if spec.get("face_detail") and "face_detail" not in overrides:
+        phrase, _tier, _kind = bfd.face_detail(
+            _face_bank(), spec.get("subject", ""), spec.get("shot", ""),
+            spec.get("shot_custom", ""), spec.get("seed", 0), kind=kind)
+        if phrase:
+            overrides["face_detail"] = [phrase]
+    if spec.get("lived_in") and "evidence" not in overrides and "evidence_auto" not in overrides:
+        phrase, _warnings = bev.compose_evidence(
+            _evidence_bank(), kind, seed=spec.get("seed", 0))
+        if phrase:
+            overrides["evidence_auto"] = [phrase]
+    merged = dict(spec)
+    merged["overrides"] = overrides
+    return merged
+
+
+def apply_scene_light(spec):
+    """With `scene_lighting` set, add the scene's light physics to the tail.
+
+    Source, bounce and shadows ride overrides["scene_light"] - a non-layer
+    override, so free_overrides() appends it and it can only ADD to a realism
+    score. When the lighting layer was chosen explicitly the source is left
+    out (naming a second light would contradict it); bounce and shadows are
+    physics and hold under any light. A caller that already set
+    overrides["scene_light"] wins. Without the flag the spec is returned as is.
+    """
+    if not spec.get("scene_lighting"):
+        return spec
+    overrides = dict(spec.get("overrides") or {})
+    if "scene_light" in overrides:
+        return spec
+    phrase, _place, _time = bsl.scene_light(
+        _scene_light_bank(), spec.get("setting", ""), spec.get("seed", 0),
+        include_source="lighting" not in overrides)
+    if not phrase:
+        return spec
+    overrides["scene_light"] = [phrase]
+    merged = dict(spec)
+    merged["overrides"] = overrides
+    return merged
+
+
+_CONTACT_BANK = None
+_MATERIAL_BANK = None
+_GENERIC_MATERIAL = None
+
+
+def _contact_bank():
+    global _CONTACT_BANK
+    if _CONTACT_BANK is None:
+        _CONTACT_BANK = bct.load_bank()
+    return _CONTACT_BANK
+
+
+def _material_bank():
+    global _MATERIAL_BANK
+    if _MATERIAL_BANK is None:
+        _MATERIAL_BANK = bmt.load_bank()
+    return _MATERIAL_BANK
+
+
+def _generic_material():
+    global _GENERIC_MATERIAL
+    if _GENERIC_MATERIAL is None:
+        _GENERIC_MATERIAL = bmt.generic_phrase(_material_bank())
+    return _GENERIC_MATERIAL
+
+
+def apply_physical(spec):
+    """Resolve the `contact_detail` and `material_detail` flags against THIS spec.
+
+    Weight and contact (build_contact) and the scene's own materials
+    (build_material), read from the spec's text at compose time like the
+    other realism flags, so a Variants seed gets its own default. Both land as
+    non-layer overrides (free tail, additive); an explicit overrides["contact"]
+    or overrides["material"] already present wins.
+
+    When materials matched, lighting_bank.json's generic "material response"
+    technique is taken out of an explicit lighting choice - the specific lines
+    replace it, rather than the prompt saying the same thing twice.
+    """
+    if not (spec.get("contact_detail") or spec.get("material_detail")):
+        return spec
+    overrides = dict(spec.get("overrides") or {})
+    if spec.get("contact_detail") and "contact" not in overrides:
+        kind = bev.subject_kind(_evidence_bank(), spec.get("subject", ""))
+        phrase, _keys = bct.read_contact(_contact_bank(), spec, kind=kind)
+        if phrase:
+            overrides["contact"] = [phrase]
+    if spec.get("material_detail") and "material" not in overrides:
+        phrase, _keys = bmt.read_materials(_material_bank(), spec)
+        if phrase:
+            overrides["material"] = [phrase]
+            generic = _generic_material()
+            lighting = overrides.get("lighting")
+            if isinstance(lighting, str):
+                lighting = [lighting]
+            if lighting and any(generic in str(t) for t in lighting):
+                kept = [bmt.without_generic(str(t), generic) for t in lighting]
+                kept = [t for t in kept if t]
+                if kept:
+                    overrides["lighting"] = kept
+                else:
+                    overrides.pop("lighting")
+    merged = dict(spec)
+    merged["overrides"] = overrides
+    return merged
+
+
+_SNAPSHOT_BANK = None
+
+
+def _snapshot_bank():
+    global _SNAPSHOT_BANK
+    if _SNAPSHOT_BANK is None:
+        _SNAPSHOT_BANK = bsn.load_bank()
+    return _SNAPSHOT_BANK
+
+
+def apply_snapshot(bank, spec):
+    """Resolve the `snapshot`, `background_life` and `moment` flags (build_snapshot).
+
+    `snapshot`, when nothing deliberate chose the look: camera and lens from
+    the bank's own phone preset (as overrides), `_phone_snapshot` so
+    select_layers() drops the core pick's cinema words, and a "who took it"
+    line. The other two add a line each. All lines are non-layer overrides
+    on the free tail; an explicit one already present wins.
+    """
+    if not (spec.get("snapshot") or spec.get("background_life") or spec.get("moment")):
+        return spec
+    sb = _snapshot_bank()
+    overrides = dict(spec.get("overrides") or {})
+    merged = dict(spec)
+    kind = bev.subject_kind(_evidence_bank(), spec.get("subject", ""))
+    seed = spec.get("seed", 0)
+    if spec.get("snapshot") and "snapshot" not in overrides:
+        mode = bsn.snapshot_mode(sb, spec, custom_shot=bool(custom_shot(spec)))
+        if mode != "skip":
+            if mode == "phone":
+                overrides.update(bsn.phone_layers(sb, bank))
+            merged["_phone_snapshot"] = True
+            overrides["snapshot"] = [bsn.who_line(sb, kind, seed, mode)]
+    if spec.get("background_life") and "background" not in overrides:
+        phrase, _place = bsn.background_line(sb, spec)
+        if phrase:
+            overrides["background"] = [phrase]
+    if spec.get("moment") and "moment" not in overrides:
+        phrase, _key = bsn.moment_line(sb, spec, kind)
+        if phrase:
+            overrides["moment"] = [phrase]
+    merged["overrides"] = overrides
+    return merged
 
 
 def pick(rng, terms, count, weights=None):
@@ -77,6 +286,21 @@ def custom_purpose(spec):
     return str(spec.get("purpose_custom") or "").strip()
 
 
+SKIN_WORDS = re.compile(r"\b(skin|pores?)\b", re.IGNORECASE)
+# A focal length or a named lens - "100mm macro lens", "85 mm" - in a typed shot.
+TYPED_LENS = re.compile(r"\b\d{2,3}\s?mm\b|\blens\b|\bmacro\b", re.IGNORECASE)
+FOCAL_TERM = re.compile(r"\d+mm", re.IGNORECASE)
+
+
+def _kind(spec):
+    """The subject's kind ('human', 'animal', 'object', 'place') - an explicit
+    spec["subject_kind"] wins ("person" is human), else read from the Subject."""
+    explicit = spec.get("subject_kind")
+    if explicit:
+        return "human" if explicit == "person" else explicit
+    return bev.subject_kind(_evidence_bank(), spec.get("subject", ""))
+
+
 def select_layers(bank, spec, rng, weights=None):
     """Choose the vocabulary for each of the eight layers.
 
@@ -99,10 +323,39 @@ def select_layers(bank, spec, rng, weights=None):
             selected[name] = [value] if isinstance(value, str) else list(value)
             continue
         cfg = layers[name]
+        terms = cfg["terms"]
+        # Scene-matched light: on auto, narrow the lighting pick to the terms
+        # the Setting allows (a bar at night never draws golden hour). It is
+        # the same weighted pick over a subset of the bank's own terms, so
+        # ratings still steer it - and a spec without the flag is untouched.
+        if name == "lighting" and spec.get("scene_lighting"):
+            terms = bsl.allowed_terms(_scene_light_bank(), spec.get("setting", ""), terms)
+        # A phone snapshot is not a cinema frame: same weighted pick, minus
+        # the core and grain words that pull toward a polished film look.
+        if spec.get("_phone_snapshot"):
+            skip = set(_snapshot_bank()["snapshot"]["layer_skip"].get(name, []))
+            terms = [t for t in terms if t not in skip] or terms
+        # Skin and pores are human: on a cat, a bottle or a street they are
+        # wrong words (realism_lint bans them on an animal outright). Same
+        # weighted pick over the remaining core / texture terms.
+        # A typed shot that names its own lens ("100mm macro lens") owns the
+        # focal length: drawing "shot on a 35mm lens" as well would put two
+        # lenses in one prompt. Depth of field and bokeh terms still apply.
+        if name == "lens" and TYPED_LENS.search(custom_shot(spec)):
+            terms = [t for t in terms if not FOCAL_TERM.search(t)] or terms
+        # A close shot - a beauty portrait, a macro, a headshot - is lit
+        # softly; chiaroscuro or harsh noon sun hides exactly the skin and eye
+        # detail the close tier asks for (face_detail_bank.json).
+        if name == "lighting" and bfd.shot_tier(
+                _face_bank(), spec.get("shot", ""), custom_shot(spec)) == "close":
+            skip = set(_face_bank()["shot_tiers"].get("close_lighting_skip", []))
+            terms = [t for t in terms if t not in skip] or terms
+        if name in ("core", "texture") and _kind(spec) != "human":
+            terms = [t for t in terms if not SKIN_WORDS.search(t)] or terms
         # `always` terms are appended only when we chose the layer ourselves —
         # an override or preset is taken as authoritative.
         selected[name] = (
-            pick(rng, cfg["terms"], cfg.get("pick", 2), weights) + cfg.get("always", [])
+            pick(rng, terms, cfg.get("pick", 2), weights) + cfg.get("always", [])
         )
 
     selected["camera"] = apply_custom_shot(bank, spec, selected["camera"])
@@ -362,7 +615,7 @@ def anatomy_guard_tail(bank):
     no plastic skin. None of its seven entries says anything about the body,
     and the body is where a generated image is most often caught: a sixth
     finger, a hand that melts into a sleeve, a second copy of the subject in
-    the background. anatomy_bank.json has carried this vocabulary all along
+    the background. A since-removed template bank carried this vocabulary
     ("no warped face, no floating limbs, no distorted hands, no morphing"),
     but only inside one template's own guard slot, and motion_bank.json has
     its own version for video - so of the three paths that compose a prompt,
@@ -459,6 +712,10 @@ def compose(bank, spec, detailed=False, weights=None, anatomy_guard=False):
     """
     spec = apply_purpose(bank, spec)
     spec = apply_variation(spec)
+    spec = apply_subject_detail(spec)
+    spec = apply_scene_light(spec)
+    spec = apply_physical(spec)
+    spec = apply_snapshot(bank, spec)
     rng = random.Random(spec.get("seed", 0))
     selected, preset = select_layers(bank, spec, rng, weights)
     prompt = (
@@ -534,7 +791,8 @@ def parse_args(argv):
     p.add_argument(
         "--composition-guide", dest="composition_guide",
         help="optional framing geometry: rule-of-thirds, phi-grid, diagonals, triangle, "
-             "golden-ratio, golden-spiral, harmonic-armature. Pins the first composition "
+             "golden-ratio, golden-spiral, harmonic-armature, dynamic-symmetry. Pins the "
+             "first composition "
              "slot; the bank fills the rest.",
     )
     p.add_argument(

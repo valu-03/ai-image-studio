@@ -620,6 +620,21 @@ def compose_story(bank, base_spec, arc=None, seconds=None, clip_length=None,
         spec = scene_spec(bank, beat_key, occurrence, scene_base, style,
                           reference=reference if (reference and index > 0) else None,
                           fmt=fmt, trade=trade, cast=cast)
+        # Photoreal scenes take their light from their own setting - each
+        # scene can move (kitchen at dawn, alley at night) and a random pick
+        # would light them all the same arbitrary way. Stylised scenes keep
+        # the look their style block sets. A caller's explicit flag wins.
+        if style == "photoreal":
+            spec.setdefault("scene_lighting", True)
+            # Same reasoning for weight and materials: read from each
+            # scene's own text (build_prompt.apply_physical).
+            spec.setdefault("contact_detail", True)
+            spec.setdefault("material_detail", True)
+            # The viral phone-video look: a background nobody staged and a
+            # split second, not a pose. The phone camera itself is left to
+            # the style, which already names how each scene is shot.
+            spec.setdefault("background_life", True)
+            spec.setdefault("moment", True)
         prompt, layers = bp.compose(image_bank, spec)
 
         # What realism_lint makes of this still, recorded as a fact rather than
@@ -638,12 +653,17 @@ def compose_story(bank, base_spec, arc=None, seconds=None, clip_length=None,
             movement = "locked-off"
             motion = "{} {}, {}".format(
                 camera["lead"], spec.get("subject", "the subject"), camera["detail"])
+            # Photoreal takes also say how things really move: planted weight,
+            # follow-through, real-time speed (build_motion.real_motion_line).
+            if style == "photoreal":
+                motion += ", " + bm.real_motion_line(motion_bank, spec.get("subject", ""), movement)
             warnings = []
         else:
             movement = movement_for(bank, beat_key, occurrence, fmt)
             motion, warnings = "", []
             if movement in motion_bank.get("movements", {}):
-                motion, _ = bm.compose(motion_bank, movement, spec)
+                motion, _ = bm.compose(motion_bank, movement, spec,
+                                       real_motion=style == "photoreal")
                 warnings = bm.check_compatibility(motion_bank, movement, spec)
 
         scene = {

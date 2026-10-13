@@ -11,11 +11,39 @@ from PyQt6.QtWidgets import QGraphicsDropShadowEffect
 
 from . import tokens as T
 
+# Styling QComboBox::drop-down (below) switches off Qt's native arrow - a
+# styled sub-control is drawn entirely from the sheet, and the sheet never
+# named an arrow image, so every combo in the app rendered as a plain text box
+# with no sign it could drop down at all. The chevron is written per colour,
+# because a stylesheet `image:` cannot be tinted.
+_CHEVRON = (
+    '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12">'
+    '<path d="M2.5 4.5 L6 8 L9.5 4.5" fill="none" stroke="{}" stroke-width="1.6" '
+    'stroke-linecap="round" stroke-linejoin="round"/></svg>')
+
+
+def _chevron_url(colour):
+    """A stylesheet url() for a down-chevron in `colour`, or "" if it cannot
+    be written (the combo then just shows no arrow, as before - never a crash).
+    Written to the temp folder, not assets/, so a read-only install still works."""
+    import tempfile
+    from pathlib import Path
+    name = "aivs-chevron-{}.svg".format(colour.lstrip("#").lower())
+    path = Path(tempfile.gettempdir()) / name
+    try:
+        if not path.exists():
+            path.write_text(_CHEVRON.format(colour), encoding="utf-8")
+    except OSError:
+        return ""
+    return "url({})".format(path.as_posix())
+
 
 def build_qss(c):
     """Return a full stylesheet for the palette `c`."""
     r, s = T.RADIUS, T.SPACE
     card_pad = T.CARD_PADDING
+    arrow = _chevron_url(c['text_muted'])
+    arrow_hover = _chevron_url(c['text'])
     return f"""
 /* --- base ------------------------------------------------------------- */
 QWidget {{
@@ -205,7 +233,15 @@ QLineEdit:disabled, QPlainTextEdit:disabled, QSpinBox:disabled, QComboBox:disabl
     background: {c['bg']}; color: {c['text_muted']};
 }}
 QPlainTextEdit[class="mono"] {{ font-family: {T.FONT_MONO}; font-size: 13px; }}
-QComboBox::drop-down {{ border: none; width: 22px; }}
+QComboBox {{ padding-right: 26px; }}
+QComboBox::drop-down {{
+    subcontrol-origin: padding;
+    subcontrol-position: center right;
+    border: none;
+    width: 24px;
+}}
+QComboBox::down-arrow {{ image: {arrow}; width: 12px; height: 12px; }}
+QComboBox::down-arrow:hover, QComboBox::down-arrow:on {{ image: {arrow_hover}; }}
 QComboBox QAbstractItemView {{
     background: {c['surface']};
     border: 1px solid {c['outline_variant']};

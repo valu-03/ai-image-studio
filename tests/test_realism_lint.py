@@ -190,11 +190,6 @@ check("a banned term fails the banned row", not banned_rows[8]["passed"])
 check("and 'no 3d render' does not", rl.checks_for("photorealistic, no 3d render", BANK)[8]["passed"])
 
 
-print()
-print("=== THE MATCHING RULE LIVES IN ONE PLACE ===")
-import prompt_anatomy as pa  # noqa: E402
-check("prompt_anatomy reuses realism_lint's positions rather than mirroring them",
-      pa._key_positions is rl._key_positions)
 
 
 print()

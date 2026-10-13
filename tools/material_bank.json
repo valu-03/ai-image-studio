@@ -1,0 +1,146 @@
+{
+  "source": "Written for this project, NOT AI Video Bootcamp material: how specific materials and foods actually respond to light - refraction, glaze highlights, condensation, translucency, grease sheen, uneven browning. Replaces lighting_bank.json's one generic 'material response' sentence with the materials the scene really contains.",
+  "version": 1,
+  "note": "Read from Subject, Wardrobe, Setting and Action (build_material.py). Each material is matched by whole-word keywords; matches are used in the order the text mentions them, at most `max_phrases`. `excludes` drops another match that would contradict this one - iced coffee is cold, so it never gets the coffee's rising steam. A `weak` entry names a shape, not a material (a bowl can be steel, glass or clay): it counts as ceramic only when nothing else in the text names a material, so 'a metal bowl' is metal alone. No match gives nothing - a phrase about a material the scene does not contain is worse than none. When something matched, build_prompt removes lighting_bank.json's generic `material-response` sentence from an explicit lighting choice, so the prompt never says the same thing twice. Wood here is GRAIN only: the warm bounce off wood belongs to scene_light_bank.json.",
+  "max_phrases": 2,
+  "generic_technique": "material-response",
+  "materials": {
+    "eyeglasses": {
+      "label": "Glasses (eyewear)",
+      "keywords": ["glasses", "eyeglasses", "spectacles", "sunglasses"],
+      "phrase": "the lenses of the glasses catching a small reflection of their surroundings and faintly bending the view behind them"
+    },
+    "cold_drink": {
+      "label": "Cold drink / condensation",
+      "keywords": ["iced", "ice cubes", "cold drink", "soda", "beer", "lemonade", "smoothie", "condensation"],
+      "excludes": ["coffee", "soup"],
+      "phrase": "condensation beading on the cold glass, a few droplets running down and pooling at its base"
+    },
+    "glass": {
+      "label": "Glass",
+      "keywords": ["glass", "wine", "jar", "perfume", "tumbler", "decanter"],
+      "phrase": "the glass refracting and slightly bending what sits behind it, a crisp highlight running along its rim"
+    },
+    "coffee": {
+      "label": "Coffee / tea",
+      "keywords": ["coffee", "espresso", "latte", "cappuccino", "tea"],
+      "phrase": "a thin curl of steam rising off the coffee, a soft highlight sliding across its surface"
+    },
+    "ceramic": {
+      "label": "Ceramic / porcelain",
+      "keywords": ["mug", "ceramic", "porcelain", "teapot", "pottery"],
+      "phrase": "the glazed ceramic holding a soft, rounded highlight of the light source, the glaze slightly uneven"
+    },
+    "vessel": {
+      "label": "Bowl / cup / plate",
+      "keywords": ["bowl", "bowls", "cup", "cups", "plate", "plates", "vase"],
+      "weak": true,
+      "phrase": "the glazed ceramic holding a soft, rounded highlight of the light source, the glaze slightly uneven"
+    },
+    "metal": {
+      "label": "Metal",
+      "keywords": ["metal", "metallic", "steel", "stainless", "chrome", "aluminium", "aluminum", "iron", "brass", "copper", "cutlery", "spoon", "fork", "knife"],
+      "phrase": "the metal reflecting a warped, darkened version of its surroundings, highlights small and sharp"
+    },
+    "jewellery": {
+      "label": "Jewellery / gold / silver",
+      "keywords": ["gold", "silver", "jewellery", "jewelry", "necklace", "earrings", "earring", "bracelet", "ring", "rings", "pendant"],
+      "phrase": "small, intense glints on the jewellery that shift with the angle, the metal slightly dulled where it is worn most"
+    },
+    "leather": {
+      "label": "Leather / suede",
+      "keywords": ["leather", "suede"],
+      "phrase": "the leather creased at the bends, a soft sheen on the raised grain and duller hollows in the creases"
+    },
+    "silk": {
+      "label": "Silk / satin",
+      "keywords": ["silk", "silky", "satin"],
+      "phrase": "the silk throwing long, liquid highlights that ripple along each fold"
+    },
+    "sheer": {
+      "label": "Thin fabric / linen / sheer",
+      "keywords": ["linen", "sheer", "chiffon", "organza", "voile", "lace", "curtains", "curtain"],
+      "phrase": "the thin fabric letting light through where it is backlit, glowing softly at the edges with the weave faintly visible"
+    },
+    "knit": {
+      "label": "Wool / knit",
+      "keywords": ["wool", "woollen", "woolen", "knit", "knitted", "sweater", "jumper", "cardigan", "cashmere", "fleece", "mohair"],
+      "phrase": "the knit's fibres catching the light as a faint fuzzy halo along the edges, each stitch casting its own tiny shadow"
+    },
+    "denim": {
+      "label": "Denim",
+      "keywords": ["denim", "jeans"],
+      "phrase": "the denim's twill weave visible in the light, faded paler along the seams and raised creases"
+    },
+    "plastic": {
+      "label": "Plastic",
+      "keywords": ["plastic"],
+      "phrase": "the plastic showing a soft, slightly milky sheen, faint scuffs catching the light"
+    },
+    "paper": {
+      "label": "Paper / books",
+      "keywords": ["paper", "book", "books", "notebook", "magazine", "newspaper", "letter", "pages", "cardboard"],
+      "phrase": "the paper's matte surface absorbing the light, its edges slightly curled and the fibres just visible"
+    },
+    "stone": {
+      "label": "Stone / marble",
+      "keywords": ["marble", "granite", "stone", "slate", "terrazzo"],
+      "phrase": "the stone's veining and fine pits catching the light unevenly, polished areas holding a soft, blurred reflection"
+    },
+    "wood_grain": {
+      "label": "Wood grain",
+      "keywords": ["wood", "wooden", "oak", "walnut", "timber", "teak"],
+      "phrase": "the wood's grain and pores visible where the light rakes across it, worn smoother and darker where hands touch it most"
+    },
+    "wet": {
+      "label": "Wet surfaces / rain",
+      "keywords": ["wet", "rain", "rainy", "raindrops", "drizzle", "dripping", "damp"],
+      "phrase": "wet surfaces turning darker and glossier, water beading into small droplets with tiny bright highlights"
+    },
+    "ice_cream": {
+      "label": "Ice cream",
+      "keywords": ["ice cream", "gelato", "sorbet"],
+      "phrase": "the ice cream starting to melt at the base, a glossy drip running down the side"
+    },
+    "bread": {
+      "label": "Bread / pastry",
+      "keywords": ["bread", "croissant", "croissants", "pastry", "pastries", "toast", "bagel", "baguette", "sourdough"],
+      "phrase": "the crust browned unevenly, darker at the edges, flaky crumbs scattered beside it"
+    },
+    "baked_sweet": {
+      "label": "Cake / cookies",
+      "keywords": ["cake", "cupcake", "cookie", "cookies", "muffin", "donut", "doughnut", "brownie", "pie"],
+      "phrase": "crumbs and a slightly uneven, hand-made finish, the frosting smeared where the knife passed"
+    },
+    "pizza": {
+      "label": "Pizza / melted cheese",
+      "keywords": ["pizza", "cheese", "lasagna", "lasagne", "nachos"],
+      "phrase": "the melted cheese glistening with a thin sheen of oil, blistered and browned in uneven spots"
+    },
+    "grilled": {
+      "label": "Grilled meat",
+      "keywords": ["steak", "burger", "grilled", "bbq", "barbecue", "meat", "chicken", "sausage", "sausages", "ribs"],
+      "phrase": "a glossy fat sheen on the grilled surface, char marks uneven in depth and colour"
+    },
+    "chocolate": {
+      "label": "Chocolate",
+      "keywords": ["chocolate", "cocoa", "truffle", "truffles"],
+      "phrase": "the chocolate's soft satin sheen, slightly melted and smudged where it has been touched"
+    },
+    "soup": {
+      "label": "Soup / sauce",
+      "keywords": ["soup", "ramen", "curry", "stew", "broth", "sauce", "pasta"],
+      "phrase": "tiny droplets of oil catching the light on the surface, steam softening the air above it"
+    },
+    "fruit": {
+      "label": "Fruit",
+      "keywords": ["fruit", "fruits", "apple", "apples", "oranges", "lemons", "strawberry", "strawberries", "grapes", "berries", "banana", "bananas", "peaches", "cherries"],
+      "phrase": "the fruit's waxy peel holding small, soft highlights, with natural blemishes and slight bruising"
+    },
+    "salad": {
+      "label": "Salad / vegetables",
+      "keywords": ["salad", "vegetables", "veggies", "lettuce", "tomato", "tomatoes", "herbs", "greens"],
+      "phrase": "the leaves crisp with a few droplets of dressing, edges slightly wilted and uneven"
+    }
+  }
+}

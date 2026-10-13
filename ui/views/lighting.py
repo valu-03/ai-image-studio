@@ -39,6 +39,7 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
 import build_lighting as bl  # noqa: E402
+import build_scene_light as bsl  # noqa: E402
 
 from .. import assets, tokens as T  # noqa: E402
 from ..widgets import Badge, Card, MutedLabel, TitleLabel  # noqa: E402
@@ -55,7 +56,11 @@ class LightingView(QWidget):
     def __init__(self, palette=None, parent=None):
         super().__init__(parent)
         self.bank = bl.load_bank()
+        self.scene_bank = bsl.load_bank()
         self._palette = palette or {}
+        # () -> the Compose spec, wired by MainWindow - the same seam Videos
+        # and Ads already use. Left None, the scene line just stays empty.
+        self.context = None
         self.setup_ui()
         self.rebuild_library()
         self.rebuild_compose()
@@ -171,6 +176,11 @@ class LightingView(QWidget):
         form = Card()
         form.body.addWidget(TitleLabel("Build a lighting phrase"))
         form.body.addWidget(MutedLabel("Pick a named setup, or build your own below."))
+        # What Compose already does with no pick at all - so a setup here is a
+        # deliberate replacement of the scene's own light, not a guess.
+        self.scene_note = MutedLabel("")
+        self.scene_note.setWordWrap(True)
+        form.body.addWidget(self.scene_note)
         form.body.addWidget(self.setup_combo)
         form.body.addWidget(MutedLabel("Direction + quality + source (used when the setup "
                                        "above is left on \"build from...\"):"))
@@ -316,4 +326,25 @@ class LightingView(QWidget):
         self._palette = palette or {}
 
     def refresh(self):
-        pass
+        """Show the light Compose takes from the current Setting."""
+        spec = self.context() if self.context else {}
+        if not spec.get("scene_lighting"):
+            self.scene_note.setText(
+                "From the scene: off - turn on \"Match light to the scene\" in Images > "
+                "Scene to have the light follow the Setting.")
+            return
+        setting = spec.get("setting", "")
+        source = bsl.source_phrase(self.scene_bank, setting)
+        if not source:
+            self.scene_note.setText(
+                "From the scene: the Setting names no place or time of day yet, so "
+                "Compose picks any light - only the shadows are kept consistent.")
+            return
+        self.scene_note.setText(
+            "From the scene (what Compose uses on auto): {}, as {}. A setup applied "
+            "from here replaces that source; the bounce and shadows stay.".format(
+                source, " or ".join(bsl.allowed_terms(self.scene_bank, setting))))
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.refresh()

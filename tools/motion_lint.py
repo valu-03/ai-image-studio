@@ -23,6 +23,10 @@ The rules come from the Kling toolkit PDF, not from taste:
      or a future path that forgets to call it) instead of assuming it never
      can. The image side has checked this since the beginning
      (realism_lint.negatives_present) - video never did, until now.
+  8-10. Only when the prompt carries timed beats ("0-2s: ...; ENDS ON: ..."):
+     the beats cover the clip with no gaps, each beat is one action, and an
+     end state is stated - see beat_checks(). A prompt without beats is
+     scored on rules 1-7 exactly as before.
 
 Usage:
     python tools/motion_lint.py temp/outputs/prompts/motion-orbit-360-x.txt
@@ -76,11 +80,32 @@ def leads_with_camera(text, bank):
     for key, movement in bank["movements"].items():
         if head.startswith(movement["lead"].lower()):
             return key
+    # A still camera named plainly - "Static shot, the cat..." - is a camera
+    # lead too. The user's own 150k-view prompt opens exactly like that and
+    # used to fail here (video_realism_bank.json `static_leads`).
+    for lead in _static_leads(bank):
+        if re.match(re.escape(lead) + r"(?!\w)", head):
+            return "static"
     # Fall back to a looser check: an opening clause that names camera motion.
     opening = head.split(",")[0]
     if "camera" in opening and _any_word(opening, MOTION_VERBS):
         return "generic"
     return None
+
+
+def _static_leads(bank):
+    return (bank.get("realism") or {}).get("static_leads", [])
+
+
+def subject_moves(text, bank):
+    """Does the text say what the SUBJECT does - reach, grab, kick, slide...?
+
+    Word starts, so "reach" covers "reaches" and "reaching", "slid" covers
+    "sliding". Under a still camera this is the motion: the camera does
+    nothing by design."""
+    stems = (bank.get("realism") or {}).get("subject_motion_verbs", [])
+    lower = text.lower()
+    return any(re.search(r"\b" + re.escape(stem), lower) for stem in stems)
 
 
 def _any_word(text, needles):
@@ -156,8 +181,76 @@ def negatives_present(text, bank):
     return not missing, missing
 
 
-def lint(text, bank, movement=None, spec=None):
-    """Return (checks, warnings). checks is a list of (name, ok, detail)."""
+def beat_checks(text, bank=None, movement=None, seconds=None):
+    """Rules 8-10, only for a prompt that carries timed beats ("0-2s: ...").
+
+    Conditional on purpose: a prompt with no beats is judged exactly as it
+    always was, so every existing prompt keeps its 7/7. Once beats ARE
+    present they are a promise about the whole clip, and three things have to
+    hold for the model to have nothing left to improvise:
+
+      8. The beats cover the clip - start at 0, no gaps, no overlaps, and end
+         at the clip length when it is known. A gap is seconds the model
+         fills on its own; that is the drift this exists to stop.
+      9. One action per beat - chains_actions() per beat, the rule 6 test
+         applied where it matters now.
+     10. An end state - "ENDS ON: ..." names the final pose, so the last
+         beat has somewhere to land instead of trailing off.
+    """
+    beats = bm.parse_beats(text)
+    if not beats:
+        return []
+    checks = []
+
+    problems = []
+    if beats[0][0] != 0:
+        problems.append("starts at {}s, not 0s".format(beats[0][0]))
+    for (_s1, end1, _a1), (start2, _e2, _a2) in zip(beats, beats[1:]):
+        if start2 > end1:
+            problems.append("gap {}-{}s".format(end1, start2))
+        elif start2 < end1:
+            problems.append("overlap at {}s".format(start2))
+    for start, end, _action in beats:
+        if end <= start:
+            problems.append("{}-{}s runs backwards".format(start, end))
+    if seconds and beats[-1][1] != int(seconds):
+        problems.append("ends at {}s, the clip is {}s".format(beats[-1][1], int(seconds)))
+    checks.append((
+        "Beats cover the clip",
+        not problems,
+        "{} beats, 0-{}s".format(len(beats), beats[-1][1]) if not problems
+        else "; ".join(problems),
+    ))
+
+    chained = [start for start, _end, action in beats
+               if chains_actions(" " + action + " ", bank, movement)]
+    checks.append((
+        "One action per beat",
+        not chained,
+        "each beat is one action" if not chained
+        else "the beat at {}s chains actions - split it".format(
+            ", ".join("{}s".format(s) for s in chained)),
+    ))
+
+    ends = bm.has_end_state(text)
+    checks.append((
+        "States where it ends",
+        ends,
+        "end state given" if ends
+        else 'add "ENDS ON: <the final pose>" so the clip does not drift',
+    ))
+    return checks
+
+
+def lint(text, bank, movement=None, spec=None, seconds=None, negatives=True):
+    """Return (checks, warnings). checks is a list of (name, ok, detail).
+
+    `negatives=False` makes the negative guard optional: the user chose to
+    leave it out (their viral prompt had none), so its row passes and says so.
+
+    `seconds` is the clip length, when known; it only matters to a prompt
+    with timed beats (see beat_checks()).
+    """
     lower = text.lower()
     checks = []
 
@@ -188,10 +281,16 @@ def lint(text, bank, movement=None, spec=None):
     ))
 
     moves = _any_word(lower, MOTION_VERBS)
+    # A still camera does nothing by design - there, the subject's own
+    # movement is the motion the prompt has to describe.
+    still = lead == "static" or (lead in (bank.get("realism") or {}).get("static_movements", []))
+    if not moves and still and subject_moves(text, bank):
+        moves = True
     checks.append((
         "Describes motion",
         moves,
-        "motion described" if moves else "add what the camera actually does",
+        "motion described" if moves
+        else ("say what the subject does" if still else "add what the camera actually does"),
     ))
 
     clashes = contradictions(text)
@@ -212,10 +311,13 @@ def lint(text, bank, movement=None, spec=None):
     guarded, missing_negatives = negatives_present(text, bank)
     checks.append((
         "Negative guard present",
-        guarded,
+        guarded or not negatives,
         "artifact guard present" if guarded
-        else "append: " + ", ".join(missing_negatives),
+        else ("optional - left out by choice" if not negatives
+              else "append: " + ", ".join(missing_negatives)),
     ))
+
+    checks.extend(beat_checks(text, bank, movement, seconds))
 
     warnings = []
     if movement and spec is not None:
@@ -234,6 +336,7 @@ def main(argv=None):
     p.add_argument("prompt_file", help="path to a prompt .txt, or - for stdin")
     p.add_argument("--movement", help="movement key, to also check the still")
     p.add_argument("--spec", help="character spec JSON, to also check the still")
+    p.add_argument("--seconds", type=int, help="clip length, to check timed beats cover it")
     args = p.parse_args(argv if argv is not None else sys.argv[1:])
 
     if args.prompt_file == "-":
@@ -261,7 +364,7 @@ def main(argv=None):
     if args.movement and bm.validate_movement(bank, args.movement):
         sys.exit(bm.validate_movement(bank, args.movement))
 
-    checks, warnings = lint(text, bank, args.movement, spec)
+    checks, warnings = lint(text, bank, args.movement, spec, args.seconds)
     score = sum(1 for _, ok, _ in checks if ok)
 
     print("Motion score: {}/{}".format(score, len(checks)))

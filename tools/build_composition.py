@@ -7,9 +7,9 @@ Usage:
     python tools/build_composition.py --custom "framed low, looking up at the subject"
     python tools/build_composition.py --guide diagonals --technique lead-room --technique negative-space
 
-The seven named geometries (rule of thirds, phi grid, diagonals, triangle,
-golden ratio, golden spiral, harmonic armature) are NOT duplicated into this
-bank - they already live in tools/prompt_bank.json's composition_guides and
+The eight named geometries (rule of thirds, phi grid, diagonals, triangle,
+golden ratio, golden spiral, harmonic armature, dynamic symmetry) are NOT
+duplicated into this bank - they already live in tools/prompt_bank.json's composition_guides and
 are read straight from there via build_prompt.guides(), so there is exactly
 one place that owns them. `--custom` free text always beats a picked `--guide`
 - the same precedence build_prompt.apply_composition_guide() already enforces
@@ -21,7 +21,7 @@ depth-layering, framing-device, visual-balance, scale-contrast,
 pattern-repetition. `--technique-custom` adds one more free-text phrase
 beyond that list - the seven are tested starting points, not a closed world.
 
-Unlike lighting's quality x source, the seven guides are already mutually
+Unlike lighting's quality x source, the eight guides are already mutually
 exclusive by construction (one combo, one pin), and no technique here fights
 a guide or another technique - so there is no conflicts list and this tool
 never warns, only refuses outright bad input.
@@ -68,7 +68,7 @@ def compose_composition(main_bank, comp_bank, guide=None, custom=None, technique
 
     `warnings` is always [] today - kept for interface parity with
     compose_lighting() (tools/build_lighting.py) and to leave room for a
-    future contradiction check. There is none yet: the seven guides are
+    future contradiction check. There is none yet: the eight guides are
     already mutually exclusive by construction, and none of this bank's
     techniques fights a guide or each other.
     """

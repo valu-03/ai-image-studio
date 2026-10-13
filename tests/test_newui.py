@@ -400,6 +400,10 @@ var.spec_provider = real_spec_provider
 print("--- Videos: the Kling motion toolkit ---")
 win.go_to("videos")
 vv = win.videos_view
+# These checks are about the tagged template (camera lead first, the standing
+# negative guard); the one-take story default has its own suite
+# (test_video_realism.py).
+vv.write_as.setCurrentIndex(vv.write_as.findData("tagged"))
 check("motion + glossary tabs",
       [vv.tabs.tabText(i) for i in range(vv.tabs.count())] == ["Motion", "Glossary"])
 check("movements grouped in 3", vv.tree.topLevelItemCount() == 3)

@@ -1,0 +1,45 @@
+{
+  "source": "Written for this project, NOT AI Video Bootcamp material. Measured from a viral AI cat clip the user supplied (Downloads/snaptik_7679083840794545430_v3.mp4, 10.1 s, 24 fps): no cuts; the wall changes by 0.06 luma per frame and the floor by 0.10 - the camera never moves, not even a handheld drift - while the animals move at a steady ~3.0; motion per second ramps 1.9 -> 2.4 -> 3.0 and holds; the bodies stay planted and the motion lives in the faces, a paw, a swinging tail and a bending feather.",
+  "version": 1,
+  "note": "Kept out of motion_bank.json, which test_story.py hash-pins. `movements` are merged into the motion bank by build_motion.load_bank() - the locked-off camera is the Cats 'Working cats' format's own lead and detail (story_bank.json formats.trade.camera), so the Videos tab and the Cats trade takes describe a still camera in the same words. `real_motion` is the motion the reference clip has and generated video usually lacks: planted weight, follow-through, real-time speed with a ramp, and a background that holds. `phone_style` replaces the cinema-camera style presets when the phone look is on.",
+  "movements": {
+    "locked-off": {
+      "name": "Locked-off camera (no movement)",
+      "category": "core",
+      "does": "The camera does not move at all - the viral one-take look. The action happens inside one fixed frame, so nothing in the scene can drift or warp.",
+      "lead": "locked-off camera holding on",
+      "detail": "the camera does not move at all for the whole take, only the subject moves",
+      "requires": ["subject"],
+      "image_hints": {"composition": ["candid moment", "unstaged composition"]},
+      "example": "locked-off camera holding on a ginger cat tickling a mouse with a feather in a back alley, the camera does not move at all for the whole take, only the subject moves"
+    }
+  },
+  "real_motion": {
+    "planted": {
+      "human": "feet planted and weight staying grounded, the movement coming from the shoulders, hands and face",
+      "animal": "bodies planted with real weight on the ground, the movement contained in the faces, paws and tails",
+      "object": "resting with real weight, shifting only when something pushes it"
+    },
+    "follow_through": {
+      "human": "hair and loose clothing lagging a beat behind each movement, then settling",
+      "animal": "fur jiggling with each movement, tails swinging and settling a beat later",
+      "object": "loose parts swaying a beat after each movement, then settling"
+    },
+    "tempo": "real-time speed with natural motion blur on fast movements, never slow motion, a loose uneven rhythm that starts small and builds over the first second",
+    "background_still": "the background stays completely still, only the subject moves",
+    "background_moving": "the background keeps its shape and position relative to the camera, walls and objects staying solid"
+  },
+  "static_movements": ["locked-off", "wide-static"],
+  "phone_style": "filmed on an ordinary phone, flat natural colours, everyday phone video quality",
+  "story": {
+    "note": "The one-take story: how the user's own 150k-view prompt is written - a short camera opening, then the beats as plain sentences in order with time words (initially... Suddenly... soon after...), ending on 'Subtle, fluid motion.' - no comma list, no second codes, no negatives. build_motion.assemble_story() writes it.",
+    "leads": {"locked-off": "Static shot", "wide-static": "Static wide shot"},
+    "first": "Initially",
+    "middle": ["Then", "Soon after"],
+    "last": "Finally",
+    "time_words": ["initially", "then", "soon after", "suddenly", "finally", "meanwhile", "next", "after that", "at first", "at the end", "moments later", "immediately"],
+    "close": "Subtle, fluid motion"
+  },
+  "static_leads": ["static shot", "static wide shot", "static camera", "locked-off", "locked off", "fixed camera", "tripod shot", "still camera"],
+  "subject_motion_verbs": ["reach", "grab", "enter", "kick", "slid", "slide", "pick", "lower", "lift", "stroke", "wriggl", "walk", "run", "jump", "turn", "eat", "drink", "push", "pull", "climb", "sit", "stand", "lean", "tickl", "knock", "drop", "throw", "spin", "shake", "wag", "stretch", "yawn", "lick", "sniff", "swat", "pounc", "chase", "roll", "nod", "wave", "laugh", "blink", "glanc", "shift", "inspect", "take", "taking", "put", "hold", "pour", "tap", "hug", "dance", "fall", "fell", "bounce", "flick", "twitch", "squirm", "hop", "crawl", "rush", "dash", "step"]
+}

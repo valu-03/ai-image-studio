@@ -79,7 +79,7 @@ def snap_for(sound_bank, seed=0, bank=None):
     """The reset snap, drawn from sound_bank's OWN transition theme.
 
     Reused, not copied - the same no-duplication rule relight_lint follows for
-    lighting phrases and prompt_anatomy follows for motion verbs. `snap_prefer`
+    lighting phrases and motion_lint follows for motion verbs. `snap_prefer`
     narrows that theme to the rows that read as a comic reset by NUMBER, so the
     phrases themselves still live in exactly one file; without it the cycle
     hands a cat sitcom "Wind ripping through as the past materializes".

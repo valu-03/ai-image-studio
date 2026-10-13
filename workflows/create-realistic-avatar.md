@@ -73,11 +73,34 @@ Add `--detailed` for the long paragraph form — better for a hero shot, and clo
 expanded example in the lesson. Add `--seed N` to shuffle the word choices when a prompt
 feels stale; the same seed always gives the same prompt.
 
-`--composition-guide <name>` pins one of the seven geometries; `--composition-custom "..."`
+`--composition-guide <name>` pins one of the eight geometries; `--composition-custom "..."`
 pins your own framing instruction instead — *"framed to include a clear sky, bright blue water
 and a woven beach bag behind her"* is as good an instruction as a named grid, and often
 clearer to the model. Either way it pins the first slot and the bank fills the second, so this
 can never cost you the composition layer.
+
+Two additions that describe the *subject* rather than the camera, both opt-in on the CLI and
+both carried in the spec's `overrides` (they ride the free tail, so they can only add to the
+score):
+
+- **Face micro-detail, scaled to the shot.** `python tools/build_face_detail.py --shot portrait
+  --subject "..." --seed N` prints the detail for that distance: pore-level skin for a close
+  shot, zonal skin tone and natural asymmetry for a medium one, and no pores at all for a wide
+  one, because the camera cannot resolve them and asking makes the face look over-sharpened.
+  Put it in the spec as `"overrides": {"face_detail": ["<phrase>"]}`. In the app it is on by
+  default (Images → Subject → *Face micro-detail*).
+- **Lived-in evidence.** `python tools/build_evidence.py --subject "..." --seed N` (or
+  `--kind human --detail sunglasses-dent --detail hair-tie`) prints two or three small details
+  that have a cause: evidence, not random imperfection. Put it in the spec as
+  `"overrides": {"evidence": ["<phrase>"]}`. In the app: Look → Evidence, or the *Lived-in
+  details (auto)* toggle.
+
+- **Light from the scene.** Add `"scene_lighting": true` to the spec and, with no explicit
+  lighting, the light is picked from what can exist in the Setting (a bar at night never gets
+  golden-hour sun), the source is named, light bounces off the materials the Setting mentions,
+  and the shadows are kept consistent. `python tools/build_scene_light.py --setting "..."`
+  shows what it will do, and `--lighting "..."` checks an explicit choice against the Setting.
+  On by default in the app (Images → Scene → *Match light to the scene*).
 
 The tool assembles all eight layers and appends the negative block. It writes the prompt to
 `temp/outputs/prompts/avatar-<slug>-<timestamp>.txt` and prints the next command.

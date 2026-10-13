@@ -37,7 +37,6 @@ ROOT = HERE.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
 import build_prompt as bp  # noqa: E402
-import prompt_anatomy as pa  # noqa: E402
 import realism_lint as rl  # noqa: E402
 
 fails = []
@@ -50,7 +49,6 @@ def check(name, cond, detail=""):
 
 
 bank = bp.load_bank()
-abank = pa.load_bank()
 
 SPEC = {"subject": "Athena on the temple steps", "seed": 7, "aspect": "4:5"}
 
@@ -110,59 +108,6 @@ bp_src = io.open(ROOT / "tools" / "build_prompt.py", encoding="utf-8").read()
 check("the CLI exposes it too", "--anatomy-guard" in bp_src)
 check("...and the docstring says it is off by default",
       "off by\n    default" in bp_src or "opt-in, off by" in bp_src)
-
-print()
-print("=== mythic-illustration: the first non-photoreal image template ===")
-tpl = pa.templates(abank).get("mythic-illustration")
-check("the template exists", bool(tpl))
-check("it is an image template", tpl.get("kind") == "image", str(tpl.get("kind")))
-check("it has twelve slots", len(tpl["slots"]) == 12, str(len(tpl["slots"])))
-keys = [s["key"] for s in tpl["slots"]]
-check("the register slot comes FIRST, before any premise",
-      keys[0] == "register", str(keys[:2]))
-check("...and the priority rule comes last", keys[-1] == "priority", str(keys[-2:]))
-
-# The defining structural claim: no capture-device layers.
-layers = {s.get("layer") for s in tpl["slots"] if s.get("layer")}
-check("it keeps lighting, colour and texture",
-      layers == {"lighting", "colour", "texture"}, str(sorted(layers)))
-for absent in ("camera", "lens", "grain"):
-    check("it declares NO '{}' slot - nothing was captured".format(absent),
-          absent not in layers)
-check("...and its source_note says exactly that",
-      "not captured" in tpl["source_note"], tpl["source_note"][:60])
-check("it names anthro-character, its deliberate opposite",
-      "anthro-character" in tpl["source_note"])
-
-# Every layer slot must be detectable by the layer that owns it, written out
-# of realism_lint's own keys rather than general illustration language.
-for slot in tpl["slots"]:
-    if not slot.get("layer"):
-        continue
-    hits, _neg = rl.find_terms(slot["example"].lower(), rl.DETECT[slot["layer"]]["keys"])
-    check("'{}' is detectable by its own layer".format(slot["key"]),
-          len(hits) >= 2, "{} -> {}".format(slot["layer"], hits))
-
-print()
-print("=== the two halves agree with each other ===")
-# The template's negative slot and the composed guard must not drift apart:
-# both exist to stop the same four failures.
-guard_slot = next(s for s in tpl["slots"] if s["key"] == "negatives")
-for idea in ("extra fingers", "extra limbs", "duplicated", "morphing"):
-    check("the template's guard slot names '{}'".format(idea),
-          any(idea in k for k in guard_slot["detect"]) or idea in guard_slot["example"],
-          str(guard_slot["detect"]))
-check("...and its `why` points at build_prompt's own tail, so a reader finds both",
-      "anatomy_guard_tail" in guard_slot["why"])
-
-print()
-print("=== anatomy_bank's own version moved with it ===")
-check("anatomy_bank is at version 11", abank["version"] == 11, str(abank["version"]))
-check("fourteen templates now", len(pa.templates(abank)) == 14,
-      str(len(pa.templates(abank))))
-check("nine image, five video",
-      len(pa.image_templates(abank)) == 9 and len(pa.video_templates(abank)) == 5,
-      "{}/{}".format(len(pa.image_templates(abank)), len(pa.video_templates(abank))))
 
 print()
 if fails:

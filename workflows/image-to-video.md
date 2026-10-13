@@ -82,6 +82,26 @@ python tools/build_motion.py --movement orbit-360 --spec temp/resources/characte
 python tools/motion_lint.py <that file> --movement orbit-360 --spec <same spec>
 ```
 
+### Time the action, and say where it ends
+
+The still fixes how the clip *looks*. It does not fix the **pace** or the **endpoint**, and
+those are what usually go wrong: given one untimed action, the model finishes it early and
+invents motion to fill the rest of the clip. So give it a beat per line and a final pose:
+
+```
+0-2s: lifts the cup and blows across it
+2-4s: glances up at the lens
+4-5s: holds still, half-smiling
+Ends on: still, eyes on camera, steam drifting
+```
+
+In the app, picking a movement drafts this from the Action field and the clip length (Videos →
+Timing / Ends on; *Draft timing from Action* redrafts it after you change either). Cats' scene
+cards have the same thing as one optional *Timing* line. Rules the gate enforces once beats are
+present: they start at 0s and run to the clip length with no gaps, each beat is one action,
+and an end state is stated. Lint with the length: `python tools/motion_lint.py <file>
+--seconds 5`.
+
 ## Step 5 — Paste into Kling with the still attached
 
 Image-to-video, with your generated still as the input frame and this text as the prompt.

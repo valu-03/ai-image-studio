@@ -182,11 +182,6 @@ check("no composable bank string trips the new lists",
       not composable_hits, " | ".join(composable_hits))
 check("every hit that exists is in a documentation field",
       not unclassified, "unclassified keys: " + ", ".join(sorted(unclassified)))
-# Named explicitly: these two sentences are the ARGUMENT for the split above.
-# If either moves into a composable field this check fails, which is the point.
-check("anatomy_bank still argues the 'glowing skin' case in prose",
-      any("glowing skin" in r and "why" in r for r in doc_hits),
-      str(len(doc_hits)))
 
 print()
 print("=== the app's own composed output stays clean over many seeds ===")

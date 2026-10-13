@@ -22,6 +22,7 @@ from pathlib import Path
 
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QFileDialog,
     QFormLayout,
@@ -38,7 +39,12 @@ from PyQt6.QtWidgets import (
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
+import build_contact as bct  # noqa: E402
+import build_evidence as bev  # noqa: E402
+import build_material as bmt  # noqa: E402
 import build_prompt as bp  # noqa: E402
+import build_scene_light as bsl  # noqa: E402
+import build_snapshot as bsn  # noqa: E402
 
 from . import assets, tokens as T  # noqa: E402
 from .widgets import MutedLabel, mark_error  # noqa: E402
@@ -99,6 +105,12 @@ class SpecEditor(QWidget):
         self._reference = ""
         self._style_override = ""
         self._capture_overrides = {}
+        self._evidence_override = ""
+        self._evidence_bank = bev.load_bank()
+        self._scene_light_bank = bsl.load_bank()
+        self._contact_bank = bct.load_bank()
+        self._material_bank = bmt.load_bank()
+        self._snapshot_bank = bsn.load_bank()
 
         self._build_fields()
         self._build_tabs()
@@ -153,6 +165,83 @@ class SpecEditor(QWidget):
         self.posing = QLineEdit(
             placeholderText="weight on the back foot, shoulders turned away from the camera")
         self.mood = QLineEdit(placeholderText="calm and unhurried")
+
+        # The two realism additions that describe the SUBJECT rather than the
+        # camera. Both ride non-layer overrides (spec() below), so they only
+        # ever ADD keywords to a prompt and never displace the bank's own
+        # texture picks. They are working preferences, not character data:
+        # load_spec() leaves them as they are, and each is recomputed from the
+        # current subject, shot and seed on every spec() call.
+        self.face_detail = QCheckBox("Face micro-detail, scaled to the shot")
+        self.face_detail.setChecked(True)
+        self.face_detail.setToolTip(
+            "Pore-level skin, peach fuzz and iris detail for a close shot; zonal skin "
+            "tone and natural asymmetry for a medium one; asymmetry and tone only for "
+            "a wide one - the camera cannot resolve pores at full body, and asking "
+            "makes the face look over-sharpened. Fur detail for a cat or dog. "
+            "Nothing for an object or place.")
+        # Light that comes FROM the setting: on auto, the lighting pick is
+        # narrowed to what can exist there, and the source, its bounce off
+        # nearby surfaces and one shadow direction ride the prompt's tail
+        # (build_prompt.apply_scene_light). A preference, like the two above.
+        self.match_light = QCheckBox("Match light to the scene")
+        self.match_light.setChecked(True)
+        self.match_light.setToolTip(
+            "Reads the Setting for place, time of day and materials. With Lighting on "
+            "(auto) the light is picked from what can exist there - a bar at night never "
+            "gets golden-hour sun - and the prompt names the source, the colour it picks "
+            "up off nearby surfaces (wood, grass, neon...) and one shadow direction for "
+            "subject and scene. An explicit Lighting choice still wins; if it contradicts "
+            "the Setting you get a heads-up below.")
+        self.light_note = MutedLabel("")
+        self.light_note.setWordWrap(True)
+        self.lived_in = QCheckBox("Lived-in details (auto)")
+        self.lived_in.setToolTip(
+            "Two small details with a cause - a sunglasses dent, shed hairs on a "
+            "cushion, a thumbprint on gloss - picked for the subject by seed. An "
+            "explicit pick from Look > Evidence replaces these.")
+        # Physics the subject's own text implies: what it presses on, and how
+        # the materials it names take the light (build_prompt.apply_physical).
+        # Working preferences like the toggles above - load_spec() leaves them.
+        self.contact_detail = QCheckBox("Weight & contact (auto)")
+        self.contact_detail.setChecked(True)
+        self.contact_detail.setToolTip(
+            "Things press on each other: a sofa cushion dips under the body, fingers press "
+            "into a mug, a sleeve creases at the elbow, paws sink into snow. Read from "
+            "Subject, Action, Posing and Setting - name what they sit, lie or lean on to "
+            "be specific.")
+        self.material_detail = QCheckBox("Materials in this scene (auto)")
+        self.material_detail.setChecked(True)
+        self.material_detail.setToolTip(
+            "How the materials you named take the light: glass bends what is behind it, "
+            "a glaze holds a rounded highlight, a cold glass beads with condensation, knit "
+            "gets a fuzzy halo, melted cheese an oil sheen. Read from Subject, Wardrobe, "
+            "Setting and Action. When it finds something, it replaces the Lighting "
+            "section's generic \"Material response\" sentence.")
+        # The viral-phone-video look (build_prompt.apply_snapshot): who took
+        # it, a background nobody arranged, and a split second rather than a
+        # pose. Working preferences too.
+        self.snapshot = QCheckBox("Phone snapshot look (auto)")
+        self.snapshot.setChecked(True)
+        self.snapshot.setToolTip(
+            "Reads as an ordinary phone photo by a real person, not a cinema frame: with no "
+            "shot chosen, the camera becomes the phone preset's, cinema words are skipped, and "
+            "one line says who took it (a passer-by crouching low for a cat, a friend for a "
+            "person). A chosen shot, typed shot or film stock is a deliberate look and wins.")
+        self.background_life = QCheckBox("Unstaged background (auto)")
+        self.background_life.setChecked(True)
+        self.background_life.setToolTip(
+            "From the Setting: one passer-by out of focus, one everyday thing nobody arranged "
+            "(a scooter half out of frame, a charger on the next table) and one worn surface. "
+            "A studio or plain backdrop gets nothing.")
+        self.moment = QCheckBox("Catch the moment (auto)")
+        self.moment.setChecked(True)
+        self.moment.setToolTip(
+            "A split second instead of a held pose, from what the Action says: just after a "
+            "laugh, mid-turn with hair still swinging, a cat's intent stare with ears forward. "
+            "Nothing named: a small default like an ear mid-flick.")
+        self.physical_note = MutedLabel("")
+        self.physical_note.setWordWrap(True)
 
         self.setting = QLineEdit(placeholderText="a bright apartment kitchen, mid-morning")
 
@@ -270,7 +359,9 @@ class SpecEditor(QWidget):
             _tab([("Subject", self.subject), ("Wardrobe", self.wardrobe),
                   ("Action", self.action), ("Posing", self.posing),
                   ("Mood", self.mood)],
-                 [open_posing]),
+                 [self.face_detail, self.lived_in, self.contact_detail,
+                  self.material_detail, self.snapshot, self.background_life, self.moment,
+                  self.physical_note, open_posing]),
             "Subject",
         )
         open_lighting = QPushButton("Open Lighting section →")
@@ -303,7 +394,8 @@ class SpecEditor(QWidget):
             _tab([("Setting", self.setting), ("Shot", self.shot),
                   ("Lighting", self.lighting), ("Colour", self.colour),
                   ("Composition", self.composition)],
-                 [open_lighting, open_color, open_composition, open_camera_angle]),
+                 [self.match_light, self.light_note,
+                  open_lighting, open_color, open_composition, open_camera_angle]),
             "Scene",
         )
         self.tabs.addTab(
@@ -347,6 +439,14 @@ class SpecEditor(QWidget):
         self.colour.currentTextChanged.connect(self.changed)
         self.aspect.currentTextChanged.connect(self.changed)
         self.seed.valueChanged.connect(self.changed)
+        self.face_detail.toggled.connect(self.changed)
+        self.lived_in.toggled.connect(self.changed)
+        self.contact_detail.toggled.connect(self.changed)
+        self.material_detail.toggled.connect(self.changed)
+        self.snapshot.toggled.connect(self.changed)
+        self.background_life.toggled.connect(self.changed)
+        self.moment.toggled.connect(self.changed)
+        self.match_light.toggled.connect(self.changed)
         self.subject.textChanged.connect(self._validate)
         self.changed.connect(self._refresh_derived)
 
@@ -354,8 +454,70 @@ class SpecEditor(QWidget):
         """A subject is the one field the prompt cannot be built without."""
         mark_error(self.subject, not self.subject.toPlainText().strip())
 
+    def _refresh_light_note(self):
+        """Say which light the scene is supplying, or where a pick fights it."""
+        if not self.match_light.isChecked():
+            self.light_note.setText("")
+            return
+        setting = self.setting.text()
+        chosen = self.lighting_value()
+        notes = bsl.conflicts_with(self._scene_light_bank, setting, chosen)
+        if notes:
+            self.light_note.setText("Heads up: " + "; ".join(notes) + ". Your choice is being used.")
+            return
+        place, time = bsl.read_scene(self._scene_light_bank, setting)
+        if not (place or time):
+            self.light_note.setText(
+                "Scene light: name a place or time of day in Setting and the light will "
+                "follow it. Shadows are kept consistent either way.")
+            return
+        where = " at ".join(x for x in (place, time) if x).replace("-", " ")
+        if chosen:
+            self.light_note.setText(
+                "Scene light ({}): your lighting is used, plus the scene's bounce and "
+                "shadows.".format(where))
+        else:
+            self.light_note.setText("Scene light ({}): {}.".format(
+                where, bsl.source_phrase(self._scene_light_bank, setting)))
+
+    def _refresh_physical_note(self):
+        """Say what weight & contact and the materials toggle picked up."""
+        spec = {"subject": self.subject.toPlainText(), "action": self.action.text(),
+                "posing": self.posing.text(), "setting": self.setting.text(),
+                "wardrobe": self.wardrobe.text()}
+        parts = []
+        if self.contact_detail.isChecked():
+            kind = self.subject_kind()
+            _phrase, keys = bct.read_contact(self._contact_bank, spec, kind=kind)
+            if keys:
+                tables = dict(self._contact_bank["supports"], **self._contact_bank["actions"])
+                parts.append("Contact: " + ", ".join(tables[k]["label"].lower() for k in keys))
+            elif kind != "place":
+                parts.append("Contact: a general weight cue - name what they sit, lie or lean on")
+        if self.material_detail.isChecked():
+            _phrase, keys = bmt.read_materials(self._material_bank, spec)
+            if keys:
+                parts.append("Materials: " + ", ".join(
+                    self._material_bank["materials"][k]["label"].lower() for k in keys))
+            else:
+                parts.append("Materials: none named yet (glass, wool, coffee...)")
+        if self.background_life.isChecked():
+            _phrase, place = bsn.background_line(self._snapshot_bank, spec)
+            if place == "plain":
+                parts.append("Background: plain backdrop, left alone")
+            elif place:
+                parts.append("Background: " + self._snapshot_bank["backgrounds"][place]["label"].lower())
+            else:
+                parts.append("Background: name a place in Setting (street, cafe, park...)")
+        if self.moment.isChecked():
+            _phrase, key = bsn.moment_line(self._snapshot_bank, spec, self.subject_kind())
+            parts.append("Moment: " + (key or "a small default"))
+        self.physical_note.setText(" · ".join(parts))
+
     def _refresh_derived(self):
         """Show what the purpose is supplying, and any disagreement with it."""
+        self._refresh_light_note()
+        self._refresh_physical_note()
         self.reference_label.setText(
             "Identity locked to " + Path(self._reference).name if self._reference
             else "No reference image — the face is invented each time."
@@ -616,6 +778,34 @@ class SpecEditor(QWidget):
         self._capture_overrides = dict(overrides or {})
         self.changed.emit()
 
+    def set_evidence_override(self, phrase):
+        """Load a composed phrase from the Evidence section. Rides
+        spec["overrides"]["evidence"] (non-layer, appended to the free tail)
+        and replaces the auto-picked lived-in details rather than adding to
+        them - two sets of evidence is clutter, not more realism. Empty clears
+        it, handing the slot back to the auto toggle."""
+        self._evidence_override = (phrase or "").strip()
+        self.changed.emit()
+
+    def subject_kind(self):
+        """'human', 'animal', 'object' or 'place', read from the Subject."""
+        return bev.subject_kind(self._evidence_bank, self.subject.toPlainText())
+
+    def _realism_additions(self):
+        """The subject-detail flags and an explicit evidence pick.
+
+        Flags, not phrases: build_prompt.apply_subject_detail() resolves them
+        against the spec actually being composed, so a Variants seed or angle
+        gets details for ITS seed and shot, not for the form's."""
+        flags, overrides = {}, {}
+        if self.face_detail.isChecked():
+            flags["face_detail"] = True
+        if self._evidence_override:
+            overrides["evidence"] = [self._evidence_override]
+        elif self.lived_in.isChecked():
+            flags["lived_in"] = True
+        return flags, overrides
+
     # -- data in / out ------------------------------------------------------ #
     def filled_keys(self):
         """The spec keys the user has actually put something into.
@@ -706,6 +896,21 @@ class SpecEditor(QWidget):
         # layers at once, which is why it arrives as a dict.
         for layer, phrases in (getattr(self, "_capture_overrides", None) or {}).items():
             overrides[layer] = list(overrides.get(layer, [])) + list(phrases)
+        flags, extra_overrides = self._realism_additions()
+        spec.update(flags)
+        overrides.update(extra_overrides)
+        if self.match_light.isChecked():
+            # A flag build_prompt reads, never a model-settable key: it is
+            # not in brief.SPEC_KEYS.
+            spec["scene_lighting"] = True
+        # Same for these two (build_prompt.apply_physical).
+        if self.contact_detail.isChecked():
+            spec["contact_detail"] = True
+        if self.material_detail.isChecked():
+            spec["material_detail"] = True
+        for flag in ("snapshot", "background_life", "moment"):
+            if getattr(self, flag).isChecked():
+                spec[flag] = True
         if overrides:
             spec["overrides"] = overrides
 
@@ -727,6 +932,10 @@ class SpecEditor(QWidget):
         self._style_override = (
             _style[0] if isinstance(_style, (list, tuple)) and _style
             else (_style or "") if isinstance(_style, str) else "")
+        _evidence = _ov.get("evidence")
+        self._evidence_override = (
+            _evidence[0] if isinstance(_evidence, (list, tuple)) and _evidence
+            else (_evidence or "") if isinstance(_evidence, str) else "")
         self.subject.setPlainText(spec.get("subject", ""))
         self.wardrobe.setText(spec.get("wardrobe", ""))
         self.setting.setText(spec.get("setting", ""))

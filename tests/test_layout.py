@@ -32,6 +32,35 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tools"))
 
+# A fixed Prompt Bank, never the user's: one image prompt with three example
+# images, so the thumbnail strip is ALWAYS laid out and measured here - not
+# only when the user happens to have saved images (which is how a crushed
+# thumbnail button first showed up, from their real data).
+import shutil as _shutil  # noqa: E402
+import struct as _struct  # noqa: E402
+import tempfile as _tempfile  # noqa: E402
+import zlib as _zlib  # noqa: E402
+
+_BANK = Path(_tempfile.gettempdir()) / "aivs-layout-prompt-bank"
+_shutil.rmtree(_BANK, ignore_errors=True)
+os.environ["AIVS_PROMPT_BANK_DIR"] = str(_BANK)
+
+
+def _png(w, h):
+    def chunk(tag, data):
+        return (_struct.pack(">I", len(data)) + tag + data
+                + _struct.pack(">I", _zlib.crc32(tag + data) & 0xFFFFFFFF))
+    rows = b"".join(b"\x00" + b"\x30\x60\x90" * w for _ in range(h))
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", _struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0))
+            + chunk(b"IDAT", _zlib.compress(rows)) + chunk(b"IEND", b""))
+
+
+_entry = _BANK / "image" / "Layout fixture"
+_entry.mkdir(parents=True)
+(_entry / "prompt.txt").write_text("A long fixture prompt. " * 40, encoding="utf-8")
+for _name, _size in (("wide.png", (300, 120)), ("tall.png", (90, 260)), ("square.png", (150, 150))):
+    (_entry / _name).write_bytes(_png(*_size))
+
 from PyQt6.QtCore import Qt  # noqa: E402
 from PyQt6.QtWidgets import (  # noqa: E402
     QAbstractScrollArea, QAbstractSpinBox, QApplication, QComboBox, QLabel,

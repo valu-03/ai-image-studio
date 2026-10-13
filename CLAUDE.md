@@ -149,7 +149,7 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   explicit choice always wins, and a disagreement is reported, never silently corrected.
 - **Composition rules are opt-in. Never impose one.** The composition layer's terms and the
   shot presets carry framing language only - no grid, ratio or spiral. A geometry reaches a
-  prompt only when the user picks one of the seven `composition_guides` or types their own;
+  prompt only when the user picks one of the eight `composition_guides` or types their own;
   the default is `(none)`, not `(auto)`. Do not add a geometric term to the layer's `terms` or
   to a shot preset - that is exactly the behaviour this design removed. Auto-fill obeys the
   same rule: it may *suggest* a guide and a lighting source, and the user applies them.
@@ -837,6 +837,18 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   were needed at all. `tests/test_composition_bank.py` (new) audits the seven technique phrases
   against `realism_lint.py` and leaves `tests/test_composition.py` (the pre-existing combo/pin
   suite) untouched.
+- **Dynamic Symmetry is the eighth composition GUIDE, not a technique.** It is a framing
+  geometry (Hambidge: the frame's diagonal plus a reciprocal crossing it at 90°), the same kind
+  of thing as the other seven, so it lives in `prompt_bank.json`'s `composition_guides`
+  (version 12 -> 13) and every surface that reads `build_prompt.guides()` picked it up with no UI
+  code. Two phrasing decisions to keep: (1) it is told apart from Harmonic Armature, which uses
+  the same lines, by what it asks for - armature puts the subject ON a crossing point, dynamic
+  symmetry ALIGNS lines and gestures with the diagonal; (2) the word "symmetry" pulls an image
+  model toward a centred, mirrored frame, the opposite of the technique, so the phrase ends
+  "energetic rather than mirrored or centred" and `tests/test_composition.py` asserts that
+  clause stays. `realism_lint.py` gained a `"dynamic symmetry"` composition key (a pinned guide
+  that the gate cannot see could zero the layer), and `tests/test_story.py`'s pins for both files
+  were re-taken with a comment.
 - **Three improvements mined from a real photography-course library, not guessed.** Surveyed
   `E:\Library Of Courses\Photography` (~2,600 files) for material that could extend the
   app's prompt vocabulary the way earlier lessons became `prompt_bank.json`/
@@ -1111,58 +1123,23 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   all 5 sections composing - `tests/test_advisor.py` locks this down as a structural regression
   check (the app-side pipeline handles this input shape correctly), which is the most that can
   be unit-tested here since nothing can assert what a live model chooses to write.
-- **`tools/anatomy_bank.json` teaches prompt STRUCTURE and owns no vocabulary.** Eleven
-  templates - seven `image`, four `video` - read and scored by `tools/prompt_anatomy.py` and
-  shown on the Anatomy tab. Do not repeat a count from this file; `python tools/prompt_anatomy.py
-  --list` is the one to trust, and `tests/test_anatomy.py` pins it. Every template declares
-  `kind` (`image` or `video`) and the picker groups the two apart
-  rather than listing them as one flat dropdown - `pa.image_templates()`/`video_templates()`,
-  mirroring `ui/views/style.py`'s existing photoreal/stylised combo precedent rather than
-  inventing a new grouping mechanism. Four things about it are not guessable from the outside.
-  (1) **A slot never keeps its own
-  copy of a keyword list another linter already owns**: `layer` borrows `realism_lint.DETECT`,
-  and `borrow: "motion-verbs"` borrows `motion_lint.MOTION_VERBS` - a slot may add its own
-  `detect` keys on top of a `borrow`, but those are searched FIRST, because the borrowed verbs
-  are bare words and "push" matches "sunglasses pushed on head" as happily as a push-in, so
-  letting them answer first fills the slot with a true verdict and a misleading quotation.
-  (2) **`scaffold: "inline"` is load-bearing, not cosmetic.** A template marked inline emits its
-  Copy-structure text as one flowing prompt with the slot names in a comment legend above it;
-  an unmarked one emits `LABEL: value` bands. `video-shot` MUST stay inline, because
-  `motion_lint.leads_with_camera()` reads the first ninety characters and a `CAMERA LEAD:`
-  prefix in front of the move is precisely what that rule exists to catch. `video-sequence` is
-  the one genuinely banded template - that is how the prompt it was reverse-engineered from is
-  actually written. (3) **Two facts about this app are baked into the video slots' `why` lines
-  because a prompt written elsewhere will trip over them**: `tools/sound_bank.json` is
-  effects-ONLY and `sound_lint.check_is_an_effect` rejects every word in that bank's own
-  `not_effects` list - `music`, `song`, `melody`, `soundtrack`, `background score`, `singing`,
-  `lyrics`, `instrumental`, `voiceover`, `narration` and five more (hence a `music` slot kept
-  separate from `sound`). Take the list from the bank, never from memory: an earlier version of
-  this very rule claimed `beat` was on it, and it is not - a line like "chic upbeat lounge
-  hip-hop beat" fails `check_event` ("names an object, not a sound") and sails past the music
-  gate entirely. `tests/test_sound.py` now pins the list to the bank so the next wrong claim
-  fails a test instead of shipping. Also, `tools/build_story.py` distinguishes
-  `clip_seconds` from `edit_seconds` (hence the shot-sequence slot's warning that two-second
-  beats are edit lengths, not generation lengths - most video models will not generate below
-  about five seconds). There is still no outfit lock or environment lock ANYWHERE in `tools/`;
-  `build_prompt.py` locks identity and `build_relight.py` locks scene, so the video template's
-  other two locks are written out by hand. (4) **The two video templates that came before
-  `action-commercial` are not the only valid video shape.** `video-sequence`'s three locks exist
-  to hold one PERSON steady across cuts; `action-commercial` is a vehicle/action piece with no
-  character to lock at all, so it spends its header on capture technicals (`Render`/`Look`/
-  `Grade`) instead, and packs each shot's timing, frame-count@fps, shot-size code (ECU/CU/MCU/
-  MS/WS) and frame position into one bracket that neither older template teaches. Do not assume
-  a third video prompt will fit either existing shape without reading it first.
-- **`ui/views/anatomy.py` adds every label into `card.body`, never `QVBoxLayout(card)`.**
+- **Assistant → Prompt Bank is the user's own prompt library, saved EXACTLY as given.** It
+  replaced the Anatomy tab (built-in templates split into teaching slots), which was deleted
+  on request along with `anatomy_bank.json`, `prompt_anatomy.py` and their suites. One folder
+  per prompt under `temp/resources/prompt_bank/<image|video>/<title>/`: `prompt.txt`, written
+  byte for byte (`newline=""`, nothing trimmed or reflowed), plus the prompt's example images
+  as straight file copies with their original names. No index file. `tools/saved_prompts.py`
+  is the one way in - `add --kind --title --file --image`, `attach`, `list`, `show`, `delete` -
+  and the tab (`ui/views/prompt_bank.py`) calls the same functions. When the user gives a
+  prompt (and its example images) for the app, save it with that tool, verbatim; never tidy
+  it. Not to be confused with `tools/prompt_bank.json`, the realism vocabulary - unrelated.
+  `AIVS_PROMPT_BANK_DIR` redirects the folder; `tests/test_saved_prompts.py` uses it.
+- **A `Card` owns its layout: add widgets to `card.body`, never to `QVBoxLayout(card)`.**
   `ui/widgets.py`'s `Card` builds its own layout in `__init__`; Qt refuses to install a second
-  one, so a label added to that second layout is orphaned - never parented, never laid out,
-  never drawn. That shipped once: the whole tab rendered as empty rounded boxes. Nothing caught
-  it, because `tests/test_anatomy.py` exercises the tool rather than the view and
-  `tests/test_layout.py`'s clipped-label and overlap checks have nothing to measure when a card
-  contains zero labels - counting `Card`s is not enough either, since the cards themselves were
-  present and visible. `tests/test_anatomy_gui.py` now asserts the thing that actually matters:
-  every card CONTAINS labels carrying non-empty text. The same file's `_clear()` calls
-  `setParent(None)` before `deleteLater()`, because `deleteLater()` only schedules deletion and
-  a still-parented old card keeps its geometry and can paint over the new content.
+  one, so a widget added to that second layout is orphaned - never parented, never laid out,
+  never drawn. That shipped once (a whole tab of empty rounded boxes) and no layout check caught
+  it, because there was nothing inside the cards to measure. A GUI suite for a card-based view
+  should assert the cards actually CONTAIN text, not merely that they exist.
 - **`ui/views/cats.py`'s `base_spec()` must never assign `spec["subject"]` a truthy fallback when
   a cast can supply one.** Shipped once, caught only by hand: `base_spec()` set
   `spec["subject"] = "a cat"` whenever the Subject field was blank, and `build_story.apply_cast()`
@@ -1234,7 +1211,7 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   `story_lint.check_pair` and `build_motion.DETECTORS["second_subject"]` agree for free because
   they share a word list. Relative scale rides `spec["extra"]` as a sentence - verified to reach
   every composed prompt at 8/8. A real `subject_2` key would leak into `brief.SPEC_KEYS`, the
-  Compose form, `autofill_spec`, `history.py` and `prompt_anatomy.py`: six surfaces re-risked to
+  Compose form, `autofill_spec` and `history.py`: several surfaces re-risked to
   buy a comma.
 - **`safety_lint.py` scans authored fields ONLY, and is opt-in per format.** Two rules, both
   measured rather than assumed. (1) Pointed at a composed prompt it would fail clean photoreal
@@ -1362,34 +1339,6 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   once. **The lesson is the method**: the flake was proven pre-existing by stashing every other
   change and reproducing it on the untouched tree, rather than assumed either way - and
   "intermittent under load" turned out to mean "there is a real race here", not "ignore it".
-- **Anatomy splits by the KIND of prompt, not by template count.** An image prompt and a video
-  prompt have different slots, different sources and barely any vocabulary in common -
-  `photoreal-portrait` is eight realism layers, `action-commercial` is render/look/grade plus a
-  timed shot list. One picker holding both made you read a `(Video prompt)` suffix on every row
-  to find where your half of the list started. `AnatomyView` now takes a `kind`, and
-  `AnatomyContainer` holds two instances of it. **One class, two instances** - the container
-  pattern `ImagesView`/`LookView` set. A scoped picker drops the suffix; an unscoped one keeps
-  it, because then nothing else says which kind a row is.
-- **A summary that names another template by its KEY can break an ordering test.**
-  `tests/test_anatomy.py` asserts every video template's key appears after the "VIDEO PROMPTS"
-  heading in `--list`, using `stdout.index()`. `product-campaign`'s summary said "the IMAGE
-  sibling of `action-commercial`", which put that key in the IMAGE section and failed the check.
-  The test was right. Cross-reference another template by its human LABEL in a `summary` (which
-  `--list` prints) and keep the key for `source_note` (which it does not).
-- **`product-campaign` is the first template with a PRODUCT band, and that is why it exists.**
-  Reverse-engineered from a user-supplied confectionery campaign prompt. The band names the
-  exact label text AND the colours it is set in - "bold yellow lettering outlined in dark brown"
-  renders legible type far more often than "the logo is visible", which is the same instruction
-  `static_ad_bank.json` carries as `label_accuracy_phrase`. Two things were deliberately NOT
-  carried across from the source, the same editorial call `macro_insert_bank.json` made about
-  its own: the "8K quality" claim (`8k` is on prompt_bank's `warn` list - a resolution number
-  does nothing a real camera name does not do better, so the OUTPUT band names a Canon EOS R5,
-  full-frame mirrorless, which earns the camera layer honestly), and "no text overlay, no
-  watermark", which is already in prompt_bank's own `negatives` and rides every prompt for free.
-- **A banded template's worked example is meant to be PASTED, so it must clear the gate.**
-  `photoreal-portrait`'s inline scaffold was already pinned at 8/8; `product-campaign`'s twelve
-  bands are now pinned the same way, plus a no-warn-terms check that is what actually holds the
-  8K decision above. An example a reader is told to use should not be one the app would refuse.
 - **`tools/typography_bank.json` is the first vocabulary in this app for text INSIDE an image.**
   Before it, a repo-wide grep for typography, headline, logo, copy placement, kerning, lockup or
   type hierarchy found nothing about text in a picture anywhere - the only hits were
@@ -1423,41 +1372,6 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   different strings. `build_capture.py` already had the guard and it was not carried over.
   Caught by a "selection order does not change the output" assertion, which every builder with
   a repeatable group should have.
-- **`product-campaign` and `candid-editorial` are the two user-supplied image templates, and
-  they are deliberately not each other.** One is a banded commercial brief with a PRODUCT band
-  (the only one in the bank); the other is an inline candid portrait whose whole point is the
-  two things a studio removes - found light and a real room - and whose `negatives` slot refuses
-  the studio look by name. `candid-editorial` is NOT a second `beauty-macro`: that one is a
-  studio macro paired with a Hasselblad and beauty-box lighting. Both worked examples are pinned
-  at a full 8/8 with **no warn terms**, which is what holds the decision to drop "8K" from both
-  sources - a resolution number does nothing a named body and aperture do not do better.
-- **Five more user-supplied prompts became THREE templates, not five.** The merge rule that
-  produced that: two prompts are one template when they share a skeleton, and the strongest
-  evidence is the sources' own words. The two selfie-video prompts share twelve bands verbatim
-  and the second says outright that "the body roll replaces the separate phone-slip event" -
-  that is one control set two ways, so `selfie-monologue`'s `event` slot carries both settings
-  and its `why` records the decision (`tests/test_anatomy.py` asserts the word "replaces" is
-  still there, so nobody later adds the near-duplicate). The two influencer prompts share
-  identity -> look -> setting -> light -> camera -> lock, so they are `influencer-series`. The
-  mirror-selfie prompt stayed its own template because its METHOD differs rather than its
-  subject: it argues with the camera barely at all and buys realism by committing to about
-  forty named particulars.
-- **`selfie-monologue` is the bank's largest template (18 slots) because a video fails by being
-  too STABLE.** Almost none of its slots describe the picture; they buy back an imperfection a
-  model would otherwise smooth away. Two are worth copying anywhere else: the **camera-ownership
-  lock** (the camera IS the phone she is holding, so no phone may appear and only the free hand
-  may enter frame - without it a model puts a second phone in the visible hand and films from
-  across the room), and **`pacing`**, the one band in either source that arithmetic can check -
-  79 words across 30 seconds is ~158 wpm, and without the count a model pads with stretched
-  phrases and a silent pose at each end. `optics` (autofocus hunting, exposure breathing) keeps
-  its OWN `detect` keys rather than claiming `lens`, because **`realism_lint` owns no
-  phone-behaviour vocabulary at all** - its lens layer knows apertures and bokeh and nothing
-  about focus favouring a fingertip. Convert that slot to `layer` only if those keys are ever
-  added to the gate.
-- **`inventory-selfie` and `selfie-monologue` hold the exact OPPOSITE rule about the phone, one
-  bank apart, on purpose.** The mirror selfie puts the device in frame at a stated angle; the
-  video forbids it appearing in its own image. Both are asserted, because either one read alone
-  looks like a general rule about phones and is not.
 - **A prompt that names two lighting setups is the commonest way a good prompt goes muddy.**
   Both influencer sources did it: one established warm sconces behind the subject plus indoor
   cinematic light and then appended "ring lighting"; the other said "no dramatic shadows" and
@@ -1478,6 +1392,70 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   weeks ago; a fingerprint smear on the mirror edge is about the surface between camera and
   subject. None of them describe how she looks. This is the flyaway-hair instinct one level
   deeper - imperfection with a CAUSE - and no generator adds any of it unasked.
+- **`spec["overrides"][<layer>]` REPLACES the bank's picks for that layer; a non-layer
+  override key APPENDS to the free tail.** That is why face micro-detail and lived-in evidence
+  ride `overrides["face_detail"]` / `overrides["evidence"]` and not `overrides["texture"]`:
+  in the texture slot they would have thrown away the bank's own texture terms and their
+  learned `history.weights()`. In the tail they can only ADD keywords - realism_lint scans the
+  whole prompt - so neither can lower a score, and `tests/test_evidence_bank.py` /
+  `test_face_detail.py` sweep 120 and 90 specs to prove it. Weight & contact and Materials in
+  this scene (`overrides["contact"]` / `overrides["material"]`, `build_prompt.apply_physical()`)
+  follow the same rule; `tests/test_physical.py` sweeps 90 specs. Materials REPLACES Lighting's
+  generic "material response" sentence when it finds real materials - two lines saying the same
+  thing is clutter, not more realism. Phone snapshot / Unstaged background / Catch the moment
+  (`build_snapshot.py`, `apply_snapshot()`) are the same pattern; `tests/test_snapshot.py`.
+- **Video realism lives in `video_realism_bank.json`, never in `motion_bank.json`** (hash-pinned).
+  `build_motion.load_bank()` merges its locked-off movement in, so the bank has 41 movements
+  while the file still has 40 - `tests/test_motion.py` counts the merged bank,
+  `tests/test_video_realism.py` checks the file. `real_motion_line()` / `phone_style()` are
+  opt-in params on `compose()` and `assemble_template()` (off = byte-identical); the Videos tab's
+  "Real motion (auto)" and "Phone video look" are on by default, and photoreal Cats clips always
+  carry real motion. `compose()` used to drop the Subject on a move that frames a place
+  (wide-static et al.) - a clip prompt with no subject in it.
+- **The Videos tab writes a one-take story by default** (`build_motion.assemble_story()`), the
+  shape of the user's own 150k-view prompt: "Static shot, <subject>." then each Timing line as a
+  sentence in order (Initially / Then / Soon after / Finally, a typed "Suddenly" kept), closing
+  "Subtle, fluid motion." Seconds are dropped. The old comma template is "Tagged list".
+  Negatives are OPTIONAL (off for a story, on for tagged); `motion_lint.lint(negatives=False)`
+  passes the guard row as "optional". `leads_with_camera()` accepts plain still-camera openers
+  ("Static shot", "Fixed camera"...) and, under a still camera, "Describes motion" counts what
+  the SUBJECT does. That viral prompt used to score 4/7 here; `tests/test_video_realism.py`
+  holds it at full marks verbatim.
+- **A non-human subject never gets skin or pore words.** `select_layers()` filters the core and
+  texture picks through `SKIN_WORDS` unless the subject is a person - realism_lint bans them on an
+  animal, and before this a Compose cat could draw "visible skin pores". `subject_kind()` also
+  lets a person or animal word beat a place word: "a ginger street cat" used to read as a PLACE
+  and lost every cat-specific line.
+- **Bash heredocs turn `\b` into a literal backspace here.** A regex written through a heredoc
+  silently never matched. Write patch scripts with the Write tool, then run them.
+- **Face detail is scaled by shot distance, never constant.** `build_face_detail.shot_tier()`
+  maps a preset or typed shot to close / mid / wide, and the wide tier carries no pore
+  language at all: pores at full body are detail no lens resolves, and asking makes a model
+  over-sharpen the face into a render. The close tier keys into `macro_insert_bank.json`
+  (the user's FULL FACE prompt) rather than copying it. Objects and places get nothing.
+- **Evidence, not imperfection.** `evidence_bank.json` holds details that each have a CAUSE
+  (sunglasses dent, shed hairs on the cushion it slept on, a dried water ring). An explicit
+  Look → Evidence pick is `overrides["evidence"]` and round-trips through `load_spec()`;
+  Compose's auto toggle writes `overrides["evidence_auto"]`, a different key, so a saved auto
+  pick is never resurrected as an explicit one. The two Compose toggles are working
+  preferences - `load_spec()` never flips them.
+- **Auto lighting is NARROWED by the Setting, never replaced.** `select_layers()` used to
+  draw one of the nine lighting terms at random with no reference to the Setting, so a bar at
+  night could get golden-hour sun. With `spec["scene_lighting"]` set (Compose's "Match light
+  to the scene", on by default; photoreal Cats scenes) it runs the same weighted `pick()`
+  over the subset `build_scene_light.allowed_terms()` allows - `scene_light_bank.json` may
+  only name terms `prompt_bank.json` owns, so ratings keep steering it. The source, bounce
+  off named materials and shadow coherence ride `overrides["scene_light"]` in the tail; with
+  an explicit lighting override the source is left out (a second named light would contradict
+  it) but bounce and shadows stay. Without the flag, output is byte-for-byte unchanged, and
+  `scene_lighting` is not in `brief.SPEC_KEYS`, so a model cannot set it.
+- **Timed beats are a promise about the whole clip, so their checks are conditional.**
+  `motion_lint` adds rules 8-10 (beats cover 0→clip length with no gaps, one action per beat,
+  an `ENDS ON:` state) only when a prompt contains `0-2s:`-style beats - every untimed prompt
+  still scores out of 7, exactly as before. `build_motion.parse_beats()` is shared by the
+  Videos tab and the linter so the two cannot disagree; with beats present the untimed Action
+  is left out of the subject clause, or the model does the action twice.
+
 - **Run the layout suite with `QT_QPA_FONTDIR` set, or it cannot see layout bugs.**
   Qt's offscreen platform on this machine exposes ZERO font families
   (`QFontDatabase.families()` returns `[]`), so a 12px font reports a 12px line
@@ -1536,14 +1514,16 @@ one-line "what this is for" header, and where it has one, a **Library** tab of e
 1. **Images** (`ImagesView`, thin container) - Compose + Variants.
 2. **Look** (`LookView`, container) - the six prompt-tuning toolkits as tabs: **Lighting**
    (named setups, or direction + quality + source, + realism techniques → lighting
-   override), **Composition** (the seven framing geometries + techniques → composition
+   override), **Composition** (the eight framing geometries + techniques → composition
    combo as custom text), **Camera** (vertical + side + size axes → shot field as custom
    text; a pure angle can honestly score the camera check 0/8), **Color** (12 moods + 10
    film looks + techniques → colour override), **Posing** (poses by shot type + techniques
    → Posing field, not a gated layer), **Style** (24 named looks from the course's Style
    Reference Library → `overrides["style"]`, which `build_prompt.free_overrides()` folds
    into the free trailing segment; stylised looks warn that they fight the realism
-   vocabulary). Each is Library + Build and calls a `tools/build_*.py`.
+   vocabulary), **Capture** (film stock, lens artefacts, exposure), **Evidence** (lived-in
+   details with a cause → `overrides["evidence"]`). Each is Library + Build and calls a
+   `tools/build_*.py`.
 3. **Videos** - the Kling motion toolkit + the film glossary; builds the prompt and can
    generate the real clip.
 4. **Personas** (`InfluencerStudioView`) - a saved roster of personas composed into one
@@ -1555,7 +1535,8 @@ one-line "what this is for" header, and where it has one, a **Library** tab of e
 7. **Sound** - the 100 ElevenLabs prompts, three layers per scene, TTS and voice cloning.
 8. **Assistant** (`AssistantView`, container) - **Chat** (the running conversation with the
    in-app expert; one Apply feeds the spec and all six Look sections) + **Prompt tools**
-   (the one-shot helpers: idea → spec, upgrade, critique, reverse-engineer a photo).
+   (the one-shot helpers: idea → spec, upgrade, critique, reverse-engineer a photo) +
+   **Prompt Bank** (the user's own prompts and their example images, saved exactly as given).
 9. **Activity** (`ActivityView`, container) - **History** + **What works** (the
    term-to-rating payoff; a "prefer learned terms" toggle biases composition).
 10. **Settings** - provider / model / key presence / theme / paths.

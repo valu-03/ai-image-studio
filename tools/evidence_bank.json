@@ -1,0 +1,184 @@
+{
+  "source": "Written for this app. The idea is the `marks` slot of the user-supplied mirror-selfie prompt that became anatomy_bank.json's `inventory-selfie` template - CLAUDE.md records it as 'the highest-value idea in any of the five prompts: evidence, not imperfection'. Until this bank it existed only as worked-example prose inside that one template; no builder could write it into a prompt. NOT AI Video Bootcamp course material.",
+  "version": 1,
+  "note": "Every option is a small detail that only exists because something happened before the shutter: a dent from sunglasses just taken off, hairs shed on the cushion it slept on, a ring where the bottle stood wet. Random imperfection reads as noise; an imperfection with a CAUSE reads as a moment that really happened, which is what a generated image lacks. This is descriptive spec content like wardrobe or posing, NOT a ninth realism layer: it rides spec['overrides']['evidence'], which build_prompt.free_overrides() appends to the free trailing segment, so prompt_bank.json and realism_lint.py stay untouched and adding evidence can only ever ADD keywords to a prompt, never remove one. capture_bank.json's `evidence` group is the CAMERA's evidence (a tilted horizon, flash falloff); this bank is the SUBJECT's. Phrases are comma-joinable fragments with no terminal full stop and no negation, because build_compact() comma-joins them and realism_lint.is_negated() would otherwise discount a keyword sitting near a 'no'.",
+  "max_details": 3,
+  "auto_count": 2,
+  "kind_words": {
+    "animal": ["cat", "cats", "kitten", "kittens", "kitty", "tabby", "dog", "dogs", "puppy", "puppies", "pup", "hound", "horse", "pony", "rabbit", "bunny", "hamster", "parrot", "bird", "fox", "animal", "pet"],
+    "human": ["person", "people", "woman", "women", "man", "men", "girl", "girls", "boy", "boys", "child", "children", "kid", "kids", "baby", "lady", "guy", "teen", "teenager", "model", "influencer", "mother", "father", "mum", "mom", "dad", "grandmother", "grandfather", "couple", "friends", "she", "he", "her", "him", "worker", "chef", "nurse", "athlete", "student", "mechanic", "barista", "doctor", "creator", "avatar"],
+    "place": ["room", "kitchen", "bedroom", "street", "alley", "cafe", "café", "office", "landscape", "interior", "hallway", "garden", "beach", "forest", "shop", "studio space", "apartment"]
+  },
+  "kinds": {
+    "human": {
+      "label": "Person",
+      "options": {
+        "sunglasses-dent": {
+          "label": "Sunglasses dent",
+          "cause": "worn",
+          "phrase": "a faint pink dent on the bridge of the nose from sunglasses just taken off",
+          "note": "Tells you she was outside a minute ago. Nobody adds this unless they were there."
+        },
+        "hair-tie": {
+          "label": "Hair tie on the wrist",
+          "cause": "worn",
+          "phrase": "a hair tie worn around the wrist, pressing a slight ridge into the skin",
+          "note": "A thing a real person carries all day. The ridge is what makes it worn rather than placed."
+        },
+        "strap-crease": {
+          "label": "Bag-strap crease",
+          "cause": "worn",
+          "phrase": "a soft crease across the shoulder of the top where a bag strap sat all day",
+          "note": "Fabric remembers. A garment straight off the hanger is a costume."
+        },
+        "watch-tan": {
+          "label": "Watch tan line",
+          "cause": "weathered",
+          "phrase": "a faint paler band on the wrist where a watch usually sits",
+          "note": "Weeks of sun in one detail. Works best on a bare wrist in a warm setting."
+        },
+        "slept-hair": {
+          "label": "Hair flattened on one side",
+          "cause": "slept-on",
+          "phrase": "hair slightly flattened on one side, as if just up from leaning against something",
+          "note": "The opposite of a salon blow-dry - the head was resting somewhere a moment ago."
+        },
+        "cold-flush": {
+          "label": "Flush from the cold",
+          "cause": "weathered",
+          "phrase": "a faint flush at the tip of the nose and across the cheeks from just coming in out of the cold",
+          "note": "Uneven colour with a reason. Pair with a winter coat or a doorway."
+        },
+        "ink-smudge": {
+          "label": "Ink on the hand",
+          "cause": "handled",
+          "phrase": "a small blue ink smudge on the side of the hand from writing",
+          "note": "Proof of an activity outside the frame. Good for desk, study and office scenes."
+        },
+        "lint": {
+          "label": "Lint on a dark sleeve",
+          "cause": "worn",
+          "phrase": "a few stray light fibres of lint caught on the dark sleeve",
+          "note": "Dark fabric always collects something. A spotless black sleeve is a render."
+        }
+      }
+    },
+    "animal": {
+      "label": "Animal",
+      "options": {
+        "shed-hairs": {
+          "label": "Shed hairs on the cushion",
+          "cause": "slept-on",
+          "phrase": "a few shed hairs left on the cushion it was just lying on",
+          "note": "The surface remembers the animal. Strongest on a dark or contrasting fabric."
+        },
+        "damp-nose": {
+          "label": "Freshly licked nose",
+          "cause": "just-used",
+          "phrase": "a slightly damp, freshly licked nose catching a pinpoint of light",
+          "note": "A living detail, a second old. Close and mid shots only - invisible at a distance."
+        },
+        "bent-whisker": {
+          "label": "One bent whisker",
+          "cause": "handled",
+          "phrase": "one whisker bent at an angle from pressing against something",
+          "note": "Breaks the perfect symmetrical fan generators love."
+        },
+        "flattened-fur": {
+          "label": "Fur flattened from sleeping",
+          "cause": "slept-on",
+          "phrase": "a flattened patch of fur on the side it was sleeping on",
+          "note": "The coat holds the shape of the last thing it did."
+        },
+        "groomed-tufts": {
+          "label": "Damp grooming tufts",
+          "cause": "just-used",
+          "phrase": "a few damp, spiky tufts of fur where it has just been grooming",
+          "note": "Uneven, wet-looking fur in one small patch - a cat that was washing a moment ago."
+        },
+        "dusty-paws": {
+          "label": "Dust on the paws",
+          "cause": "weathered",
+          "phrase": "a faint dusting of grit on the paws from the windowsill",
+          "note": "Where it has been. Works with any indoor-outdoor setting."
+        }
+      }
+    },
+    "object": {
+      "label": "Object / product",
+      "options": {
+        "thumbprint": {
+          "label": "Thumbprint on gloss",
+          "cause": "handled",
+          "phrase": "a faint thumbprint smudge on the glossy surface",
+          "note": "Someone picked it up. The single fastest way out of the floating-product look."
+        },
+        "water-ring": {
+          "label": "Dried water ring",
+          "cause": "just-used",
+          "phrase": "a faint dried water ring on the surface beside it where it stood wet",
+          "note": "Evidence on the SET, not the product - the bottle has a history on this counter."
+        },
+        "label-lift": {
+          "label": "Label edge lifting",
+          "cause": "handled",
+          "phrase": "the label edge lifting very slightly at one corner",
+          "note": "Subtle wear. Keep it slight on a hero product shot - this is used, not damaged."
+        },
+        "dust-edges": {
+          "label": "Dust on the top edges",
+          "cause": "weathered",
+          "phrase": "a fine film of dust settled along the top edges",
+          "note": "Time passing on a shelf. Not for a brand-new product launch."
+        },
+        "scuffed-base": {
+          "label": "Scuffed base",
+          "cause": "handled",
+          "phrase": "light scuffs around the base from being set down many times",
+          "note": "Use over and over, told by the one part nobody looks at."
+        },
+        "just-opened": {
+          "label": "Cap just put back",
+          "cause": "just-used",
+          "phrase": "the cap sitting slightly off-centre, as if just opened and put back",
+          "note": "Turns a packshot into a moment in a routine."
+        }
+      }
+    },
+    "place": {
+      "label": "Place / setting",
+      "options": {
+        "worn-path": {
+          "label": "Worn path in the floor",
+          "cause": "weathered",
+          "phrase": "a worn, slightly paler path in the floor where people always walk",
+          "note": "Years of use in one line across the frame."
+        },
+        "left-mug": {
+          "label": "Half-finished mug",
+          "cause": "just-used",
+          "phrase": "a half-finished mug left on the side with a ring beside it",
+          "note": "Somebody was just here and will come back."
+        },
+        "sun-fade": {
+          "label": "Sun-faded curtain",
+          "cause": "weathered",
+          "phrase": "one side of the curtain faded paler where the sun hits it every afternoon",
+          "note": "A room that has existed for years, not minutes."
+        },
+        "scuffed-wall": {
+          "label": "Chair-height scuffs",
+          "cause": "handled",
+          "phrase": "faint scuff marks on the wall at chair height",
+          "note": "Where the chair always bumps. Lived-in, never dirty."
+        },
+        "corner-leaves": {
+          "label": "Leaves blown into the corner",
+          "cause": "weathered",
+          "phrase": "a few dry leaves blown into the corner by the door",
+          "note": "The outside gets in. Seasonal - autumn and winter scenes."
+        }
+      }
+    }
+  }
+}

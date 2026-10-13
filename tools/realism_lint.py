@@ -96,6 +96,9 @@ DETECT = {
             # tests/test_lighting_bank.py.
             "clam shell", "checkerboard", "old hollywood", "bounced off",
             "unmodified", "diffusion panel",
+            # The Lighting bank's opt-in caustics technique names no source of
+            # its own, so it needs a key of its own to be seen.
+            "caustic light",
         ],
         "fix": "add \"soft natural daylight with realistic shadows\" (the highest-value phrase)",
     },
@@ -181,6 +184,7 @@ DETECT = {
             # the 8/8 gate.
             "phi grid", "diagonal composition", "leading lines", "triangular composition",
             "golden ratio", "golden spiral", "fibonacci", "harmonic armature",
+            "dynamic symmetry",
             # The Composition section's opt-in realism techniques
             # (tools/composition_bank.json). Same rule: audited for real, not
             # assumed - see tests/test_composition_bank.py.

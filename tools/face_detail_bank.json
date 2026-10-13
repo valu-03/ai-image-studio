@@ -1,0 +1,66 @@
+{
+  "source": "The user-supplied FULL FACE beauty prompt - the same source macro_insert_bank.json's `full-face` insert and anatomy_bank.json's `beauty-macro` template were built from. Its skin detail was reachable only through the Macro Insert workflow; an ordinary Compose portrait got one generic texture term. NOT AI Video Bootcamp course material.",
+  "version": 1,
+  "note": "Face (or coat) micro-detail SCALED BY SHOT DISTANCE. Pores in a full-body frame are detail the camera physically cannot resolve, and asking for them makes a model over-sharpen the face into a render - so the tier is chosen from the shot, and the wide tier carries no pore language at all (tests/test_face_detail.py asserts it). Human close-tier phrases are KEYED INTO macro_insert_bank.json's inserts rather than copied, the rule that bank set for lighting_bank.json, so the two can never drift; animal tiers key into pet_realism_bank.json's groups the same way. Only phrases with no existing home live here. Carried over from the FULL FACE source as stated: 'never a single uniform skin tone', 'slight natural asymmetry', no glossy or plastic skin. NOT carried: '8K', 'ultra-photorealistic', 'professional' (prompt_bank.json's `warn` list - a named camera and lens do their job better) and the long 'Absolutely no...' list, which realism_lint.is_negated() cannot credit and which prompt_bank.json's `negatives`/`banned` already cover. Rides spec['overrides']['face_detail'], a non-layer override appended to the free trailing segment, so it adds texture keywords without displacing the bank's own texture picks or their learned weights.",
+  "shot_tiers": {
+    "presets": {
+      "portrait": "mid",
+      "selfie": "mid",
+      "talking-head": "mid",
+      "phone-candid": "mid",
+      "product-demo": "wide",
+      "environmental": "wide"
+    },
+    "keywords": {
+      "close": ["extreme close", "macro", "headshot", "head shot", "beauty portrait", "beauty shot", "face fills", "filling the frame", "ecu", "tight close", "of her face", "of his face", "of their face", "of the face", "of a face", "face close-up", "face close up", "facial close-up"],
+      "wide":["full body", "full-body", "full length", "full-length", "wide shot", "wide angle", "wide-angle", "long shot", "establishing", "environmental", "head to toe", "head-to-toe", "medium-wide", "medium wide", "cowboy shot"],
+      "mid": ["close-up", "close up", "closeup", "medium", "portrait", "selfie", "waist", "chest", "shoulders"]
+    },
+    "close_lighting_skip": ["chiaroscuro lighting", "harsh midday sunlight"],
+    "default": "mid"
+  },
+  "human": {
+    "close": {
+      "label": "Close: pore-level",
+      "pick": 4,
+      "from": [
+        {"bank": "macro_insert", "insert": "full-face"},
+        {"bank": "macro_insert", "insert": "eye", "index": 0}
+      ],
+      "phrases": [
+        "fine baby hairs and flyaways along the hairline and temples, each strand separate, real hair texture",
+        "clear natural catchlights in the eyes over fibrous iris texture with natural colour variation"
+      ]
+    },
+    "mid": {
+      "label": "Mid: zonal skin",
+      "pick": 3,
+      "phrases": [
+        "per-zone tonal variation - forehead, cheeks and nose each a slightly different tone, never one uniform skin tone",
+        "subsurface scattering faintly warming the ears and the edges of the nostrils",
+        "fine flyaway strands at the hairline catching the light, real hair texture",
+        "slight natural asymmetry of the eyes, brows and lips - the small imperfection of a real face",
+        "faint visible pores across the nose and cheeks, softening toward the jaw",
+        "skin with a natural satin finish, matte at the cheeks with faint shine at the nose - real skin texture, never glossy or plastic"
+      ]
+    },
+    "wide": {
+      "label": "Wide: body-level",
+      "pick": 2,
+      "phrases": [
+        "slight natural asymmetry in the face and posture, the small imperfection of a real person",
+        "realistic tonal variation between the face, neck and hands, never one uniform skin tone",
+        "clothing creasing with real fabric texture where the body bends, the weight settled believably"
+      ]
+    }
+  },
+  "animal": {
+    "species_words": {
+      "cat": ["cat", "cats", "kitten", "kittens", "kitty", "tabby", "tomcat", "feline"],
+      "dog": ["dog", "dogs", "puppy", "puppies", "pup", "hound", "canine"]
+    },
+    "close": {"label": "Close: individual hairs", "pick": 3, "groups": ["coat", "face"]},
+    "mid": {"label": "Mid: natural coat", "pick": 2, "groups": ["coat", "face"]},
+    "wide": {"label": "Wide: coat only", "pick": 1, "groups": ["coat"]}
+  }
+}

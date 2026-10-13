@@ -1,6 +1,6 @@
 """Ads category - the video advert and the static advert, side by side.
 
-A thin container, exactly like ImagesView, LookView and AnatomyContainer: it
+A thin container, exactly like ImagesView, LookView and PromptBankContainer: it
 builds the children, exposes them (`self.video`, `self.static`), and anything
 that needs one reaches in.
 
