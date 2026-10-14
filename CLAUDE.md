@@ -1465,10 +1465,14 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   genuinely broken Compose card for exactly this reason: `setMinimumSize(1100,
   700)` claims that size is supported, and with real metrics `MainWindow`'s own
   minimum was 774px, so Qt shared the 74px shortfall out and the Realism-check
-  badge (size policy Fixed) came out 16px of the 22px it asked for. Reproduce
-  with `QT_QPA_FONTDIR="C:/Windows/Fonts" python tests/run_all.py`; CI installs
-  `fonts-dejavu-core` for the same reason. A green local layout run means less
-  than it looks like.
+  badge (size policy Fixed) came out 16px of the 22px it asked for. CI installs
+  `fonts-dejavu-core` for the same reason. **This is now automatic:**
+  `tests/run_all.py` and `tests/test_layout.py` both point `QT_QPA_FONTDIR` at
+  `%WINDIR%\Fonts` when it exists and nothing else set it. The wrong-way trap
+  was real too - without fonts, every glyph measured a flat 13px, buttons came
+  out 30-50% wider than with Segoe UI, `MainWindow` claimed a 1338px minimum,
+  and the suite reported 7 layout failures that do not exist with real fonts.
+  A layout result from a fontless run is noise in both directions.
 - **CI failures are readable without credentials, by design.** GitHub serves
   Actions job logs only to authenticated callers, so a red run showed nothing
   but "Process completed with exit code 1". `.github/workflows/tests.yml` now

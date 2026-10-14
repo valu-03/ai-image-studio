@@ -126,6 +126,15 @@ def main(argv):
 
     env = dict(os.environ)
     env.setdefault("QT_QPA_PLATFORM", "offscreen")
+    env.setdefault("PYTHONIOENCODING", "utf-8")
+    # Offscreen Qt on Windows sees ZERO font families, so every text metric is a
+    # synthetic fallback no user has - test_layout.py then reports buttons 30-50%
+    # wider than they really are and fails a layout that is fine with real fonts
+    # (and passes ones that are not). Point it at the installed fonts; CI is
+    # Linux, has no such folder, and keeps its own fonts-dejavu-core.
+    fonts = Path(os.environ.get("WINDIR", r"C:\Windows")) / "Fonts"
+    if "QT_QPA_FONTDIR" not in env and fonts.is_dir():
+        env["QT_QPA_FONTDIR"] = str(fonts)
     # Central safety net: no suite's idea of "no key" should depend on what is in
     # the developer's .env. read_env() outranks os.environ, so without this a real
     # key silently turns the no-key tests into false passes. Suites may still set
@@ -166,9 +175,14 @@ def main(argv):
     failed_suites = []
 
     for name in suites:
+        # UTF-8 on both ends. text=True alone decodes with the locale codec
+        # (cp1252 on Windows), so one suite printing a curly quote killed the
+        # whole run with a UnicodeDecodeError - but only from PowerShell/cmd;
+        # Git Bash's UTF-8 locale hid it.
         proc = subprocess.run(
             [sys.executable, str(HERE / name)],
-            capture_output=True, text=True, cwd=str(ROOT), env=env,
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            cwd=str(ROOT), env=env,
         )
         output = proc.stdout + proc.stderr
         ok = sum(1 for line in output.splitlines() if line.startswith("  OK"))

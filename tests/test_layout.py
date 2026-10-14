@@ -23,6 +23,14 @@ import sys
 from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+# Real fonts, or this gate measures a configuration no user has: offscreen Qt
+# on Windows exposes zero font families, so every width and height below would
+# come from a synthetic fallback. Same default run_all.py applies; set here too
+# so a standalone run agrees with it. Linux CI has no such folder and uses its
+# installed fonts-dejavu-core instead.
+_FONTS = Path(os.environ.get("WINDIR", r"C:\Windows")) / "Fonts"
+if "QT_QPA_FONTDIR" not in os.environ and _FONTS.is_dir():
+    os.environ["QT_QPA_FONTDIR"] = str(_FONTS)
 # MainWindow reads AIVS_SETTINGS_APP at import time to pick which QSettings
 # key it opens - without this every GUI test read AND WROTE the user's real
 # saved provider/model/theme/window geometry.
