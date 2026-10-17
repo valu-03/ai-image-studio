@@ -27,7 +27,9 @@ STORAGE. One folder per prompt, the folder name IS the title:
 
 No index file to fall out of step, and any prompt can be opened, copied or
 backed up by hand. temp/resources/ is user data: the same "never delete
-without being asked" rule as the character library applies.
+without being asked" rule as the character library applies. The .exe built
+into dist/ uses this same checkout folder (see _default_bank_dir), so a prompt
+saved in either one shows up in both.
 (Not to be confused with tools/prompt_bank.json, the realism vocabulary the
 prompt builder draws from - unrelated, which is why this module is named
 saved_prompts.)
@@ -60,10 +62,25 @@ class PromptBankError(ValueError):
     """An unknown kind, an empty prompt or title, a missing image, or a title that is not there."""
 
 
+def _default_bank_dir(root):
+    """root's own temp/resources/prompt_bank - unless root is a build in <checkout>/dist/.
+
+    The frozen .exe ships tools/ as loose files, so its ROOT is dist/AI Video Studio/
+    and it would otherwise keep a second, empty bank there - one PyInstaller wipes
+    on every rebuild. A build that still sits inside its checkout shares the
+    checkout's bank instead; an .exe copied anywhere else keeps its own.
+    """
+    root = Path(root)
+    checkout = root.parent.parent
+    if root.parent.name.lower() == "dist" and (checkout / "gui.py").is_file():
+        root = checkout
+    return root / "temp" / "resources" / "prompt_bank"
+
+
 def bank_dir():
     """The Prompt Bank folder - read at call time, so the env seam always applies."""
     override = os.environ.get("AIVS_PROMPT_BANK_DIR")
-    return Path(override) if override else ROOT / "temp" / "resources" / "prompt_bank"
+    return Path(override) if override else _default_bank_dir(ROOT)
 
 
 def kind_dir(kind):

@@ -207,6 +207,19 @@ check("--file is stored byte for byte", raw(cli_entry / sp.PROMPT_FILE) == raw(s
 check("--image is stored with it", [p.name for p in sp.images(cli_entry)] == ["example one.png"])
 
 print()
+print("=== THE .EXE IN dist/ SHARES THE CHECKOUT'S BANK ===")
+fake = TMP / "checkout"
+build = fake / "dist" / "AI Video Studio"
+build.mkdir(parents=True)
+check("a build with no gui.py above it keeps its own bank",
+      sp._default_bank_dir(build) == build / "temp" / "resources" / "prompt_bank")
+(fake / "gui.py").write_text("", encoding="utf-8")
+check("a build inside its checkout uses the checkout's bank",
+      sp._default_bank_dir(build) == fake / "temp" / "resources" / "prompt_bank")
+check("running from source uses the root's own bank",
+      sp._default_bank_dir(fake) == fake / "temp" / "resources" / "prompt_bank")
+
+print()
 print("=== THE PROMPT BANK TAB ===")
 from PyQt6.QtGui import QGuiApplication  # noqa: E402
 from PyQt6.QtWidgets import QApplication, QMessageBox  # noqa: E402
