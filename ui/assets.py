@@ -69,7 +69,8 @@ BRAND_ICON_SIZE = QSize(24, 24)
 ICONS = {
     # The application mark - window, taskbar and the rail's brand row. Both
     # entries are the same file: it is full-colour, so it has no muted state.
-    "app": (ICON_DIR / "app.svg", ICON_DIR / "app-active.svg"),
+    # A raster cut from the user's logo by tools/make_app_icon.py, not an SVG.
+    "app": (ICON_DIR / "app.png", ICON_DIR / "app.png"),
     # Navigation-rail categories
     "images": (ICON_DIR / "images.svg", ICON_DIR / "images-active.svg"),
     "look": (ICON_DIR / "look.svg", ICON_DIR / "look-active.svg"),

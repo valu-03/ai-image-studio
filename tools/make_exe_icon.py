@@ -1,65 +1,35 @@
-"""Render assets/icons/app.svg into assets/icons/app.ico for the Windows build.
+"""Pack assets/icons/app.png into assets/icons/app.ico for the Windows build.
 
 Usage:
     python tools/make_exe_icon.py
 
-Rasterizes the SVG mark at each ICO frame size separately (256, 128, 64, 48,
-32, 16) rather than scaling one bitmap down, so the aperture ring and play
-triangle stay crisp at the sizes Explorer and the taskbar actually use - a
-single downscaled 256px render turns to mush at 16px. Needs PyQt6 (already a
-project dependency, for the SVG rasteriser) and Pillow (for ICO packing,
-which Qt has no writer for). Run after `python tools/make_icons.py` any time
-the app mark changes; AIVideoStudio.spec points PyInstaller's EXE() at the
-file this writes.
+Writes six frames (256, 128, 64, 48, 32, 16), each resampled straight from the
+512px app.png with Lanczos rather than chained down from the previous frame,
+so the small sizes Explorer and the taskbar use stay as sharp as a raster
+source allows. Needs Pillow only. Run after `python tools/make_app_icon.py`
+any time the mark changes; AIVideoStudio.spec points PyInstaller's EXE() at
+the file this writes.
 """
 
 import struct
-import sys
 from io import BytesIO
 from pathlib import Path
 
 from PIL import Image
-from PyQt6.QtGui import QPainter, QPixmap
-from PyQt6.QtSvg import QSvgRenderer
-from PyQt6.QtWidgets import QApplication
 
 ROOT = Path(__file__).resolve().parent.parent
-SVG_PATH = ROOT / "assets" / "icons" / "app.svg"
+PNG_PATH = ROOT / "assets" / "icons" / "app.png"
 ICO_PATH = ROOT / "assets" / "icons" / "app.ico"
 SIZES = (16, 32, 48, 64, 128, 256)
 
 
-def render_png_bytes(svg_path, size):
-    renderer = QSvgRenderer(str(svg_path))
-    pix = QPixmap(size, size)
-    pix.fill(0)  # transparent
-    painter = QPainter(pix)
-    renderer.render(painter)
-    painter.end()
-    from PyQt6.QtCore import QBuffer, QIODevice
-    buf = QBuffer()
-    buf.open(QIODevice.OpenModeFlag.ReadWrite)
-    pix.save(buf, "PNG")
-    data = bytes(buf.data())
-    buf.close()
-    return data
-
-
 def build():
-    app = QApplication.instance() or QApplication(sys.argv)
-
-    # Render each size separately from the vector source rather than letting
-    # Pillow downscale one bitmap - a 16px frame resampled from a 256px
-    # render loses the aperture ring to a grey smear; rendered directly from
-    # the SVG at 16px it stays a clean circle. Each frame is written as its
-    # own single-image ICO, then the six ICOs are concatenated at the
-    # container level (Pillow's `sizes=`/`append_images=` ICO writer picks
-    # its own frames by nearest-size match rather than using the ones
-    # supplied verbatim, which silently dropped every size but the first).
-    frames = []
-    for size in SIZES:
-        data = render_png_bytes(SVG_PATH, size)
-        frames.append(Image.open(BytesIO(data)).convert("RGBA"))
+    # Each frame is written by hand into the ICO container (see _write_ico):
+    # Pillow's `sizes=`/`append_images=` ICO writer picks its own frames by
+    # nearest-size match rather than using the ones supplied verbatim, which
+    # silently dropped every size but the first.
+    source = Image.open(PNG_PATH).convert("RGBA")
+    frames = [source.resize((size, size), Image.Resampling.LANCZOS) for size in SIZES]
 
     ICO_PATH.parent.mkdir(parents=True, exist_ok=True)
     _write_ico(frames, ICO_PATH)

@@ -48,10 +48,10 @@ from PyInstaller.utils.hooks import collect_all
 
 ROOT = Path(SPECPATH)
 # The .exe's own icon (Explorer, taskbar-before-launch, shortcuts) is separate
-# from the SVG QIcon the running app sets on its window - PyInstaller's EXE()
-# needs a real .ico file at build time, which tools/make_exe_icon.py renders
-# from assets/icons/app.svg. Re-run that script (after tools/make_icons.py,
-# if the mark itself changed) before rebuilding if app.ico is stale.
+# from the PNG QIcon the running app sets on its window - PyInstaller's EXE()
+# needs a real .ico file at build time, which tools/make_exe_icon.py packs
+# from assets/icons/app.png. Re-run that script (after tools/make_app_icon.py,
+# if the logo itself changed) before rebuilding if app.ico is stale.
 ICON_PATH = ROOT / "assets" / "icons" / "app.ico"
 
 datas = [
