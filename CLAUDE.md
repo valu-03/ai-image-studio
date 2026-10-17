@@ -753,6 +753,11 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   rather than trusting Pillow's `sizes=`/`append_images=` ICO writer, which silently kept only
   the first frame when this was tried the straightforward way - confirmed by parsing the file's
   own directory table afterward, not by assuming the call worked.
+  **Superseded:** the mark is now the user's own logo. `tools/make_app_icon.py` cuts the
+  "AI" + film-strip play mark (without the lettering) out of `assets/icons/app-source.jpg` onto
+  a white rounded tile, which keeps the navy readable on a dark taskbar or rail. The result is
+  `assets/icons/app.png`, and `ui/assets.py`'s `"app"` points at it. `make_exe_icon.py` now
+  packs that PNG into `app.ico`. `app.svg` is unused; don't point anything back at it.
 - **`AIVideoStudio.spec` now points `EXE()` at that `.ico`**, and doing so surfaced a real,
   previously-latent packaging gap: `tools/` ships as unanalysed data (see the header comment),
   so a stdlib module imported ONLY from inside `tools/` - never from anything `ui/`/`gui.py`
@@ -1133,7 +1138,9 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   and the tab (`ui/views/prompt_bank.py`) calls the same functions. When the user gives a
   prompt (and its example images) for the app, save it with that tool, verbatim; never tidy
   it. Not to be confused with `tools/prompt_bank.json`, the realism vocabulary - unrelated.
-  `AIVS_PROMPT_BANK_DIR` redirects the folder; `tests/test_saved_prompts.py` uses it.
+  `AIVS_PROMPT_BANK_DIR` redirects the folder; `tests/test_saved_prompts.py` uses it. The .exe
+  built into `dist/` shares the checkout's `temp/resources/prompt_bank/` (`_default_bank_dir`) -
+  never put prompt files beside the .exe, where a rebuild wipes them.
 - **A `Card` owns its layout: add widgets to `card.body`, never to `QVBoxLayout(card)`.**
   `ui/widgets.py`'s `Card` builds its own layout in `__init__`; Qt refuses to install a second
   one, so a widget added to that second layout is orphaned - never parented, never laid out,
@@ -1433,6 +1440,20 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   language at all: pores at full body are detail no lens resolves, and asking makes a model
   over-sharpen the face into a render. The close tier keys into `macro_insert_bank.json`
   (the user's FULL FACE prompt) rather than copying it. Objects and places get nothing.
+- **Skin features are the user's choice, never the model's.** Freckles used to turn up
+  unasked. The builder never added them: the AI helpers were shown freckled worked examples
+  in `prompt_bank.json`, and a freckled Advisor example. Freckles, beauty mark, natural
+  redness, faint acne scars, under-eye shadows and uneven skin tone are now opt-in checkboxes
+  on Compose's Subject tab:
+  - They are stored as `spec["skin_features"]` (keys) and resolved per shot by
+    `build_skin_features.py`. They land on `overrides["skin_features"]`, in the tail.
+  - People only. A feature the Subject already names is skipped.
+  - Unlike the working-preference toggles, they are CHARACTER data, so `load_spec()`
+    restores them.
+  - `skin_features` is not in `brief.SPEC_KEYS`. Every brief that writes a subject carries
+    `brief.skin_features_rule()`.
+  - Don't put a skin feature back into a worked example: `tests/test_skin_features.py`
+    fails on it.
 - **Evidence, not imperfection.** `evidence_bank.json` holds details that each have a CAUSE
   (sunglasses dent, shed hairs on the cushion it slept on, a dried water ring). An explicit
   Look → Evidence pick is `overrides["evidence"]` and round-trips through `load_spec()`;

@@ -26,6 +26,7 @@ from PyQt6.QtWidgets import (
     QComboBox,
     QFileDialog,
     QFormLayout,
+    QGridLayout,
     QHBoxLayout,
     QLineEdit,
     QPlainTextEdit,
@@ -44,6 +45,7 @@ import build_evidence as bev  # noqa: E402
 import build_material as bmt  # noqa: E402
 import build_prompt as bp  # noqa: E402
 import build_scene_light as bsl  # noqa: E402
+import build_skin_features as bsf  # noqa: E402
 import build_snapshot as bsn  # noqa: E402
 
 from . import assets, tokens as T  # noqa: E402
@@ -243,7 +245,36 @@ class SpecEditor(QWidget):
         self.physical_note = MutedLabel("")
         self.physical_note.setWordWrap(True)
 
-        self.setting = QLineEdit(placeholderText="a bright apartment kitchen, mid-morning")
+        # Skin features (build_skin_features.py). Unlike the toggles above
+        # these are CHARACTER data - freckles are part of who someone is - so
+        # they ride spec["skin_features"] and load_spec() restores them. All
+        # off by default; the AI helpers are told never to invent them.
+        self._skin_bank = bsf.load_bank()
+        self.skin_features = {}
+        self.skin_box = QWidget()
+        skin_layout = QVBoxLayout(self.skin_box)
+        skin_layout.setContentsMargins(0, 0, 0, 0)
+        skin_layout.setSpacing(T.SPACE["xs"])
+        skin_label = MutedLabel("Skin features (people only)")
+        skin_label.setToolTip(
+            "Off unless you tick them. Scaled to the shot: freckles, a mole, acne scars and "
+            "under-eye shadows are left out of a full-body shot, where no lens could show "
+            "them. Saved with the character. Anything your Subject already says is not "
+            "repeated.")
+        skin_layout.addWidget(skin_label)
+        skin_grid = QGridLayout()
+        skin_grid.setHorizontalSpacing(T.SPACE["md"])
+        skin_grid.setVerticalSpacing(T.SPACE["xs"])
+        for index, (key, label) in enumerate(bsf.labels(self._skin_bank)):
+            box = QCheckBox(label)
+            box.setToolTip(" / ".join(
+                "{}: {}".format(tier, self._skin_bank["features"][key].get(tier) or "skipped")
+                for tier in ("close", "mid", "wide")))
+            self.skin_features[key] = box
+            skin_grid.addWidget(box, index // 2, index % 2)
+        skin_layout.addLayout(skin_grid)
+
+        self.setting =QLineEdit(placeholderText="a bright apartment kitchen, mid-morning")
 
         # Editable, like lighting: the five presets are the tested starting
         # points, not the only shots that exist.
@@ -361,7 +392,7 @@ class SpecEditor(QWidget):
                   ("Mood", self.mood)],
                  [self.face_detail, self.lived_in, self.contact_detail,
                   self.material_detail, self.snapshot, self.background_life, self.moment,
-                  self.physical_note, open_posing]),
+                  self.physical_note, self.skin_box, open_posing]),
             "Subject",
         )
         open_lighting = QPushButton("Open Lighting section →")
@@ -447,6 +478,8 @@ class SpecEditor(QWidget):
         self.background_life.toggled.connect(self.changed)
         self.moment.toggled.connect(self.changed)
         self.match_light.toggled.connect(self.changed)
+        for box in self.skin_features.values():
+            box.toggled.connect(self.changed)
         self.subject.textChanged.connect(self._validate)
         self.changed.connect(self._refresh_derived)
 
@@ -806,6 +839,10 @@ class SpecEditor(QWidget):
             flags["lived_in"] = True
         return flags, overrides
 
+    def skin_feature_keys(self):
+        """The ticked skin features, in bank order."""
+        return [key for key, box in self.skin_features.items() if box.isChecked()]
+
     # -- data in / out ------------------------------------------------------ #
     def filled_keys(self):
         """The spec keys the user has actually put something into.
@@ -911,6 +948,10 @@ class SpecEditor(QWidget):
         for flag in ("snapshot", "background_life", "moment"):
             if getattr(self, flag).isChecked():
                 spec[flag] = True
+        skin = self.skin_feature_keys()
+        if skin:
+            # A flag build_prompt resolves per shot; not in brief.SPEC_KEYS.
+            spec["skin_features"] = skin
         if overrides:
             spec["overrides"] = overrides
 
@@ -973,6 +1014,14 @@ class SpecEditor(QWidget):
             self.colour.setCurrentIndex(index)
         else:
             self.colour.setCurrentText(grade)
+
+        # Character data, so a saved character without the key gets them all
+        # off - unlike the working-preference toggles, which load_spec() leaves.
+        saved_skin = set(spec.get("skin_features") or [])
+        for key, box in self.skin_features.items():
+            box.blockSignals(True)
+            box.setChecked(key in saved_skin)
+            box.blockSignals(False)
 
         for widget in widgets:
             widget.blockSignals(False)

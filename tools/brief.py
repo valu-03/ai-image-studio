@@ -24,6 +24,7 @@ from pathlib import Path
 
 import ask_llm
 import build_prompt as bp
+import build_skin_features as bsf
 import realism_lint as rl
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -66,6 +67,19 @@ def build_brief(purpose, role, structure, tone=None, constraints=(), examples=()
     if examples:
         out.append("EXAMPLES\n" + "\n\n".join(examples))
     return "\n\n".join(out)
+
+
+def skin_features_rule():
+    """The constraint that keeps a model from inventing skin features.
+
+    Freckles used to appear unasked because the worked examples carried them.
+    They are the user's choice now (Compose > Subject > Skin features), so a
+    model must never add one - named from the bank so the list cannot drift.
+    """
+    names = [label.lower() for _key, label in bsf.labels(bsf.load_bank())]
+    return ("Never add skin features the user did not write: " + ", ".join(names)
+            + ", moles or dark circles. The user adds those with the app's Skin "
+            "features checkboxes.")
 
 
 def _bank_vocabulary(bank):
@@ -115,8 +129,7 @@ def idea_brief(bank):
         structure=(
             "Reply with a single JSON object and nothing else. Keys, all optional "
             "except subject:\n"
-            '  subject   (string) who they are, physically. Age range, hair, skin, '
-            'distinguishing marks.\n'
+            '  subject   (string) who they are, physically. Age range, hair, build.\n'
             "  wardrobe  (string) what they are wearing\n"
             "  setting   (string) where they are, and the time of day\n"
             "  action    (string) what they are physically doing\n"
@@ -131,8 +144,9 @@ def idea_brief(bank):
             "Use ONLY the keys listed above. Any other key is discarded.",
             "Do not write camera, lens, lighting, grain or colour terms — the app "
             "adds those from its own vocabulary.",
-            "Include at least one natural imperfection in `extra` (a blemish, eye "
-            "bags, stray hairs, worn fabric).",
+            "Include at least one natural imperfection in `extra` (stray hairs, "
+            "worn fabric, a chipped nail).",
+            skin_features_rule(),
             "Never use these words: " + ", ".join(bank["banned"]) + ".",
             "Real, ordinary-looking people. Not models, not idealised faces.",
         ],
@@ -143,7 +157,7 @@ def idea_brief(bank):
             'grey t-shirt", "setting": "a small coffee shop after closing, lit by one '
             'window", "action": "wiping down the counter", "mood": "worn out, absent", '
             '"shot": "environmental", "extra": ["faint coffee stains on the apron", '
-            '"shadows under the eyes"]}'
+            '"a loose thread at the cuff"]}'
         ],
     )
 
@@ -201,6 +215,7 @@ def autofill_brief(bank):
             "a generic 'skin detail'.",
             "Put at least one ordinary prop in the scene that implies a story - an "
             "open book, a half-drunk coffee, a bag set down.",
+            skin_features_rule(),
             "Never use these words: " + ", ".join(bank["banned"]) + ".",
             "Real, ordinary-looking people. Not models, not idealised faces.",
         ],
@@ -231,6 +246,7 @@ def upgrade_brief(bank):
             "composition, grain.",
             "Keep the negative block at the end.",
             "Do not change who the subject is, what they wear, or where they are.",
+            skin_features_rule() + " Keep any the original already names.",
             "Never introduce: " + ", ".join(bank["banned"]) + ".",
             "Under {} words.".format(MAX_UPGRADE_WORDS),
             "Describe light and texture physically, not with adjectives like "

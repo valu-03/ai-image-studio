@@ -1,0 +1,49 @@
+{
+  "source": "Not from the course. Opt-in skin features for a person, ticked on Compose's Subject tab. Each phrase is hedged ('faint', 'light', 'slight') because a shouted feature reads as make-up or a filter rather than skin.",
+  "version": 1,
+  "note": "A tier set to null means the feature is skipped at that distance: a lens cannot resolve freckles, a mole or acne scars on a full-body frame, and asking for them makes the model over-sharpen the face (the same rule as face_detail_bank.json's wide tier).",
+  "features": {
+    "freckles": {
+      "label": "Freckles",
+      "detect": ["freckl"],
+      "close": "a light scatter of natural freckles across the nose and cheeks, uneven in size and density",
+      "mid": "light natural freckles across the nose and cheeks",
+      "wide": null
+    },
+    "beauty-mark": {
+      "label": "Beauty mark",
+      "detect": ["mole", "beauty mark", "beauty spot"],
+      "close": "a small, slightly raised mole on one cheek",
+      "mid": "a small beauty mark on one cheek",
+      "wide": null
+    },
+    "redness": {
+      "label": "Natural redness",
+      "detect": ["redness", "flush", "rosacea", "ruddy"],
+      "close": "faint natural redness around the nostrils and across the cheeks",
+      "mid": "a slight natural flush across the cheeks",
+      "wide": "a slight natural flush to the cheeks"
+    },
+    "acne-scars": {
+      "label": "Faint acne scars",
+      "detect": ["acne", "pockmark"],
+      "close": "a few faint, shallow acne scars on the cheeks",
+      "mid": "faint acne-scar texture on the cheeks",
+      "wide": null
+    },
+    "under-eye": {
+      "label": "Under-eye shadows",
+      "detect": ["under the eyes", "under-eye", "eye bags", "dark circles"],
+      "close": "faint natural shadows under the eyes",
+      "mid": "faint shadows under the eyes",
+      "wide": null
+    },
+    "uneven-tone": {
+      "label": "Uneven skin tone",
+      "detect": ["uneven tone", "uneven skin"],
+      "close": "slightly uneven skin tone, warmer around the nose and cheeks",
+      "mid": "slightly uneven, natural skin tone",
+      "wide": "slightly uneven, natural skin tone"
+    }
+  }
+}

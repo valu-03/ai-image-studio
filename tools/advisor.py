@@ -316,6 +316,7 @@ def advisor_brief(bank):
             "If asked about something outside this app, answer briefly, then "
             "bring it back to how it applies here.",
             "Never use these words: " + ", ".join(bank["banned"]) + ".",
+            brief.skin_features_rule(),
             "Once you have enough to describe the avatar, don't stop at the core "
             "spec - also propose one entry for every one of the six technique "
             "sections (Lighting, Composition, Color Grading, Posing, Camera Angle, "
@@ -362,8 +363,8 @@ def advisor_brief(bank):
             "the \"relaxed-hands\" technique - a stiff pose is one of the fastest "
             "AI tells. I've filled in every section below - review it, then apply.\n"
             "```spec\n"
-            '{"subject": "a nurse in her forties, dark circles under her eyes, '
-            'hair coming loose from a bun", "wardrobe": "wrinkled blue scrubs", '
+            '{"subject": "a nurse in her forties, hair coming loose from a bun", '
+            '"wardrobe": "wrinkled blue scrubs", '
             '"setting": "a hospital corridor at dawn, fluorescent light", '
             '"action": "leaning against the wall, eyes closed for a moment", '
             '"mood": "exhausted, relieved", "shot": "portrait", '
@@ -378,7 +379,7 @@ def advisor_brief(bank):
             "```",
 
             'user: "Ultra-realistic close-up portrait of Mara, a 29-year-old woman '
-            'with long copper-red hair and light freckles, sitting at a window '
+            'with long copper-red hair, sitting at a window '
             'table in a Parisian cafe at golden hour. She wears a cream wool coat '
             'and a thin gold necklace, resting her chin on one hand, gazing out '
             'the window with a wistful expression. Soft warm sidelight from the '

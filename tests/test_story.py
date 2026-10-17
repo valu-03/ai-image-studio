@@ -199,7 +199,14 @@ HASHES = {
     # other seven: no layer's terms, no shot preset and no auto pool gained it,
     # so an unguided compose() is byte-identical - tests/test_composition.py's
     # 480-prompt leak sweep now includes "dynamic symmetry" to prove it.
-    "tools/prompt_bank.json": "81966f054a78bdf5",
+    # Re-taken (no version bump) for two worked EXAMPLES, never a term list:
+    # "bedroom selfie" and "product demo" lost their freckles, eye bags and
+    # redness. Auto-fill and Upgrade are shown these examples, which is how
+    # freckles reached prompts nobody asked for them in; skin features are
+    # opt-in now (skin_features_bank.json). Ratings reference terms, not
+    # example prose, so history.usable() is unaffected -
+    # tests/test_skin_features.py asserts the examples stay clean.
+    "tools/prompt_bank.json": "36f5634e42737c94",
     # Bumped for the new Lighting section's DETECT["lighting"]["keys"]
     # additions (rembrandt, split lighting, catchlight, colour temperature,
     # falling off, ...) - every one of tools/lighting_bank.json's phrases

@@ -27,6 +27,7 @@ import build_evidence as bev  # noqa: E402
 import build_face_detail as bfd  # noqa: E402
 import build_material as bmt  # noqa: E402
 import build_scene_light as bsl  # noqa: E402
+import build_skin_features as bsf  # noqa: E402
 import build_snapshot as bsn  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -53,6 +54,14 @@ def _scene_light_bank():
 
 _FACE_BANK = None
 _EVIDENCE_BANK = None
+_SKIN_BANK = None
+
+
+def _skin_bank():
+    global _SKIN_BANK
+    if _SKIN_BANK is None:
+        _SKIN_BANK = bsf.load_bank()
+    return _SKIN_BANK
 
 
 def _face_bank():
@@ -70,7 +79,7 @@ def _evidence_bank():
 
 
 def apply_subject_detail(spec):
-    """Resolve the `face_detail` and `lived_in` flags against THIS spec.
+    """Resolve the `face_detail`, `lived_in` and `skin_features` flags against THIS spec.
 
     Resolved here, at compose time, rather than by the form that set the
     flag: Variants copies one spec and changes its seed or its shot, and a
@@ -78,14 +87,18 @@ def apply_subject_detail(spec):
     full-body angle the close-up's pores. After apply_purpose(), so a shot
     the purpose supplies picks the tier too.
 
-    Both land as non-layer overrides (free tail, additive). An explicit
-    overrides["face_detail"] or overrides["evidence"] already present wins -
-    a deliberate pick is never replaced by an automatic one.
+    All land as non-layer overrides (free tail, additive). An explicit
+    overrides["face_detail"], ["evidence"] or ["skin_features"] already
+    present wins - a deliberate pick is never replaced by an automatic one.
     """
-    if not (spec.get("face_detail") or spec.get("lived_in")):
+    if not (spec.get("face_detail") or spec.get("lived_in") or spec.get("skin_features")):
         return spec
     overrides = dict(spec.get("overrides") or {})
     kind = bev.subject_kind(_evidence_bank(), spec.get("subject", ""))
+    if spec.get("skin_features") and "skin_features" not in overrides:
+        phrase, _skipped = bsf.for_spec(_skin_bank(), spec, kind=kind)
+        if phrase:
+            overrides["skin_features"] = [phrase]
     if spec.get("face_detail") and "face_detail" not in overrides:
         phrase, _tier, _kind = bfd.face_detail(
             _face_bank(), spec.get("subject", ""), spec.get("shot", ""),
