@@ -198,9 +198,34 @@ def hint_conflicts(bank, key, spec):
     return notes
 
 
+#: Most movement leads end in a word that needs its object straight after it -
+#: "low-angle cinematic shot of", "camera slowly orbits around". A comma there
+#: ("shot of, close-up") is a broken sentence, so the subject follows a space.
+CONNECTOR_END = re.compile(
+    r"\b(of|on|to|toward|towards|from|behind|around|through|across|into|beneath|"
+    r"above|alongside|over|past|at|with|onto|parallel to)$", re.I)
+
+
+def _clean(text):
+    """One field's text with its edges tidied - see build_prompt.clean_text()."""
+    sys.path.insert(0, str(TOOLS))
+    import build_prompt as bp
+    return bp.clean_text(text)
+
+
+def _lead_with(lead, rest):
+    """The lead joined to what follows it: a space after a connector, else a comma."""
+    lead, rest = _clean(lead), _clean(rest)
+    if not lead:
+        return rest
+    if CONNECTOR_END.search(lead):
+        return "{} {}".format(lead, rest or "the scene")
+    return ", ".join(x for x in (lead, rest) if x)
+
+
 def subject_clause(spec):
-    parts = [str(spec.get("subject", "")).strip()]
-    action = str(spec.get("action", "")).strip()
+    parts = [_clean(spec.get("subject", ""))]
+    action = _clean(spec.get("action", ""))
     if action:
         parts.append(action)
     # Comma-joined: "a woman with freckles, leaning against the counter" reads as
@@ -267,9 +292,11 @@ def compose(bank, key, spec, detail=None, avatar_guard=False, real_motion=False,
     """
     movement = bank["movements"][key]
     requires = requirements_for(bank, key)
-    setting = str(spec.get("setting", "")).strip()
+    setting = _clean(spec.get("setting", ""))
 
-    segments = [movement["lead"]]
+    # With nothing to name, a lead like "low-angle cinematic shot of" still
+    # needs an object - _lead_with() gives it "the scene" rather than a comma.
+    segments = [_lead_with(movement["lead"], "")]
 
     clause = subject_clause(spec)
     if "subject" in requires:
@@ -289,13 +316,16 @@ def compose(bank, key, spec, detail=None, avatar_guard=False, real_motion=False,
 
     segments.append(detail or movement.get("detail", ""))
 
-    mood = str(spec.get("mood", "")).strip()
+    mood = _clean(spec.get("mood", ""))
     if mood:
         segments.append(mood + " tone")
 
     extra = spec.get("extra") or []
+    if isinstance(extra, str):
+        extra = [extra]
+    extra = [e for e in (_clean(x) for x in extra) if e]
     if extra:
-        segments.append(", ".join(str(e) for e in extra))
+        segments.append(", ".join(extra))
 
     if real_motion:
         segments.append(real_motion_line(bank, spec.get("subject", ""), key))
@@ -456,17 +486,26 @@ def assemble_template(bank, shot_type, subject, action, camera_movement, style,
     by default, same as compose()'s own `avatar_guard` param.
     """
     timing = format_beats(beats or [])
-    end_state = str(end_state or "").strip().rstrip(".")
-    segments = [
-        str(camera_movement or "").strip(),
-        str(shot_type or "").strip(),
-        # With beats, the beats ARE the action - saying it once untimed in
-        # front of them invites the model to do it twice.
-        subject_clause({"subject": subject, "action": "" if timing else action}),
+    end_state = _clean(end_state)
+    # With beats, the beats ARE the action - saying it once untimed in
+    # front of them invites the model to do it twice.
+    who = subject_clause({"subject": subject, "action": "" if timing else action})
+    camera = _clean(camera_movement)
+    shot = _clean(shot_type)
+    # The camera field is prefilled as "<lead>, <detail>" ("low-angle
+    # cinematic shot of, camera looking up from below"). When the lead ends
+    # in "of"/"around"/..., the subject belongs right after it - a comma
+    # there was a broken sentence. Typed text of the same shape gets the same.
+    lead, _, rest = camera.partition(", ")
+    if CONNECTOR_END.search(lead):
+        head = [_lead_with(lead, who), rest, shot]
+    else:
+        head = [camera, shot, who]
+    segments = head + [
         timing,
         "ENDS ON: " + end_state if end_state else "",
-        str(real_motion or "").strip(),
-        str(style or "").strip(),
+        _clean(real_motion),
+        _clean(style),
         negative_tail(bank) if negatives else "",
     ]
     if avatar_guard:
@@ -534,10 +573,10 @@ def assemble_story(bank, movement_key, subject, beats, end_state="", style="",
     story = (bank.get("realism") or {}).get("story", {})
     words = story.get("time_words", [])
     middle = story.get("middle", ["Then"])
-    beats = [str(b).strip().rstrip(".") for b in beats if str(b).strip()]
+    beats = [b for b in (_clean(x) for x in beats) if b]
 
-    opening = str(opening).strip() if opening else story_lead(bank, movement_key)
-    subject = str(subject or "").strip().rstrip(".")
+    opening = _clean(opening) if opening else story_lead(bank, movement_key)
+    subject = _clean(subject)
     sentences = [_sentence(", ".join(x for x in (opening, subject) if x))]
     for i, beat in enumerate(beats):
         if len(beats) == 1 or _starts_with_time_word(beat, words):
@@ -550,7 +589,7 @@ def assemble_story(bank, movement_key, subject, beats, end_state="", style="",
         else:
             word = middle[(i - 1) % len(middle)]
         sentences.append(_sentence("{}, {}".format(word, beat)))
-    end_state = str(end_state or "").strip().rstrip(".")
+    end_state = _clean(end_state)
     if end_state:
         sentences.append(_sentence("It ends on " + end_state))
     for extra in (real_motion, style):

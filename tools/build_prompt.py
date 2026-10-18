@@ -507,6 +507,77 @@ RELIGHT_LOCK_DETAILED = (
 RELIGHT_LOCK_TAIL = "locked to the reference photo's scene and framing"
 
 
+#: The spec keys that hold one piece of text each.
+TEXT_KEYS = ("subject", "wardrobe", "setting", "action", "posing", "mood", "shot",
+             "shot_custom", "aspect", "purpose", "purpose_custom", "composition_guide",
+             "composition_guide_custom", "slug")
+
+
+def clean_text(value):
+    """One spec value as tidy text, or "" - only its EDGES are touched.
+
+    Every field is joined into the prompt with ", ", so a value ending in a
+    comma or full stop ("a woman in red.", "in a kitchen,") composed to
+    "red., in a kitchen" or "kitchen, , street photography". Line breaks fold
+    to spaces for the same reason. The words inside are never changed. An
+    ellipsis is kept: "..." is meant, a lone trailing "." is not.
+    """
+    if value is None or isinstance(value, bool) or not isinstance(value, (str, int, float)):
+        return ""
+    text = " ".join(str(value).split()).lstrip(",; ")
+    while True:
+        trimmed = text.rstrip(",; ")
+        if trimmed.endswith(".") and not trimmed.endswith(".."):
+            trimmed = trimmed[:-1]
+        if trimmed == text:
+            return text
+        text = trimmed
+
+
+def clean_spec(spec):
+    """A copy of `spec` that compose() can always build from.
+
+    Specs arrive from the form, from saved characters a person may have
+    edited by hand, and from model replies that pass a key whitelist but not
+    a type check - so a `null` subject, a number for a wardrobe or a single
+    string for `extra` used to crash compose(). Text keys become clean text
+    (dropped when empty, so `subject` falls back to "a person"), `extra`
+    becomes a list of clean lines, `seed` an int, `skin_features` a list.
+    """
+    out = dict(spec)
+    for key in TEXT_KEYS:
+        if key in out:
+            text = clean_text(out[key])
+            if text:
+                out[key] = text
+            else:
+                out.pop(key)
+    if "extra" in out:
+        extra = out["extra"]
+        items = [extra] if isinstance(extra, str) else (
+            extra if isinstance(extra, (list, tuple)) else [])
+        out["extra"] = [t for t in (clean_text(item) for item in items) if t]
+    if "seed" in out:
+        try:
+            out["seed"] = int(out["seed"])
+        except (TypeError, ValueError):
+            out["seed"] = 0
+    if "skin_features" in out and not isinstance(out["skin_features"], (list, tuple)):
+        out["skin_features"] = []
+    # Typed Lighting / Colour text and every toolkit's phrase ride here, and
+    # they are comma-joined too ("a woman,, realistic shadows").
+    if isinstance(out.get("overrides"), dict):
+        overrides = {}
+        for name, value in out["overrides"].items():
+            items = [value] if isinstance(value, str) else (
+                value if isinstance(value, (list, tuple)) else [])
+            items = [t for t in (clean_text(item) for item in items) if t]
+            if items:
+                overrides[name] = items
+        out["overrides"] = overrides
+    return out
+
+
 def apply_variation(spec):
     """Fold spec['variation'] over the base spec for a new shot of one character.
 
@@ -723,8 +794,9 @@ def compose(bank, spec, detailed=False, weights=None, anatomy_guard=False):
     `anatomy_guard=True` appends anatomy_guard_tail(bank) - opt-in, off by
     default; see that function's docstring for why it is not always on.
     """
+    spec = clean_spec(spec)
     spec = apply_purpose(bank, spec)
-    spec = apply_variation(spec)
+    spec = clean_spec(apply_variation(spec))
     spec = apply_subject_detail(spec)
     spec = apply_scene_light(spec)
     spec = apply_physical(spec)

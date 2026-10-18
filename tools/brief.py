@@ -570,7 +570,7 @@ def autofill_spec(bank, current=None, ask=None):
     if not isinstance(payload, dict):
         return {"ok": False, "error": "The model did not return JSON.", "raw": text}
 
-    spec = {k: v for k, v in payload.items() if k in SPEC_KEYS}
+    spec = bp.clean_spec({k: v for k, v in payload.items() if k in SPEC_KEYS})
     dropped = sorted(set(payload) - SPEC_KEYS - SUGGEST_KEYS)
     if isinstance(spec.get("extra"), str):
         spec["extra"] = [spec["extra"]]
@@ -1266,7 +1266,7 @@ def spec_from_idea(bank, idea, ask=None):
     if payload is None:
         return {"ok": False, "error": "The model did not return JSON.", "raw": text}
 
-    spec = {k: v for k, v in payload.items() if k in SPEC_KEYS}
+    spec = bp.clean_spec({k: v for k, v in payload.items() if k in SPEC_KEYS})
     dropped = sorted(set(payload) - SPEC_KEYS)
 
     if not spec.get("subject"):
@@ -1391,7 +1391,7 @@ def analyze_uploaded_image(bank, image_path, ask=None):
     if not isinstance(payload, dict):
         return {"ok": False, "error": "The model did not return JSON.", "raw": text}
 
-    spec = {k: v for k, v in payload.items() if k in SPEC_KEYS}
+    spec = bp.clean_spec({k: v for k, v in payload.items() if k in SPEC_KEYS})
     dropped = sorted(set(payload) - SPEC_KEYS - {"analysis"})
     analysis = str(payload.get("analysis") or "").strip()
 

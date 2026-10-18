@@ -587,7 +587,7 @@ def _finalize_spec(bank, payload):
     duplication every _scrolled() helper in ui/views/ already tolerates,
     rather than risking a heavily-tested file for a new feature.
     """
-    spec = {k: v for k, v in payload.items() if k in brief.SPEC_KEYS}
+    spec = bp.clean_spec({k: v for k, v in payload.items() if k in brief.SPEC_KEYS})
     # "sections" is not a spec field and not a dropped one either - it is
     # handled separately by _finalize_sections(), so reporting it as dropped
     # here would be a lie the user would reasonably act on.

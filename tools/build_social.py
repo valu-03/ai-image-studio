@@ -43,6 +43,13 @@ def limits(bank):
     return bank.get("limits", {})
 
 
+def _clean(text):
+    """The premise as typed, minus edge punctuation: "a woman," became
+    "A woman,... STOP ACTING LIKE A HUMAN". Words inside are kept."""
+    import build_prompt as bp
+    return bp.clean_text(text)
+
+
 def _title_case(text):
     """Sentence case, not Title Case - a platform title reads as a sentence."""
     text = (text or "").strip().rstrip(".")
@@ -84,6 +91,7 @@ def compose_titles(bank, premise, wanted=None, short=None):
     cut mid-word is worse than one fewer title, and the linter would reject it
     anyway.
     """
+    premise, short = _clean(premise), _clean(short) or None
     cfg = limits(bank)
     wanted = wanted or cfg.get("titles_wanted", 3)
     high = cfg.get("title_max_chars", 70)
@@ -115,6 +123,7 @@ def compose_caption(bank, premise, captions=(), seed=0):
     patterns = bank.get("caption_patterns", [])
     if not patterns:
         return ""
+    premise = _clean(premise)
     text = patterns[int(seed) % len(patterns)].format(
         premise_sentence=_sentence(premise),
         premise_title=_title_case(premise),

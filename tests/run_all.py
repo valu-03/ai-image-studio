@@ -27,6 +27,7 @@ ORDER = [
     "test_evidence_bank.py",
     "test_face_detail.py",
     "test_skin_features.py",
+    "test_input_hygiene.py",
     "test_scene_light.py",
     "test_physical.py",
     "test_snapshot.py",
