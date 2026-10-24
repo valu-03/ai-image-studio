@@ -51,6 +51,7 @@ import render_video as rv  # noqa: E402
 from .. import assets, tokens as T  # noqa: E402
 from ..widgets import AiSuggestionBadge, Badge, Card, GateTree, MutedLabel, TitleLabel  # noqa: E402
 from ..workers import LlmTask, RenderTask, SpeechTask, VoiceListTask  # noqa: E402
+from ..theme import token_color
 
 
 class Timeline(QWidget):
@@ -83,10 +84,10 @@ class Timeline(QWidget):
         if not self.shots or not self.seconds:
             return
         colours = self._palette
-        accent = QColor(colours.get("primary", "#38BDF8"))
-        ok = QColor(colours.get("success", "#34D399"))
-        bad = QColor(colours.get("error", "#F87171"))
-        muted = QColor(colours.get("text_muted", "#94A3B8"))
+        accent = token_color(colours, "primary")
+        ok = token_color(colours, "success")
+        bad = token_color(colours, "error")
+        muted = token_color(colours, "text_muted")
 
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
@@ -600,7 +601,7 @@ class AdsView(QWidget):
                 item.setIcon(1, QIcon(path))
                 item.setToolTip(1, path)
             if not shot["copy"]:
-                item.setForeground(3, QColor(self._palette.get("text_muted", "#94A3B8")))
+                item.setForeground(3, token_color(self._palette, "text_muted"))
             item.setToolTip(3, "{}\n\nshot: {}\nmove: {}".format(
                 shot["must_do"], shot["spec"].get("shot", ""), shot["movement"] or "none"))
         self.beat_tree.setColumnWidth(0, 26)
@@ -662,9 +663,7 @@ class AdsView(QWidget):
                 how = "checked by the app" if known else "yours to judge"
                 child = QTreeWidgetItem(parent, [mark, item["text"], how])
                 if known:
-                    child.setForeground(0, QColor(self._palette.get(
-                        "success" if state[rule] else "error",
-                        "#34D399" if state[rule] else "#F87171")))
+                    child.setForeground(0, token_color(self._palette, "success" if state[rule] else "error"))
         self.checklist_tree.setColumnWidth(0, 30)
         self.checklist_tree.setColumnWidth(1, 420)
 

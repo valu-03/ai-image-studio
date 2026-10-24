@@ -48,6 +48,21 @@ Its build contract is `pyqt6_system_prompt.md` — navigation rail, top utility 
 `QStackedWidget` canvas, the mandated dark palette, `QRunnable` workers for anything
 network- or disk-bound. Read it before touching `ui/`.
 
+Its design system is written down in `DESIGN.md` (tokens in `ui/tokens.py`, applied by
+`ui/theme.py`). The short version, each rule enforced by a test:
+- **Colours:** no colour literal in `ui/` outside tokens.py (`test_design_tokens.py`). Use the
+  palette, `theme.color()` or `theme.token_color()`. Text pairs are AA in both themes.
+- **Fonts:** Inter and JetBrains Mono ship in `assets/fonts` and load in `ThemeManager`.
+  Font sizes come from `TYPO` through `build_qss(c, scale)`, the Settings text-size option.
+- **Shared helpers** (`ui/widgets.py`), all run once from `MainWindow`:
+  - `readable_tabs()`: tabs are never elided; a narrow bar scrolls;
+  - `name_controls()`: every control gets an accessible name (`test_ui_polish.py`);
+  - `set_empty_hint()`: an empty list says what goes in it;
+  - `show_status()` / `status_line()`: the status bar shows one line with no full paths;
+  - `short_paths()`: for tools/ messages shown inside a view.
+- **Screenshots:** `python tests/screenshot_all.py <dir> [section]` takes every section and tab,
+  in both themes, at the minimum and default sizes. Take them before and after any UI change.
+
 ### The loop that makes this more than a prompt builder
 The linter scores whether a realism term is **present**. The history log records whether it
 **worked**. Rating a generation feeds `history.weights()`, which biases future vocabulary

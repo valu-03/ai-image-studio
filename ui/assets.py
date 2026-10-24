@@ -12,6 +12,7 @@ from PyQt6.QtGui import QIcon
 ROOT = Path(__file__).resolve().parent.parent
 ASSET_DIR = ROOT / "assets"
 ICON_DIR = ASSET_DIR / "icons"
+FONT_DIR = ASSET_DIR / "fonts"      # Inter + JetBrains Mono, SIL OFL (licences beside them)
 
 CHARACTERS_DIR = ROOT / "temp" / "resources" / "characters"
 # Influencer Studio's own roster - a lighter, structured JSON shape (name,

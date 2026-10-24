@@ -64,6 +64,7 @@ from .. import assets, tokens as T  # noqa: E402
 from ..hints import NAV_HINTS
 from ..widgets import AiSuggestionBadge, Badge, Card, GateTree, MutedLabel, TitleLabel  # noqa: E402
 from ..workers import LlmTask, RenderTask, SoundTask, SpeechTask  # noqa: E402
+from ..theme import token_color
 from .cats_custom import CustomPromptTab  # noqa: E402
 
 # Every field any format asks for. The parser accepts them all and each format
@@ -108,10 +109,10 @@ class ClipTimeline(QWidget):
         if not self.scenes:
             return
         colours = self._palette
-        accent = QColor(colours.get("primary", "#38BDF8"))
-        ok = QColor(colours.get("success", "#34D399"))
-        bad = QColor(colours.get("error", "#F87171"))
-        muted = QColor(colours.get("text_muted", "#94A3B8"))
+        accent = token_color(colours, "primary")
+        ok = token_color(colours, "success")
+        bad = token_color(colours, "error")
+        muted = token_color(colours, "text_muted")
 
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
@@ -1440,7 +1441,7 @@ class CatsView(QWidget):
                 self.status_by_scene.get(index, ""),
             ])
             if not scene["caption"]:
-                item.setForeground(4, QColor(self._palette.get("text_muted", "#94A3B8")))
+                item.setForeground(4, token_color(self._palette, "text_muted"))
             item.setToolTip(4, "{}\n\nmove: {}\nnarration: {}".format(
                 scene["must_do"], scene["movement"] or "none",
                 scene["narration"] or "(none)"))

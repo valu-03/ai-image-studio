@@ -40,6 +40,7 @@ from .. import assets, tokens as T  # noqa: E402
 from ..lint_panel import LintPanel  # noqa: E402
 from ..spec_editor import SpecEditor  # noqa: E402
 from ..widgets import (  # noqa: E402
+    set_empty_hint,
     AiSuggestionBadge, Card, ImagePreview, MutedLabel, StarRating, TitleLabel)
 from ..workers import CoherenceTask, LlmTask, VisionQcTask  # noqa: E402
 
@@ -75,6 +76,7 @@ class ComposeView(QWidget):
         autofill_card = self.build_autofill_card()
 
         self.library = QListWidget()
+        set_empty_hint(self.library, "No saved characters yet - fill in the spec, then Save character.", "save")
         self.library.setAlternatingRowColors(True)
         self.library.setMaximumHeight(110)
         self.library.itemActivated.connect(self.load_selected)
@@ -397,28 +399,39 @@ class ComposeView(QWidget):
         # every SpecEditor field already is. "(use Settings)" leaves today's
         # behaviour exactly unchanged; picking anything else overrides it for
         # this generation only.
-        USE_SETTINGS = "(use Settings)"
+        # The "use Settings" entry is shown as the FIELD's name ("Provider",
+        # "Resolution"...), not "(use Settings)": in this narrow column all four
+        # read "(use Se" and nothing said which control was which. A chosen
+        # value shows the value itself; the tooltip says the rest.
         self.gen_provider = QComboBox()
-        self.gen_provider.addItem(USE_SETTINGS, "")
+        self.gen_provider.addItem("Provider", "")
         for name in sorted(gi.PROVIDERS):
             self.gen_provider.addItem(name, name)
-        self.gen_provider.setToolTip("Override the provider for this generation only.")
+        self.gen_provider.setToolTip(
+            "Provider for this generation only. \"Provider\" = the one in Settings.")
+        self.gen_provider.setAccessibleName("Provider override")
 
         self.gen_model = QLineEdit()
-        self.gen_model.setPlaceholderText(USE_SETTINGS)
-        self.gen_model.setToolTip("Override the model for this generation only.")
+        self.gen_model.setPlaceholderText("Model")
+        self.gen_model.setToolTip(
+            "Model for this generation only. Empty = the one in Settings.")
+        self.gen_model.setAccessibleName("Model override")
 
         self.gen_resolution = QComboBox()
-        self.gen_resolution.addItem(USE_SETTINGS, "")
+        self.gen_resolution.addItem("Resolution", "")
         for option in gi.KIE_RESOLUTIONS:
             self.gen_resolution.addItem(option, option)
-        self.gen_resolution.setToolTip("Override the resolution for this generation only.")
+        self.gen_resolution.setToolTip(
+            "Resolution for this generation only. \"Resolution\" = the one in Settings.")
+        self.gen_resolution.setAccessibleName("Resolution override")
 
         self.gen_output_format = QComboBox()
-        self.gen_output_format.addItem(USE_SETTINGS, "")
+        self.gen_output_format.addItem("Format", "")
         for option in gi.KIE_OUTPUT_FORMATS:
             self.gen_output_format.addItem(option, option)
-        self.gen_output_format.setToolTip("Override the image format for this generation only.")
+        self.gen_output_format.setToolTip(
+            "Image format for this generation only. \"Format\" = the one in Settings.")
+        self.gen_output_format.setAccessibleName("Image format override")
 
         # One packed row, not a form - the same shape Videos' own duration/
         # aspect/mode/sound row already uses successfully in an equally
@@ -527,7 +540,9 @@ class ComposeView(QWidget):
         # A form column has a natural width; without a ceiling the splitter
         # hands it the slack and starves the prompt, which is the column that
         # actually benefits from being wide.
-        left.setMaximumWidth(420)
+        # 380 = the spec form's 356px minimum plus its scrollbar and margin: past
+        # that, width does the form no good and the prompt is what benefits.
+        left.setMaximumWidth(380)
         middle.setMinimumWidth(260)
         # 230 starved this column: the result card holds four buttons, four
         # override controls, the rating and two paragraphs, and at 230 the
@@ -535,10 +550,13 @@ class ComposeView(QWidget):
         # usable - not enough for two controls side by side, so everything
         # inside stacked and the primary Generate button fell below the fold.
         right_card.setMinimumWidth(258)
-        right_card.setMaximumWidth(460)
+        right_card.setMaximumWidth(380)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.setObjectName("compose_form_prompt_result")
+        # "_v2": the column limits and stretch below changed, and a state saved
+        # under the old name would restore the old 300px form column forever
+        # (every close writes it back). A new name starts every user fresh once.
+        splitter.setObjectName("compose_form_prompt_result_v2")
         splitter.addWidget(left)
         splitter.addWidget(middle)
         splitter.addWidget(right_card)
@@ -551,9 +569,16 @@ class ComposeView(QWidget):
         # what actually decides the result card's width, not the floor - which
         # is why the result column came out at ~219px while its floor said 230.
         splitter.setSizes([300, 330, 262])
-        splitter.setStretchFactor(0, 0)
-        splitter.setStretchFactor(1, 1)
-        splitter.setStretchFactor(2, 0)
+        # Spare width is SHARED 1:3:1, not handed only to the prompt. With the
+        # side columns at stretch 0 they stayed 300 / 262px at every window
+        # size - the spec form (356px minimum) scrolled sideways even on a
+        # 1920px screen while the prompt column grew to 1094px of mostly empty
+        # monospace. Now the form reaches its natural width by the default
+        # window, the result card gets room for its options, and the prompt
+        # still takes the largest share; the 420 / 460 ceilings above hold.
+        splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 3)
+        splitter.setStretchFactor(2, 1)
         self.splitter = splitter
 
         layout = QVBoxLayout(self)
@@ -961,8 +986,9 @@ class ComposeView(QWidget):
         return self.prompt_view.toPlainText()
 
     # -- per-generation overrides -------------------------------------------- #
-    # "(use Settings)" is index 0 / empty data on all four, so leaving them
-    # alone is indistinguishable from before this existed.
+    # The field-name entry ("Provider", "Resolution", "Format", or an empty
+    # Model box) is index 0 / empty data on all four - "use Settings" - so
+    # leaving them alone is indistinguishable from before this existed.
     def provider_override(self):
         return self.gen_provider.currentData() or None
 

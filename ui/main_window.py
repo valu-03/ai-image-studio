@@ -54,7 +54,8 @@ from .views import (  # noqa: E402
     SoundView,
     VideosView,
 )
-from .widgets import Badge, MutedLabel, NavButton  # noqa: E402
+from .widgets import (  # noqa: E402
+    Badge, BadgeButton, MutedLabel, NavButton, name_controls, readable_tabs, status_line)
 from .workers import (  # noqa: E402
     BatchSession,
     CreditsTask,
@@ -269,12 +270,14 @@ class MainWindow(QMainWindow):
         # What is left to spend, beside what is being spent. Kie is prepaid, so
         # this is the number that decides whether a nine-scene story is a good
         # idea - and it was nowhere in the app.
-        self.credits_badge = Badge("credits —", "neutral")
+        self.credits_badge = BadgeButton("credits —", "neutral")
         self.credits_badge.setToolTip("Credits left on the provider account. Click to refresh.")
-        self.credits_badge.mousePressEvent = lambda _event: self.refresh_credits(force=True)
+        self.credits_badge.setAccessibleName("Credit balance - press to refresh")
+        self.credits_badge.clicked.connect(lambda: self.refresh_credits(force=True))
         layout.addWidget(self.credits_badge)
 
-        self.busy_badge = Badge("idle", "neutral")
+        self.busy_badge = Badge("idle", "quiet")
+        self.busy_badge.setAccessibleName("Background work")
         layout.addWidget(self.busy_badge)
         return bar
 
@@ -432,10 +435,12 @@ class MainWindow(QMainWindow):
             hint = NAV_HINTS.get(key)
             if hint:
                 button.setToolTip(hint)
-        self.busy_badge.set_status("neutral", "idle")
+        self.busy_badge.set_status("quiet", "idle")
         self.compose_view.prompt_view.setProperty("class", "mono")
         for view in self.views.values():
             view.setContentsMargins(0, 0, 0, 0)
+        readable_tabs(self)
+        name_controls(self)
 
     # -------------------------------------------------------- controllers -- #
     def connect_controllers(self):
@@ -445,7 +450,7 @@ class MainWindow(QMainWindow):
 
         for view in self.views.values():
             if hasattr(view, "status"):
-                view.status.connect(self.statusBar().showMessage)
+                view.status.connect(self.show_status)
 
         self.compose_view.editor.open_lighting_requested.connect(
             lambda: self.go_to("lighting"))
@@ -544,6 +549,8 @@ class MainWindow(QMainWindow):
         self.settings_view.provider_changed.connect(self.set_provider)
         self.settings_view.model_changed.connect(self.set_model)
         self.settings_view.theme_toggled.connect(self.theme.toggle)
+        self.settings_view.text_scale_changed.connect(self.set_text_scale)
+        self.settings_view.reduce_motion_changed.connect(self.set_reduced_motion)
 
         self.pool.started.connect(self.on_batch_started)
         self.pool.progress.connect(self.on_batch_progress)
@@ -716,6 +723,8 @@ class MainWindow(QMainWindow):
         self.influencer_studio_view.set_palette_tokens(self.theme.palette)
         self.insights_view.set_palette_tokens(self.theme.palette)
         self.images_view.set_palette_tokens(self.theme.palette)
+        for button in self.nav_buttons.values():       # the active item's glow is a theme colour
+            button._refresh_glow(button.isChecked())
         self.statusBar().showMessage("{} theme".format(name.capitalize()))
 
     def apply_lighting_phrase(self, phrase):
@@ -1085,7 +1094,7 @@ class MainWindow(QMainWindow):
         self.busy_badge.set_status("accent", "clips {}/{}".format(completed, total))
 
     def on_video_batch_finished(self):
-        self.busy_badge.set_status("neutral", "idle")
+        self.busy_badge.set_status("quiet", "idle")
         if (self._video is not None and self._video.target is not None
                 and hasattr(self._video.target, "set_busy")):
             self._video.target.set_busy(False)
@@ -1336,6 +1345,16 @@ class MainWindow(QMainWindow):
         if self._batch.sequence_rest:
             self._batch.sequence_reference = path
 
+    def show_status(self, message):
+        """Every view's status message, as one readable line (widgets.status_line):
+        no raw newline, no full local path, no deep link. The whole message stays
+        on the bar's tooltip, so nothing a view said is lost."""
+        text = (message or "").strip()
+        if not text:
+            return
+        self.statusBar().showMessage(status_line(text))
+        self.statusBar().setToolTip(text if text != status_line(text) else "")
+
     def report_failure(self, reason, title="That did not work"):
         """A failure the user has to act on, shown somewhere they can read it.
 
@@ -1360,7 +1379,7 @@ class MainWindow(QMainWindow):
         if not text:
             return
         first = text.splitlines()[0]
-        self.statusBar().showMessage(first[:160])
+        self.show_status(text)
         if os.environ.get("AIVS_ASSUME_YES"):
             return
         if "\n" not in text and len(text) <= 160:
@@ -1399,7 +1418,7 @@ class MainWindow(QMainWindow):
         if self._batch is not None and self._batch.sequence_rest and self._batch.sequence_reference:
             self._submit_sequence_rest(self._batch.sequence_reference)
             return
-        self.busy_badge.set_status("neutral", "idle")
+        self.busy_badge.set_status("quiet", "idle")
         self.compose_view.set_busy(False)
         if self._batch is not None and self._batch.target is not None:
             self._batch.target.set_busy(False)
@@ -1408,7 +1427,23 @@ class MainWindow(QMainWindow):
         self.refresh_credits()
 
     # ------------------------------------------------------------- state -- #
+    def set_text_scale(self, scale):
+        self.theme.set_text_scale(scale)
+        self.settings.setValue("text_scale", self.theme.text_scale)
+        self.statusBar().showMessage("Text size {}%".format(round(self.theme.text_scale * 100)))
+
+    def set_reduced_motion(self, on):
+        self.theme.set_reduced_motion(on)
+        self.settings.setValue("reduce_motion", "true" if on else "false")
+
     def restore_state(self):
+        # Appearance first, so every later step lays out at the saved text size.
+        scale = float(self.settings.value("text_scale", 1.0) or 1.0)
+        index = self.settings_view.text_size.findData(
+            min(T.TEXT_SCALES, key=lambda s: abs(s - scale)))
+        self.settings_view.text_size.setCurrentIndex(max(index, 0))
+        self.settings_view.reduce_motion.setChecked(
+            self.settings.value("reduce_motion", "false") == "true")
         geometry = self.settings.value("geometry")
         if geometry:
             self.restoreGeometry(geometry)

@@ -38,8 +38,12 @@ def _chevron_url(colour):
     return "url({})".format(path.as_posix())
 
 
-def build_qss(c):
-    """Return a full stylesheet for the palette `c`."""
+def build_qss(c, scale=1.0):
+    """Return a full stylesheet for the palette `c`, every font size times `scale`
+    (Settings > Appearance > Text size)."""
+    def fs(key):
+        return round(T.TYPO[key][0] * scale)
+
     r, s = T.RADIUS, T.SPACE
     card_pad = T.CARD_PADDING
     arrow = _chevron_url(c['text_muted'])
@@ -48,7 +52,7 @@ def build_qss(c):
 /* --- base ------------------------------------------------------------- */
 QWidget {{
     font-family: {T.FONT_UI};
-    font-size: {T.TYPO['body'][0]}px;
+    font-size: {fs('body')}px;
     color: {c['text']};
 }}
 QMainWindow, QDialog {{ background: {c['bg']}; }}
@@ -109,7 +113,7 @@ QGroupBox::title {{
     left: {s['md']}px;
     padding: 0 {s['xs']}px;
     color: {c['text_muted']};
-    font-size: {T.TYPO['label'][0]}px;
+    font-size: {fs('label')}px;
     font-weight: {T.TYPO['label'][1]};
 }}
 
@@ -120,7 +124,7 @@ QToolButton[class="nav"] {{
     border-radius: {r['md']}px;
     padding: {s['sm']}px {s['md']}px;
     color: {c['text_muted']};
-    font-size: {T.TYPO['body'][0]}px;
+    font-size: {fs('body')}px;
     font-weight: 500;
     text-align: left;
 }}
@@ -143,7 +147,7 @@ QPushButton {{
     border: 1px solid {c['outline_variant']};
     border-radius: {r['md']}px;
     padding: {s['sm']}px {s['md']}px;
-    font-size: {T.TYPO['body_sm'][0]}px;
+    font-size: {fs('body_sm')}px;
     font-weight: 600;
     min-height: 20px;
 }}
@@ -169,7 +173,8 @@ QPushButton[class="ghost"]:hover {{ background: {c['surface_variant']}; }}
 QPushButton[class="danger"] {{
     background: transparent; color: {c['error']}; border-color: {c['error']};
 }}
-QPushButton[class="danger"]:hover {{ background: {c['error']}; color: {c['text']}; }}
+/* on_primary, not text: light text on the dark theme's error red is 2.6:1. */
+QPushButton[class="danger"]:hover {{ background: {c['error']}; color: {c['on_primary']}; }}
 
 /* A pill toggle - Influencer Studio's Age Range/Style/Hair/Eye pickers. Same
    checked look as the nav rail's own checked chip (primary_fixed background,
@@ -181,7 +186,7 @@ QPushButton[class="chip"] {{
     border: 1px solid {c['outline_variant']};
     border-radius: {r['pill']}px;
     padding: {s['xs']}px {s['md']}px;
-    font-size: {T.TYPO['body_sm'][0]}px;
+    font-size: {fs('body_sm')}px;
     font-weight: 600;
     min-height: 18px;
 }}
@@ -202,6 +207,11 @@ QToolButton {{
 }}
 QToolButton:hover {{ background: {c['surface_variant']}; }}
 QToolButton:pressed {{ background: {c['surface_variant_high']}; }}
+/* Keyboard focus is always visible: Tab through the rail, a toolbar or a chip
+   row and the current control carries the accent edge, as inputs already did. */
+QToolButton:focus {{ border: 1px solid {c['primary']}; }}
+QToolButton[class="nav"]:focus {{ border: 1px dashed {c['primary']}; }}
+QPushButton[class="ghost"]:focus, QPushButton[class="chip"]:focus {{ border: 1px solid {c['primary']}; }}
 QToolButton[class="star"] {{ padding: 1px; border: none; background: transparent; }}
 QToolButton[class="star"]:hover {{ background: transparent; }}
 
@@ -232,7 +242,7 @@ QLineEdit[class="search"] {{
 QLineEdit:disabled, QPlainTextEdit:disabled, QSpinBox:disabled, QComboBox:disabled {{
     background: {c['bg']}; color: {c['text_muted']};
 }}
-QPlainTextEdit[class="mono"] {{ font-family: {T.FONT_MONO}; font-size: 13px; }}
+QPlainTextEdit[class="mono"] {{ font-family: {T.FONT_MONO}; font-size: {fs('mono')}px; }}
 QComboBox {{ padding-right: 26px; }}
 QComboBox::drop-down {{
     subcontrol-origin: padding;
@@ -256,11 +266,14 @@ QCheckBox {{ spacing: {s['sm']}px; color: {c['text']}; }}
 QCheckBox::indicator {{
     width: 16px; height: 16px;
     border-radius: {r['sm']}px;
-    border: 1px solid {c['outline']};
+    /* outline_strong: an empty box has to be findable (3:1), not a faint ghost. */
+    border: 1px solid {c['outline_strong']};
     background: {c['surface_variant']};
 }}
 QCheckBox::indicator:checked {{ background: {c['primary']}; border-color: {c['primary']}; }}
-QCheckBox::indicator:hover {{ border-color: {c['primary']}; }}
+QCheckBox::indicator:hover, QCheckBox:focus::indicator {{ border-color: {c['primary']}; }}
+QCheckBox:focus {{ color: {c['primary']}; }}
+QCheckBox:disabled {{ color: {c['text_muted']}; }}
 
 /* --- lists, trees, tables --------------------------------------------- */
 QListWidget, QTreeWidget, QTableWidget {{
@@ -287,7 +300,7 @@ QHeaderView::section {{
     border: none;
     border-bottom: 1px solid {c['outline_variant']};
     padding: {s['sm']}px;
-    font-size: {T.TYPO['label'][0]}px;
+    font-size: {fs('label')}px;
     font-weight: {T.TYPO['label'][1]};
 }}
 QTableWidget {{ selection-background-color: {c['primary_fixed']}; }}
@@ -346,26 +359,26 @@ QScrollBar::add-page, QScrollBar::sub-page {{ background: transparent; }}
 
 /* --- typography classes ----------------------------------------------- */
 QLabel[class="hero"] {{
-    font-size: {T.TYPO['hero'][0]}px; font-weight: {T.TYPO['hero'][1]};
+    font-size: {fs('hero')}px; font-weight: {T.TYPO['hero'][1]};
 }}
 QLabel[class="display"] {{
-    font-size: {T.TYPO['display'][0]}px; font-weight: {T.TYPO['display'][1]};
+    font-size: {fs('display')}px; font-weight: {T.TYPO['display'][1]};
 }}
 QLabel[class="headline"] {{
-    font-size: {T.TYPO['headline'][0]}px; font-weight: {T.TYPO['headline'][1]};
+    font-size: {fs('headline')}px; font-weight: {T.TYPO['headline'][1]};
 }}
 QLabel[class="title"] {{
-    font-size: {T.TYPO['title'][0]}px; font-weight: {T.TYPO['title'][1]};
+    font-size: {fs('title')}px; font-weight: {T.TYPO['title'][1]};
 }}
 QLabel[class="muted"] {{
-    color: {c['text_muted']}; font-size: {T.TYPO['body_sm'][0]}px;
+    color: {c['text_muted']}; font-size: {fs('body_sm')}px;
 }}
 QLabel[class="caption"] {{
-    color: {c['text_muted']}; font-size: {T.TYPO['caption'][0]}px;
+    color: {c['text_muted']}; font-size: {fs('caption')}px;
     font-weight: {T.TYPO['caption'][1]};
 }}
 QLabel[class="brand"] {{
-    color: {c['primary']}; font-size: {T.TYPO['title'][0]}px; font-weight: 700;
+    color: {c['primary']}; font-size: {fs('title')}px; font-weight: 700;
 }}
 QLabel[class="preview"] {{
     background: {c['bg']};
@@ -388,11 +401,18 @@ QTabBar::tab {{
     border: 1px solid transparent;
     border-top-left-radius: {r['md']}px;
     border-top-right-radius: {r['md']}px;
-    /* Tight horizontal padding: five section tabs have to fit the sidebar. */
-    padding: {s['sm']}px {s['sm']}px;
+    /* The tab size, not the 11px caption: a tab is navigation, read as often
+       as a button. Bars too narrow for their labels scroll (usesScrollButtons)
+       rather than eliding to "Purp..." - see widgets.readable_tabs(). */
+    padding: {s['sm']}px {s['md'] - s['xs']}px;
     margin-right: 2px;
-    font-size: {T.TYPO['caption'][0]}px;
-    font-weight: 600;
+    font-size: {fs('tab')}px;
+    font-weight: {T.TYPO['tab'][1]};
+}}
+QTabBar::tab:focus {{ color: {c['text']}; }}
+QTabBar QToolButton {{
+    background: {c['surface']}; border: 1px solid {c['outline_variant']};
+    border-radius: {r['sm']}px; padding: 0;
 }}
 QTabBar::tab:hover {{ background: {c['surface_variant']}; color: {c['text']}; }}
 QTabBar::tab:selected {{
@@ -407,16 +427,40 @@ QTabBar::tab:disabled {{ color: {c['outline']}; }}
 QLabel[class="badge"] {{
     border-radius: {r['pill']}px;
     padding: {s['xs']}px {s['md']}px;
-    font-size: {T.TYPO['label'][0]}px;
+    font-size: {fs('label')}px;
     font-weight: {T.TYPO['label'][1]};
     color: {c['on_primary']};
     background: {c['text_muted']};
+}}
+/* "quiet": a state that is not news (idle) - outlined, not filled, so it no
+   longer looks like the credits pill beside it, and a running job (accent)
+   is the only filled chip in the top bar. */
+QLabel[class="badge"][status="quiet"] {{
+    background: transparent; color: {c['text_muted']}; border: 1px solid {c['outline']};
 }}
 QLabel[class="badge"][status="success"] {{ background: {c['success']}; }}
 QLabel[class="badge"][status="warning"] {{ background: {c['warning']}; }}
 QLabel[class="badge"][status="danger"]  {{ background: {c['error']}; }}
 QLabel[class="badge"][status="accent"]  {{
     background: {c['primary_gradient']}; color: {c['on_primary']};
+}}
+
+/* A badge that is also a button (the credits balance): an outlined pill with
+   a hover and a focus edge, so it reads as something to press. */
+QPushButton[class="badge"] {{
+    background: transparent;
+    color: {c['text']};
+    border: 1px solid {c['outline_strong']};
+    border-radius: {r['pill']}px;
+    padding: {s['xs']}px {s['md']}px;
+    font-size: {fs('label')}px;
+    font-weight: {T.TYPO['label'][1]};
+    min-height: 0;
+}}
+QPushButton[class="badge"]:hover {{ background: {c['surface_variant']}; border-color: {c['text_muted']}; }}
+QPushButton[class="badge"]:focus {{ border: 1px solid {c['primary']}; }}
+QPushButton[class="badge"][status="warning"] {{
+    background: {c['warning']}; color: {c['on_primary']}; border-color: {c['warning']};
 }}
 
 /* --- glass surfaces ----------------------------------------------------- */
@@ -479,6 +523,9 @@ class _HoverElevate(QObject):
 
     def _animate_to(self, value):
         self.anim.stop()
+        if REDUCED_MOTION:
+            self.effect.setBlurRadius(value)
+            return
         self.anim.setStartValue(self.effect.blurRadius())
         self.anim.setEndValue(value)
         self.anim.start()
@@ -506,7 +553,7 @@ def pulse(widget, color=None, min_blur=8, max_blur=26, duration=900):
     finished/failed signal handler is the natural place) — an un-stopped loop
     keeps animating a hidden or destroyed widget's graphics effect forever.
     """
-    tint = color or QColor(56, 189, 248, 140)
+    tint = color or _token("primary", alpha=140)
     effect = QGraphicsDropShadowEffect(widget)
     effect.setOffset(0, 0)
     effect.setColor(tint)
@@ -518,8 +565,73 @@ def pulse(widget, color=None, min_blur=8, max_blur=26, duration=900):
     anim.setKeyValueAt(0.5, max_blur)
     anim.setEndValue(min_blur)
     anim.setLoopCount(-1)
-    anim.start()
+    if not REDUCED_MOTION:          # a steady glow still marks the work in progress
+        anim.start()
+    else:
+        effect.setBlurRadius(max_blur)
     return anim
+
+
+_FONTS_LOADED = False
+REDUCED_MOTION = False
+_CURRENT = T.PALETTES[T.DEFAULT_THEME]      # the applied palette (ThemeManager.apply)
+
+
+def color(name, alpha=None):
+    """A QColor for token `name` in the ACTIVE palette - what widget code paints
+    with instead of a literal hex, so a light-theme switch can never leave a
+    dark-theme colour behind. Understands "#RRGGBB" and "rgba(r, g, b, a)"
+    tokens (a as 0-1 or 0-255); `alpha` (0-255) overrides the token's own."""
+    value = _CURRENT.get(name) or T.PALETTES[T.DEFAULT_THEME][name]
+    if value.startswith("rgba"):
+        parts = [p.strip() for p in value[value.index("(") + 1:value.index(")")].split(",")]
+        a = float(parts[3])
+        q = QColor(int(parts[0]), int(parts[1]), int(parts[2]), int(a * 255) if a <= 1 else int(a))
+    else:
+        q = QColor(value)
+    if alpha is not None:
+        q.setAlpha(int(alpha))
+    return q
+
+
+_token = color          # for helpers whose own `color` parameter shadows the function
+
+
+def token_color(palette, name):
+    """QColor for token `name` from a view's own palette dict, or from the active
+    theme when that dict is empty or lacks it (views built with no palette)."""
+    value = (palette or {}).get(name)
+    return QColor(value) if value else color(name)
+
+
+def hex_of(name):
+    """The active palette's "#RRGGBB" for token `name` (for rich-text HTML)."""
+    return color(name).name()
+
+
+def motion_ms(ms):
+    """A motion duration, or 0 when Settings > Appearance > Reduce motion is on."""
+    return 0 if REDUCED_MOTION else ms
+
+
+def load_fonts():
+    """Register the bundled Inter / JetBrains Mono once per process. Returns the
+    families Qt now knows; a missing or unreadable file is skipped, so the
+    fallback chain in tokens.FONT_UI still applies and nothing ever crashes."""
+    global _FONTS_LOADED
+    from PyQt6.QtGui import QFontDatabase
+
+    from .assets import FONT_DIR
+    families = set()
+    if not _FONTS_LOADED:
+        for name in T.FONT_FILES:
+            path = FONT_DIR / name
+            if path.is_file():
+                fid = QFontDatabase.addApplicationFont(str(path))
+                if fid >= 0:
+                    families.update(QFontDatabase.applicationFontFamilies(fid))
+        _FONTS_LOADED = True
+    return families
 
 
 class ThemeManager(QObject):
@@ -531,7 +643,27 @@ class ThemeManager(QObject):
         super().__init__(parent)
         self._app = app
         self._name = T.DEFAULT_THEME
+        self._scale = 1.0
+        load_fonts()
         self._sheets = {name: build_qss(p) for name, p in T.PALETTES.items()}
+
+    @property
+    def text_scale(self):
+        return self._scale
+
+    def set_text_scale(self, scale):
+        """Rebuild both sheets at `scale` (one of tokens.TEXT_SCALES) and re-apply."""
+        scale = min(T.TEXT_SCALES, key=lambda s: abs(s - float(scale or 1.0)))
+        if scale == self._scale:
+            return
+        self._scale = scale
+        self._sheets = {name: build_qss(p, scale) for name, p in T.PALETTES.items()}
+        self.apply(self._name)
+
+    @staticmethod
+    def set_reduced_motion(on):
+        global REDUCED_MOTION
+        REDUCED_MOTION = bool(on)
 
     @property
     def name(self):
@@ -553,9 +685,11 @@ class ThemeManager(QObject):
             return T.DEFAULT_THEME
 
     def apply(self, name):
+        global _CURRENT
         if name not in self._sheets:
             name = T.DEFAULT_THEME
         self._name = name
+        _CURRENT = T.PALETTES[name]
         self._app.setStyleSheet(self._sheets[name])
         self.changed.emit(name)
 

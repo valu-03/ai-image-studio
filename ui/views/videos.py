@@ -16,7 +16,7 @@ import sys
 from pathlib import Path
 
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QBrush, QColor, QGuiApplication
+from PyQt6.QtGui import QBrush, QGuiApplication
 from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -50,6 +50,7 @@ import sound_lint as sl  # noqa: E402
 from .. import assets, tokens as T  # noqa: E402
 from ..hints import NAV_HINTS
 from ..widgets import Badge, Card, MutedLabel, TitleLabel  # noqa: E402
+from ..theme import token_color
 
 CATEGORY_LABELS = {
     "core": "Core movements",
@@ -578,7 +579,7 @@ class VideosView(QWidget):
             if not rows:
                 continue
             parent = QTreeWidgetItem(["{}  ({})".format(label, len(rows)), ""])
-            parent.setForeground(0, QBrush(QColor(self._palette.get("text_muted", "#94A3B8"))))
+            parent.setForeground(0, QBrush(token_color(self._palette, "text_muted")))
             self.glossary_tree.addTopLevelItem(parent)
             for entry in rows:
                 parent.addChild(QTreeWidgetItem([entry["term"], entry["definition"]]))
@@ -751,9 +752,9 @@ class VideosView(QWidget):
                                    seconds=self.duration.value())
         self.checks.clear()
 
-        ok_colour = QColor(self._palette.get("success", "#34D399"))
-        bad_colour = QColor(self._palette.get("error", "#F87171"))
-        warn_colour = QColor(self._palette.get("warning", "#FBBF24"))
+        ok_colour = token_color(self._palette, "success")
+        bad_colour = token_color(self._palette, "error")
+        warn_colour = token_color(self._palette, "warning")
 
         for name, ok, detail in checks:
             row = QTreeWidgetItem(["OK" if ok else "!", name, detail])

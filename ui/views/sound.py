@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 
 from PyQt6.QtCore import QThreadPool, QUrl, Qt, pyqtSignal
-from PyQt6.QtGui import QColor, QDesktopServices, QGuiApplication
+from PyQt6.QtGui import QDesktopServices, QGuiApplication
 from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -42,8 +42,9 @@ import sound_lint as sl  # noqa: E402
 
 from .. import assets, tokens as T  # noqa: E402
 from ..hints import NAV_HINTS
-from ..widgets import Badge, Card, MutedLabel, TitleLabel  # noqa: E402
+from ..widgets import Badge, Card, MutedLabel, TitleLabel, short_paths  # noqa: E402
 from ..workers import SoundTask, SpeechTask, VoiceCloneTask, VoiceListTask  # noqa: E402
+from ..theme import token_color
 
 
 class SoundView(QWidget):
@@ -365,8 +366,7 @@ class SoundView(QWidget):
         for _, label, passed, detail in results:
             row = QTreeWidgetItem(self.compose_tree, ["", label, detail])
             row.setText(0, "OK" if passed else "!")
-            row.setForeground(0, QColor(self._palette.get(
-                "success" if passed else "error", "#34D399" if passed else "#F87171")))
+            row.setForeground(0, token_color(self._palette, "success" if passed else "error"))
         self.compose_tree.setColumnWidth(0, 30)
         self.compose_tree.setColumnWidth(1, 180)
         self.compose_badge.set_status("success" if got == total else "danger",
@@ -417,7 +417,7 @@ class SoundView(QWidget):
         self.status.emit("Sound effect generated")
 
     def _on_effect_failed(self, reason):
-        self.effect_status.setText(reason)
+        self.effect_status.setText(short_paths(reason))
         self.generate_effect_button.setEnabled(True)
 
     def _play(self, path):
@@ -462,8 +462,7 @@ class SoundView(QWidget):
                 child.setToolTip(1, "{}\n\n{}".format(layer["role"], layer["note"]))
                 if not layer["passed"]:
                     failing += 1
-                    child.setForeground(2, QColor(
-                        self._palette.get("error", "#F87171")))
+                    child.setForeground(2, token_color(self._palette, "error"))
                     child.setToolTip(2, "; ".join(layer["failures"]))
         self.scene_tree.setColumnWidth(0, 150)
         self.scene_tree.setColumnWidth(1, 110)
@@ -537,7 +536,7 @@ class SoundView(QWidget):
         self._advance_sheet_queue()
 
     def _on_sheet_item_failed(self, reason):
-        self.sheet_progress.setText(reason)
+        self.sheet_progress.setText(short_paths(reason))
         self._sheet_done += 1
         self._advance_sheet_queue()
 
@@ -651,7 +650,7 @@ class SoundView(QWidget):
     def refresh_voices(self):
         task = VoiceListTask()
         task.signals.finished.connect(self._on_voices_loaded)
-        task.signals.failed.connect(lambda reason: self.speech_status.setText(reason))
+        task.signals.failed.connect(lambda reason: self.speech_status.setText(short_paths(reason)))
         self._audio_pool.start(task)
 
     def _on_voices_loaded(self, voices):
@@ -694,7 +693,7 @@ class SoundView(QWidget):
         self.status.emit("Speech generated")
 
     def _on_speech_failed(self, reason):
-        self.speech_status.setText(reason)
+        self.speech_status.setText(short_paths(reason))
         self.generate_speech_button.setEnabled(True)
 
     def pick_samples(self):
@@ -744,7 +743,7 @@ class SoundView(QWidget):
         self.refresh_voices()
 
     def _on_clone_failed(self, reason):
-        self.clone_status.setText(reason)
+        self.clone_status.setText(short_paths(reason))
         self._update_clone_enabled()
 
     # -- theming ------------------------------------------------------------ #

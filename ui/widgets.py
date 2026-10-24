@@ -4,7 +4,7 @@ Each styles itself through dynamic QSS properties rather than inline
 stylesheets, so a theme switch repaints it with no extra work.
 """
 
-from PyQt6.QtCore import QSize, Qt, pyqtSignal
+from PyQt6.QtCore import QEvent, QObject, QSize, Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QIcon, QPainter, QPixmap
 from PyQt6.QtWidgets import (
     QButtonGroup,
@@ -22,6 +22,7 @@ from PyQt6.QtWidgets import (
 )
 
 from . import assets, tokens as T
+from .theme import color as theme_color
 from .theme import elevate, hover_elevate, repolish
 
 
@@ -61,6 +62,26 @@ class Badge(QLabel):
         repolish(self)
 
 
+class BadgeButton(QPushButton):
+    """A badge you can press: same pill and statuses as Badge, but a real button
+    - focusable, Enter/Space work, a pointer on hover, read as a button by a
+    screen reader. The credits balance used to be a QLabel with a patched
+    mousePressEvent: clickable by mouse only, invisible to the keyboard."""
+
+    def __init__(self, text="", status="neutral", parent=None):
+        super().__init__(text, parent)
+        self.setProperty("class", "badge")
+        self.setProperty("status", status)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed)
+
+    def set_status(self, status, text=None):
+        if text is not None:
+            self.setText(text)
+        self.setProperty("status", status)
+        repolish(self)
+
+
 class MutedLabel(QLabel):
     def __init__(self, text="", parent=None):
         super().__init__(text, parent)
@@ -87,6 +108,7 @@ class NavButton(QToolButton):
         self.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setAccessibleName(text)
         self._refresh_icon()
         self.toggled.connect(lambda _: self._refresh_icon())
         self.toggled.connect(self._refresh_glow)
@@ -101,7 +123,7 @@ class NavButton(QToolButton):
         # the one place a genuine glow effect is legible against small text
         # rather than fighting for contrast with it.
         if checked:
-            elevate(self, blur=22, dy=0, color=QColor(56, 189, 248, 70))
+            elevate(self, blur=22, dy=0, color=theme_color("glow_primary"))
         else:
             self.setGraphicsEffect(None)
 
@@ -420,9 +442,8 @@ class GateTree(QWidget):
         self._checks = list(checks)
         self.tree.clear()
         tokens = self._tokens or {}
-        ok_color = QColor(tokens.get("success", "#34D399"))
-        bad_color = QColor(tokens.get("error", "#F87171"))
-        warn_color = QColor(tokens.get("warning", "#FBBF24"))
+        pick = lambda key: QColor(tokens[key]) if key in tokens else theme_color(key)  # noqa: E731
+        ok_color, bad_color, warn_color = pick("success"), pick("error"), pick("warning")
         first_fail = None
         for check in self._checks:
             passed = bool(check.get("passed"))
@@ -524,6 +545,197 @@ def chip_row(options, exclusive=False, columns=4):
         if group:
             group.addButton(button)
     return layout, buttons, group
+
+
+class _EmptyHint(QObject):
+    """Paints an icon and one line of guidance on an item view's viewport while
+    the view holds no rows. See set_empty_hint()."""
+
+    def __init__(self, view, text, icon_name):
+        super().__init__(view)
+        self.view = view
+        self.text = text
+        self.icon_name = icon_name
+
+    def _empty(self):
+        model = self.view.model()
+        return model is None or model.rowCount() == 0
+
+    def eventFilter(self, obj, event):
+        # PyQt turns an exception escaping a virtual into a process abort, and at
+        # shutdown the view can be gone before its viewport's last event: never
+        # let a deleted-object RuntimeError out of here.
+        if event.type() != QEvent.Type.Paint:
+            return False
+        try:
+            empty = self._empty()
+        except RuntimeError:
+            return False
+        if empty:
+            painter = QPainter(obj)
+            rect = obj.rect().adjusted(T.SPACE["md"], T.SPACE["sm"], -T.SPACE["md"], -T.SPACE["sm"])
+            wrap = Qt.AlignmentFlag.AlignHCenter.value | Qt.TextFlag.TextWordWrap.value
+            text_h = painter.fontMetrics().boundingRect(rect, wrap, self.text).height()
+            # The icon only when icon + gap + the wrapped text all fit; a short
+            # list (Compose's library is ~110px) gets the text alone, centred,
+            # rather than a paragraph cut off at its bottom edge.
+            size = 24
+            gap = T.SPACE["sm"]
+            if size + gap + text_h <= rect.height():
+                top = rect.top() + (rect.height() - size - gap - text_h) // 2
+                assets.icon(self.icon_name).paint(painter, rect.center().x() - size // 2, top, size, size)
+                rect.setTop(top + size + gap)
+                vertical = Qt.AlignmentFlag.AlignTop
+            else:
+                vertical = Qt.AlignmentFlag.AlignVCenter
+            painter.setPen(theme_color("text_muted"))
+            painter.drawText(rect, wrap | vertical.value, self.text)
+            painter.end()
+        return False
+
+
+def set_empty_hint(view, text, icon_name="images"):
+    """An empty list or table says what goes there and how to fill it, instead
+    of showing a blank box ("Save a character to see it here"). Repaints on
+    every row change, and costs nothing once the view has rows."""
+    hint = _EmptyHint(view, text, icon_name)
+    view.viewport().installEventFilter(hint)
+
+    def repaint(*_):
+        try:
+            view.viewport().update()
+        except RuntimeError:           # the view is already deleted (app shutdown)
+            pass
+    model = view.model()
+    if model is not None:
+        for signal in (model.rowsInserted, model.rowsRemoved, model.modelReset):
+            signal.connect(repaint)
+    view._empty_hint = hint
+    return hint
+
+
+def _layout_path(layout, widget):
+    """The flat, in-order list of widgets of the (nested) layout holding `widget`,
+    or None when `widget` is not in it."""
+    flat, found = [], False
+    for i in range(layout.count()):
+        item = layout.itemAt(i)
+        if item.widget() is not None:
+            flat.append(item.widget())
+            found = found or item.widget() is widget
+        elif item.layout() is not None:
+            inner = _layout_path(item.layout(), widget)
+            if inner is not None:
+                return inner
+    return flat if found else None
+
+
+def _first_sentence(text, limit=60):
+    text = " ".join((text or "").split())
+    for stop in (". ", " - ", "; "):
+        if stop in text:
+            text = text.split(stop, 1)[0]
+    return text if len(text) <= limit else text[:limit - 1].rstrip() + "…"
+
+
+def name_controls(root):
+    """Give every unnamed input, combo, text box and icon-only button under
+    `root` an accessible name, from what a sighted user reads beside it:
+    the short label just before it in its layout (also set as its buddy),
+    else its tooltip's first sentence, else its placeholder, else the title
+    of the card it sits in. A screen reader otherwise announced 125 of them
+    as just "combo box" / "edit". Never overrides a name a view set itself.
+    Returns how many it named."""
+    from PyQt6.QtWidgets import (QAbstractButton, QAbstractSpinBox, QComboBox, QFormLayout,
+                                 QLineEdit, QPlainTextEdit, QTextEdit)
+    named = set()
+    for form in root.findChildren(QFormLayout):     # a form row's label already names its field
+        for row in range(form.rowCount()):
+            label = form.itemAt(row, QFormLayout.ItemRole.LabelRole)
+            field = form.itemAt(row, QFormLayout.ItemRole.FieldRole)
+            if label and field and isinstance(label.widget(), QLabel) and field.widget() is not None:
+                if not field.widget().accessibleName():
+                    field.widget().setAccessibleName(label.widget().text().rstrip(":"))
+                named.add(id(field.widget()))
+    count = 0
+    kinds = (QAbstractButton, QLineEdit, QComboBox, QAbstractSpinBox, QPlainTextEdit, QTextEdit)
+    for widget in root.findChildren(kinds):
+        if widget.accessibleName() or id(widget) in named:
+            continue
+        if isinstance(widget, QAbstractButton) and widget.text().strip():
+            continue                                    # its own text names it
+        if isinstance(widget.parentWidget(), (QComboBox, QAbstractSpinBox)):
+            continue                                    # a combo / spin box's inner editor
+        name = ""
+        parent = widget.parentWidget()
+        siblings = _layout_path(parent.layout(), widget) if parent is not None and parent.layout() else None
+        if siblings:
+            before = siblings[:siblings.index(widget)]
+            for prior in reversed(before[-2:]):
+                if isinstance(prior, QLabel) and 0 < len(prior.text().strip()) <= 40 and prior.buddy() is None:
+                    name = prior.text().strip().rstrip(":")
+                    prior.setBuddy(widget)
+                    break
+        if not name:
+            name = _first_sentence(widget.toolTip())
+        if not name:
+            # The card's title before the placeholder: a placeholder is usually
+            # an EXAMPLE value ("a tired barista closing up late"), not a name.
+            node = parent
+            while node is not None and not name:
+                title = node.findChild(TitleLabel)
+                if title is not None and title.text():
+                    name = title.text()
+                node = node.parentWidget()
+        if not name and isinstance(widget, (QLineEdit, QPlainTextEdit)):
+            name = _first_sentence(widget.placeholderText())
+        if name:
+            widget.setAccessibleName(name)
+            if widget.toolTip() and not widget.accessibleDescription():
+                widget.setAccessibleDescription(" ".join(widget.toolTip().split()))
+            count += 1
+    return count
+
+
+def short_paths(text):
+    """`text` with every absolute local path shown as just its file name
+    ("C:\\Users\\<you>\\...\\AI Video Studio\\.env" -> ".env"). For messages from
+    tools/ shown inside the window: the full path helps on a command line, but
+    in the GUI it is noise - and it puts the user's name in every screenshot."""
+    import re
+    text = re.sub(r"[A-Za-z]:\\(?:[^\\\n]+\\)*([^\\\s]+)", r"\1", text or "")
+    return re.sub(r"(?<![\w.:/])/(?:[^/\s]+/)+([^/\s]+)", r"\1", text)
+
+
+def status_line(text, limit=160):
+    """One readable status-bar line from any message: its first line, a local
+    path shown as just its file name, a URL as just its site, at most `limit`
+    characters. The status bar is glanced at, not read - a full
+    "C:\\Users\\...\\AI Video Studio\\.env" and a deep link pushed the part that
+    mattered off the edge. The caller keeps the full text for the tooltip."""
+    import re
+    lines = [line for line in (text or "").strip().splitlines() if line.strip()]
+    if not lines:
+        return ""
+    line = lines[0].strip()
+    line = re.sub(r"https?://(?:www\.)?([^/\s]+)\S*", r"\1", line)
+    # Windows folders may hold spaces ("Personal Projects"); the last part may not.
+    line = short_paths(line)
+    return line if len(line) <= limit else line[:limit - 1].rstrip() + "…"
+
+
+def readable_tabs(root):
+    """Every tab bar under `root` shows whole labels: no "Purp..." elision, and
+    a bar too narrow for its tabs gets scroll arrows instead. Elision hid what
+    a tab WAS - in Compose's narrow spec column all five read as fragments."""
+    from PyQt6.QtWidgets import QTabBar
+    for bar in root.findChildren(QTabBar):
+        bar.setElideMode(Qt.TextElideMode.ElideNone)
+        bar.setUsesScrollButtons(True)
+        bar.setDocumentMode(False)
+        for i in range(bar.count()):           # the full name on hover, also read by screen readers
+            if not bar.tabToolTip(i):
+                bar.setTabToolTip(i, bar.tabText(i).replace("&", ""))
 
 
 def mark_error(widget, is_error):

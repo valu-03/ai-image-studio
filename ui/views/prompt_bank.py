@@ -49,7 +49,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 import saved_prompts as sp  # noqa: E402
 
 from .. import assets, tokens as T  # noqa: E402
-from ..widgets import Card, MutedLabel, TitleLabel  # noqa: E402
+from ..widgets import Card, MutedLabel, TitleLabel, set_empty_hint  # noqa: E402
 
 KIND_LABELS = {"image": "Image", "video": "Video"}
 THUMB = 112
@@ -210,6 +210,7 @@ class PromptBankView(QWidget):
 
     def setup_ui(self):
         self.list = QListWidget()
+        set_empty_hint(self.list, "No saved prompts yet. Prompts you keep from the other sections collect here.", "save")
         self.list.setAlternatingRowColors(True)
         self.list.currentItemChanged.connect(self._on_selected)
         self.count_label = MutedLabel("")

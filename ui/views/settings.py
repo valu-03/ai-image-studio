@@ -9,9 +9,11 @@ from pathlib import Path
 from PyQt6.QtCore import QThreadPool, Qt, QUrl, pyqtSignal
 from PyQt6.QtGui import QDesktopServices
 from PyQt6.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QFormLayout,
     QHBoxLayout,
+    QLabel,
     QLineEdit,
     QListWidget,
     QListWidgetItem,
@@ -32,7 +34,7 @@ import generate_sound as gsnd  # noqa: E402
 
 from .. import assets, tokens as T  # noqa: E402
 from ..hints import NAV_HINTS
-from ..widgets import Badge, Card, MutedLabel, TitleLabel  # noqa: E402
+from ..widgets import Badge, Card, MutedLabel, TitleLabel, set_empty_hint  # noqa: E402
 from ..workers import VoiceDeleteTask, VoiceListTask  # noqa: E402
 
 
@@ -40,6 +42,8 @@ class SettingsView(QWidget):
     provider_changed = pyqtSignal(str)
     model_changed = pyqtSignal(str)
     theme_toggled = pyqtSignal()
+    text_scale_changed = pyqtSignal(float)
+    reduce_motion_changed = pyqtSignal(bool)
     image_options_changed = pyqtSignal()
     status = pyqtSignal(str)
     # Emitted when a key is saved or re-checked, so the controls that
@@ -135,6 +139,27 @@ class SettingsView(QWidget):
         theme_button = QPushButton("Toggle light / dark")
         theme_button.clicked.connect(self.theme_toggled)
 
+        # Text size multiplies every font size in the sheet (ThemeManager.
+        # set_text_scale); Reduce motion stops hover/glow animation. Both are
+        # remembered by MainWindow with the theme.
+        self.text_size = QComboBox()
+        for scale in T.TEXT_SCALES:
+            self.text_size.addItem("{}%".format(round(scale * 100)), scale)
+        self.text_size.setToolTip("Make every label, field and button larger.")
+        self.text_size.setAccessibleName("Text size")
+        self.text_size.currentIndexChanged.connect(
+            lambda _i: self.text_scale_changed.emit(self.text_size.currentData()))
+        self.reduce_motion = QCheckBox("Reduce motion")
+        self.reduce_motion.setToolTip("No animated hover lift or pulsing glow.")
+        self.reduce_motion.toggled.connect(self.reduce_motion_changed)
+        appearance_row = QHBoxLayout()
+        appearance_row.setSpacing(T.SPACE["sm"])
+        appearance_row.addWidget(theme_button)
+        appearance_row.addWidget(QLabel("Text size"))
+        appearance_row.addWidget(self.text_size)
+        appearance_row.addWidget(self.reduce_motion)
+        appearance_row.addStretch(1)
+
         form = QFormLayout()
         form.setHorizontalSpacing(T.COLUMN_GAP)
         form.setVerticalSpacing(T.SPACE["md"])
@@ -144,7 +169,7 @@ class SettingsView(QWidget):
         form.addRow("Image format", self.output_format)
         form.addRow("API key", key_row)
         form.addRow("Paste a key", entry_row)
-        form.addRow("Appearance", theme_button)
+        form.addRow("Appearance", appearance_row)
 
         provider_card = Card()
         provider_card.body.addWidget(TitleLabel("Generation"))
@@ -200,6 +225,7 @@ class SettingsView(QWidget):
         sound_key_row.addStretch(1)
 
         self.voice_list = QListWidget()
+        set_empty_hint(self.voice_list, "No saved voices yet. Clone or pick one in Sound > Voices.", "sound")
         self.voice_list.setMaximumHeight(120)
         refresh_voices_button = QPushButton("Refresh")
         refresh_voices_button.setProperty("class", "ghost")
@@ -251,8 +277,12 @@ class SettingsView(QWidget):
             row.addWidget(button)
             paths_card.body.addLayout(row)
 
-        body = QWidget()
-        layout = QVBoxLayout(body)
+        # A readable column, not the whole canvas: on a 1440px window every
+        # field stretched past 1100px and a "png" combo was a bar across the
+        # screen. The cards cap at 900 and sit left, where the eye starts.
+        column = QWidget()
+        column.setMaximumWidth(900)
+        layout = QVBoxLayout(column)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(T.COLUMN_GAP)
         layout.addWidget(provider_card)
@@ -260,6 +290,11 @@ class SettingsView(QWidget):
         layout.addWidget(sound_card)
         layout.addWidget(paths_card)
         layout.addStretch(1)
+        body = QWidget()
+        body_row = QHBoxLayout(body)
+        body_row.setContentsMargins(0, 0, 0, 0)
+        body_row.addWidget(column, 1)
+        body_row.addStretch(0)
 
         # Three cards of prose need more height than a 700px window leaves, and
         # a QVBoxLayout that runs out of room squashes its children below their

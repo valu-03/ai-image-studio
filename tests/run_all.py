@@ -90,6 +90,8 @@ ORDER = [
     "test_sitcom.py",
     "test_cats_custom.py",
     "test_newui.py",
+    "test_design_tokens.py",
+    "test_ui_polish.py",
     "test_layout.py",
     "smoke_gui.py",
 ]

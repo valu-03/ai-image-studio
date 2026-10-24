@@ -46,7 +46,7 @@ import sys
 from pathlib import Path
 
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QBrush, QColor, QGuiApplication, QPixmap
+from PyQt6.QtGui import QBrush, QGuiApplication, QPixmap
 from PyQt6.QtWidgets import (
     QComboBox,
     QFileDialog,
@@ -79,7 +79,8 @@ import build_voice as bvoice  # noqa: E402
 
 from .. import assets, tokens as T  # noqa: E402
 from ..hints import NAV_HINTS
-from ..widgets import Badge, Card, MutedLabel, TitleLabel, chip_row  # noqa: E402
+from ..widgets import Badge, Card, MutedLabel, TitleLabel, chip_row, set_empty_hint  # noqa: E402
+from ..theme import token_color
 
 REFERENCE_LIMIT = 8
 IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".bmp"}
@@ -187,6 +188,7 @@ class InfluencerStudioView(QWidget):
 
     def _build_roster_tab(self):
         self.roster = QListWidget()
+        set_empty_hint(self.roster, "No personas yet. Build one, then save it to the roster.", "influencer_studio")
         self.roster.setAlternatingRowColors(True)
         self.roster.itemActivated.connect(self.load_selected)
         self.roster.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
@@ -416,7 +418,7 @@ class InfluencerStudioView(QWidget):
             if not rows:
                 continue
             parent = QTreeWidgetItem(["{}  ({})".format(label, len(rows)), ""])
-            parent.setForeground(0, QBrush(QColor(self._palette.get("text_muted", "#94A3B8"))))
+            parent.setForeground(0, QBrush(token_color(self._palette, "text_muted")))
             self.face_tree.addTopLevelItem(parent)
             for entry in rows:
                 parent.addChild(QTreeWidgetItem([entry["term"], entry["definition"]]))

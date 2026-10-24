@@ -24,7 +24,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 import history as hist  # noqa: E402
 
 from .. import tokens as T  # noqa: E402
-from ..widgets import Card, ImagePreview, MutedLabel, StarRating, TitleLabel  # noqa: E402
+from ..widgets import Card, ImagePreview, MutedLabel, StarRating, TitleLabel, set_empty_hint  # noqa: E402
 
 COLUMNS = ["Rating", "Score", "Seed", "Character", "When", "Image"]
 
@@ -44,6 +44,7 @@ class HistoryView(QWidget):
 
     def setup_ui(self):
         self.table = QTableWidget(0, len(COLUMNS))
+        set_empty_hint(self.table, "Nothing generated yet. Every image you generate is logged here, with its prompt and rating.", "history")
         self.table.setHorizontalHeaderLabels(COLUMNS)
         self.table.setAlternatingRowColors(True)
         self.table.verticalHeader().setVisible(False)
@@ -150,7 +151,8 @@ class HistoryView(QWidget):
                 self.table.setItem(row, column, item)
         self.table.resizeColumnsToContents()
         self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
-        self.status.emit("{} entries".format(len(self.entries)))
+        count = len(self.entries)
+        self.status.emit("History: {} generation{} logged".format(count, "" if count == 1 else "s"))
 
     def open_in_compose(self):
         """Load the selected entry's spec back into Compose.

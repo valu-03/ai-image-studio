@@ -26,7 +26,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 import history as hist  # noqa: E402
 
 from .. import tokens as T  # noqa: E402
-from ..widgets import Badge, Card, MutedLabel, TitleLabel  # noqa: E402
+from ..widgets import Badge, Card, MutedLabel, TitleLabel, set_empty_hint  # noqa: E402
 
 
 class InsightsView(QWidget):
@@ -59,6 +59,7 @@ class InsightsView(QWidget):
         controls.addStretch(1)
 
         self.tree = QTreeWidget()
+        set_empty_hint(self.tree, "Rate a few generations (1-5 stars) and the words that go with good results show up here.", "insights")
         self.tree.setColumnCount(3)
         self.tree.setHeaderLabels(["TERM", "AVG RATING", "SAMPLES"])
         self.tree.setAlternatingRowColors(True)
