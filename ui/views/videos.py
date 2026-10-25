@@ -1,9 +1,11 @@
 """Videos category - the Kling camera-movement toolkit and the film glossary.
 
-Two tabs:
+Three tabs:
   Motion    pick a move, get a Kling-ready prompt, see whether your still can
             actually support it
   Glossary  searchable reference for the filmmaking vocabulary
+  Skit Studio  a finished talking-pet skit from one idea, made by the separate
+            Skit Studio app over its REST API (ui/views/skit_studio.py)
 
 Clips generate for real now, on Kling 3.0 through Kie - the same job API the
 images use. Everything still works with no key and no cost too: compose the
@@ -49,6 +51,7 @@ import sound_lint as sl  # noqa: E402
 
 from .. import assets, tokens as T  # noqa: E402
 from ..hints import NAV_HINTS
+from .skit_studio import SkitStudioView
 from ..widgets import Badge, Card, MutedLabel, TitleLabel  # noqa: E402
 from ..theme import token_color
 
@@ -90,6 +93,9 @@ class VideosView(QWidget):
         self.tabs = QTabWidget()
         self.tabs.addTab(self._build_motion_tab(), "Motion")
         self.tabs.addTab(self._build_glossary_tab(), "Glossary")
+        self.skit_studio = SkitStudioView()
+        self.skit_studio.status.connect(self.status)
+        self.tabs.addTab(self.skit_studio, "Skit Studio")
 
         layout = QVBoxLayout(self)
         # The section says what it is for. Seven of the ten rail sections

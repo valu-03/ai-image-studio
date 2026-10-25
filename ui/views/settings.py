@@ -50,6 +50,8 @@ class SettingsView(QWidget):
     # disabled themselves at construction can un-disable. "Re-check"
     # used to refresh these badges and nothing else in the app.
     keys_changed = pyqtSignal()
+    # Local API for Skit Studio: on/off. MainWindow starts or stops the server.
+    local_api_toggled = pyqtSignal(bool)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -250,6 +252,20 @@ class SettingsView(QWidget):
         sound_card.body.addWidget(self.voice_list)
         sound_card.body.addLayout(voice_actions)
 
+        self.local_api = QCheckBox("Let Skit Studio use this app for its images")
+        self.local_api.setChecked(True)
+        self.local_api.toggled.connect(self.local_api_toggled)
+        self.local_api_state = MutedLabel("Local API: off")
+        api_card = Card()
+        api_card.body.addWidget(TitleLabel("Skit Studio connection"))
+        api_card.body.addWidget(self.local_api)
+        api_card.body.addWidget(self.local_api_state)
+        api_card.body.addWidget(MutedLabel(
+            "While this app is open, Skit Studio sends its character and scene prompts "
+            "here. They pick up the Look you last applied, generate with this app's Kie "
+            "key and land in History tagged Skit Studio. Loopback only; the port is "
+            "AIVS_LOCAL_API_PORT in .env (default 8785)."))
+
         paths_card = Card()
         paths_card.body.addWidget(TitleLabel("Paths"))
         for label, path, disposable in [
@@ -288,6 +304,7 @@ class SettingsView(QWidget):
         layout.addWidget(provider_card)
         layout.addWidget(text_card)
         layout.addWidget(sound_card)
+        layout.addWidget(api_card)
         layout.addWidget(paths_card)
         layout.addStretch(1)
         body = QWidget()
@@ -322,6 +339,9 @@ class SettingsView(QWidget):
 
         self.refresh_key_state()
         self.refresh_voice_list()
+
+    def set_local_api_state(self, text):
+        self.local_api_state.setText("Local API: " + text)
 
     def on_provider_changed(self, name):
         cfg = gi.PROVIDERS.get(name)

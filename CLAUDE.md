@@ -1540,6 +1540,31 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
 - `workflows/ugc-ad.md` — Phase 6, the five-beat advert
 - `workflows/cat-story-video.md` — a story in scenes, with its CapCut edit sheet
 - `workflows/sound-design.md` — three layers of ElevenLabs prompts per scene
+- **Videos -> Skit Studio tab** — a finished talking-pet skit from one idea, made by the separate
+  **Skit Studio** app (`..\Skit Studio`) over its REST API. AI Video Studio is
+  only a client here: `tools/skit_client.py` is the one place that speaks the API,
+  `ui/views/skit_studio.py` the tab, `ui/workers.py` `SkitTask` the worker. The tab has
+  "Auto-generate idea" (Skit Studio's `POST /ideas`) and a Clips picker (`video_model`: Kling 3.0
+  on Higgsfield by default, Seedance 2.0/2.5, Wan 3.0, or Kling on Kie). No skit logic lives in
+  this repo, and the tab keeps Skit Studio's cost gate: "Approve & film" is the only
+  button that spends, and it stays disabled while the skit fails its lint. The tab reaches the
+  server only when shown (a request started at construction outlived test windows and crashed
+  their teardown). Contract changes happen in Skit Studio's CLAUDE.md first.
+- **Local API for Skit Studio** (`tools/local_api.py`, 127.0.0.1:8785) — the other direction,
+  the same arrangement as VoiceStudio's port 3900: while this app is open, Skit Studio sends its
+  character and scene prompts here and gets images back. Routes: `GET /api/v1/health`,
+  `/look/options` (every Look list), `/look/current` (the Look phrases now on the Compose form),
+  `POST /look/compose`, `POST /prompt` (finished prompt only, no spend: for pasting into Google
+  Flow), `POST /images` -> `GET /images/<id>` -> `/images/<id>/file`. Prompts are the caller's
+  scene text plus the Look (style first, the no-text sentence kept last); generation is the same
+  `gi.generate()` Compose uses, and each image lands in `temp/outputs/images/skit-<id>.png` and in
+  History with note "Skit Studio". **The caller's approval is the yes**: Skit Studio's cost gate
+  runs before it ever calls `/images`, so the server never pops `confirm_spend`.
+  Started by `gui.py` (`MainWindow.start_local_api`), never by a test window; Settings ->
+  "Skit Studio connection" turns it off (QSettings `local_api`). The server thread reads a
+  lock-guarded Look snapshot (`SpecEditor.look_phrases()`, refreshed on `editor.changed`), never a
+  widget. `AIVS_LOCAL_API_PORT` / `AIVS_LOCAL_API_TOKEN` in `.env`. Tests:
+  `test_local_api.py` (headless, against mock_api) and `test_local_api_gui.py`.
 
 The spec form is tabbed Purpose / Subject / Scene / Identity / More; Scene holds Setting,
 Shot, Lighting, Colour and Composition.

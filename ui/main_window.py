@@ -8,9 +8,10 @@ below those, and all domain logic lives in tools/.
 import os
 import shutil
 import sys
+import threading
 from pathlib import Path
 
-from PyQt6.QtCore import QSettings, QThreadPool, pyqtSignal
+from PyQt6.QtCore import QSettings, QThreadPool, QTimer, pyqtSignal
 from PyQt6.QtGui import QAction, QKeySequence
 from PyQt6.QtWidgets import (
     QButtonGroup,
@@ -35,6 +36,7 @@ import generate_image as gi  # noqa: E402
 import generate_video as gv  # noqa: E402
 import project as proj  # noqa: E402
 import history as hist  # noqa: E402
+import local_api  # noqa: E402
 import upscale_image as up  # noqa: E402
 import refine_image as ri  # noqa: E402
 
@@ -139,6 +141,8 @@ class MainWindow(QMainWindow):
     """Single-window dashboard: rail + top bar + QStackedWidget canvas."""
 
     status_changed = pyqtSignal(str)
+    # A Local API image finished on a server thread; delivered on the GUI one.
+    local_api_image = pyqtSignal(dict)
 
     def __init__(self, theme):
         super().__init__()
@@ -175,6 +179,16 @@ class MainWindow(QMainWindow):
         # equivalent of `_batch`, replacing `_video_target`/`_video_seconds`/
         # `_video_done`/`_video_total`.
         self._video = None
+        # Skit Studio's way in (tools/local_api.py). Started by gui.py, not
+        # here, so test windows never bind the port. The look is a snapshot
+        # the server thread reads under a lock - never the widgets themselves.
+        self._local_api = None
+        self._look_lock = threading.Lock()
+        self._look_snapshot = {}
+        self._look_timer = QTimer(self)
+        self._look_timer.setSingleShot(True)
+        self._look_timer.setInterval(150)
+        self._look_timer.timeout.connect(self.update_look_snapshot)
 
         self.setup_ui()
         self.apply_styles()
@@ -472,6 +486,10 @@ class MainWindow(QMainWindow):
         self.settings_view.keys_changed.connect(self.compose_view.refresh_key_state)
         self.settings_view.keys_changed.connect(self.refresh_credits)
         self.settings_view.keys_changed.connect(self.compose_view.update_cost_note)
+        self.settings_view.local_api_toggled.connect(self.set_local_api_enabled)
+        self.compose_view.editor.changed.connect(self._look_timer.start)
+        self.local_api_image.connect(self.on_local_api_image)
+        self.update_look_snapshot()
 
         # A history row becomes a starting point rather than a record.
         self.history_view.spec_chosen.connect(self.adopt_history_spec)
@@ -1489,7 +1507,63 @@ class MainWindow(QMainWindow):
             if state:
                 splitter.restoreState(state)
 
+    # ------------------------------------------------------- local API -- #
+    def update_look_snapshot(self):
+        try:
+            phrases = self.compose_view.editor.look_phrases()
+        except RuntimeError:  # the window is being torn down
+            return
+        with self._look_lock:
+            self._look_snapshot = phrases
+
+    def current_look(self):
+        """Called on a server thread - reads the snapshot, never a widget."""
+        with self._look_lock:
+            return dict(self._look_snapshot)
+
+    def start_local_api(self):
+        """Serve Skit Studio unless Settings turned it off. Never raises."""
+        enabled = self.settings.value("local_api", "true") != "false"
+        self.settings_view.local_api.blockSignals(True)
+        self.settings_view.local_api.setChecked(enabled)
+        self.settings_view.local_api.blockSignals(False)
+        self.set_local_api_enabled(enabled)
+
+    def set_local_api_enabled(self, enabled):
+        self.settings.setValue("local_api", "true" if enabled else "false")
+        if not enabled:
+            self.stop_local_api()
+            self.settings_view.set_local_api_state("off")
+            return
+        if self._local_api:
+            return
+        try:
+            self._local_api = local_api.start(
+                current_look=self.current_look,
+                on_image=lambda job: self.local_api_image.emit(job or {}))
+        except OSError as exc:
+            self.settings_view.set_local_api_state(
+                "could not start on port {} ({})".format(local_api.configured_port(), exc))
+            return
+        self.settings_view.set_local_api_state(
+            "on - http://127.0.0.1:{}".format(self._local_api.port))
+
+    def stop_local_api(self):
+        if self._local_api:
+            self._local_api.stop()
+            self._local_api = None
+
+    def on_local_api_image(self, job):
+        if job.get("state") == "done":
+            self.statusBar().showMessage(
+                "Skit Studio: image ready - {}".format(Path(job.get("file", "")).name))
+            self.history_view.reload()
+        else:
+            self.statusBar().showMessage(
+                "Skit Studio: image failed - {}".format(job.get("error", ""))[:200])
+
     def closeEvent(self, event):
+        self.stop_local_api()
         self.pool.cancel()
         self.video_pool.cancel()
         self.settings.setValue("geometry", self.saveGeometry())

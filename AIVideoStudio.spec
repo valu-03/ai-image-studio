@@ -82,7 +82,10 @@ binaries = []
 # that hook bundles the real ffmpeg.exe at its normal package-relative path
 # (imageio_ffmpeg/binaries/ffmpeg-*.exe) on its own - confirmed by inspecting
 # a real build's dist/ folder, not assumed from the package's docs.
-hiddenimports = ["uuid", "imageio_ffmpeg"]
+# The Local API for Skit Studio (tools/local_api.py, tools/skit_client.py) is the only user of
+# these stdlib modules - unanalysed like every tools/ file, so they are named here.
+hiddenimports = ["uuid", "imageio_ffmpeg", "http.server", "socketserver", "hmac", "mimetypes",
+                 "concurrent.futures", "urllib.parse", "urllib.request", "urllib.error", "base64"]
 
 # The app renders every icon from SVG at runtime (QIcon(str(svg_path)) in
 # ui/assets.py), which depends on Qt's SVG icon-engine plugin. Rather than

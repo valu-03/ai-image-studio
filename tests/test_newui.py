@@ -404,8 +404,8 @@ vv = win.videos_view
 # negative guard); the one-take story default has its own suite
 # (test_video_realism.py).
 vv.write_as.setCurrentIndex(vv.write_as.findData("tagged"))
-check("motion + glossary tabs",
-      [vv.tabs.tabText(i) for i in range(vv.tabs.count())] == ["Motion", "Glossary"])
+check("motion + glossary + skit studio tabs",
+      [vv.tabs.tabText(i) for i in range(vv.tabs.count())] == ["Motion", "Glossary", "Skit Studio"])
 check("movements grouped in 3", vv.tree.topLevelItemCount() == 3)
 
 
@@ -592,6 +592,14 @@ win.go_to("images")
 
 if HISTORY.exists():
     HISTORY.unlink()
+
+# Close the window before the interpreter exits. Left to interpreter shutdown, Python
+# frees the window and the QApplication in arbitrary order, and roughly one full run
+# in three ended in an access violation (exit 0xC0000005) after every check had passed.
+win.close()
+app.processEvents()
+win.deleteLater()
+app.processEvents()
 
 print()
 if fails:

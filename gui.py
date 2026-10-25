@@ -32,6 +32,8 @@ def main():
 
     window = MainWindow(theme)
     window.show()
+    # Skit Studio's connection - only the real app binds the port.
+    window.start_local_api()
     return app.exec()
 
 

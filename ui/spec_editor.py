@@ -820,6 +820,30 @@ class SpecEditor(QWidget):
         self._evidence_override = (phrase or "").strip()
         self.changed.emit()
 
+    def look_phrases(self):
+        """What the Look sections have put on this form, as plain phrases.
+
+        The Local API hands this to Skit Studio as "the current look"
+        (tools/local_api.py). Read-only: nothing here changes the form or the
+        prompt. Camera is the typed shot only - a picked shot preset is a
+        Compose framing choice, and Skit Studio frames each scene itself.
+        """
+        guide = self.composition_guide()
+        composition = (bp.guides(self.bank).get(guide, {}).get("phrase", "")
+                       if guide else self.composition_custom())
+        capture = [phrase for phrases in self._capture_overrides.values()
+                   for phrase in phrases]
+        return {
+            "lighting": self.lighting_value(),
+            "composition": composition,
+            "camera": self.shot_custom(),
+            "color": self.colour_value(),
+            "posing": self.posing.text().strip(),
+            "style": self._style_override,
+            "capture": capture,
+            "evidence": self._evidence_override,
+        }
+
     def subject_kind(self):
         """'human', 'animal', 'object' or 'place', read from the Subject."""
         return bev.subject_kind(self._evidence_bank, self.subject.toPlainText())

@@ -20,6 +20,7 @@ import advisor as advisor_tool  # noqa: E402
 import brief as brief_tool  # noqa: E402
 import coherence_lint as cl  # noqa: E402
 import elevenlabs_voices as voices_tool  # noqa: E402
+import skit_client  # noqa: E402,F401  (SkitTask runs its functions)
 import generate_image as gi  # noqa: E402  (path set above)
 import generate_sound as gsnd  # noqa: E402
 import generate_speech as gspeech  # noqa: E402
@@ -160,6 +161,39 @@ class SoundTask(QRunnable):
                 self.signals.failed.emit(str(error))
                 return
             self.signals.finished.emit(str(path))
+        except Exception as exc:  # a worker must never take the app down
+            self.signals.failed.emit("{}: {}".format(type(exc).__name__, exc))
+        finally:
+            self.signals.done.emit(0)
+
+
+class SkitSignals(QObject):
+    """Signals for one call into Skit Studio's REST API."""
+
+    finished = pyqtSignal(object)   # the call's result
+    failed = pyqtSignal(str)
+    done = pyqtSignal(int)
+
+
+class SkitTask(QRunnable):
+    """One tools/skit_client.py call off the UI thread.
+
+    `fn` is a skit_client function returning (result, error); the Videos ->
+    Skit Studio tab passes them in rather than this wrapping each endpoint again.
+    """
+
+    def __init__(self, fn, *args, **kwargs):
+        super().__init__()
+        self.fn, self.args, self.kwargs = fn, args, kwargs
+        self.signals = SkitSignals()
+
+    def run(self):
+        try:
+            result, error = self.fn(*self.args, **self.kwargs)
+            if error:
+                self.signals.failed.emit(str(error))
+            else:
+                self.signals.finished.emit(result)
         except Exception as exc:  # a worker must never take the app down
             self.signals.failed.emit("{}: {}".format(type(exc).__name__, exc))
         finally:
