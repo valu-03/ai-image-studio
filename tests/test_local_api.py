@@ -151,6 +151,88 @@ code, bad = call(BASE, "POST", "/api/v1/images", {"prompt": "x", "references": [
 check("a reference without data is refused", code == 400)
 code, bad = call(BASE, "GET", "/api/v1/images/abc123")
 check("an unknown job is 404", code == 404)
+
+print("Realism (the Images tab's switches on a typed prompt)")
+SCENE = ("Photorealistic smartphone footage, natural light, real fur texture, shallow depth of "
+         "field, candid home-video feel. Bartholomew, the Golden Retriever, sits on a plush rug "
+         "pawing at a tablet on the coffee table. Medium shot. No text, no captions, no watermark.")
+REAL = {"subject": "Bartholomew, a Golden Retriever, golden fur", "species": "dog",
+        "kind": "animal", "action": "sits on a plush rug pawing at a tablet on the coffee table",
+        "setting": "a cozy living room with a couch and a coffee table", "shot": "medium shot"}
+code, real = call(BASE, "POST", "/api/v1/prompt", {"prompt": SCENE, "realism": REAL})
+report = real.get("realism") or {}
+check("realism lifts a typed prompt to 8/8", code == 200 and report.get("score") == 8
+      and report.get("before", 8) < 8, str(report))
+check("a breed with a species reads as an animal", report.get("kind") == "animal")
+check("fur words, never skin words, on a dog",
+      "skin" not in real["prompt"].lower() and "pores" not in real["prompt"].lower())
+check("the switches added their lines", len(report.get("lines", [])) >= 4, str(report.get("lines")))
+check("a coffee table brings no steaming coffee", "steam" not in real["prompt"].lower())
+check("the phone look keeps a phone camera", "iphone" in real["prompt"].lower()
+      and "dslr" not in real["prompt"].lower())
+check("the no-text sentence still ends the prompt",
+      real["prompt"].endswith("No text, no captions, no watermark."))
+check("realism spends nothing", mock_api.STATE["last"] is None or
+      mock_api.STATE["last"]["body"].get("input", {}).get("prompt") != real["prompt"])
+sheet = dict(REAL, action="", setting="", phone=True, **{k: False for k in la.REALISM_SWITCHES
+                                                          if k != "face_detail"})
+code, plain = call(BASE, "POST", "/api/v1/prompt", {"prompt": "Character reference portrait of "
+                   "Bartholomew, a Golden Retriever. Plain light-grey background.", "realism": sheet})
+check("switched-off switches add nothing", (plain.get("realism") or {}).get("lines", [None])[0:1]
+      and "passing" not in plain["prompt"] and "background" not in
+      " ".join(plain["realism"]["lines"]), str(plain.get("realism")))
+check("`phone` keeps a sheet off the DSLR words", "dslr" not in plain["prompt"].lower()
+      and "chiaroscuro" not in plain["prompt"].lower()
+      and plain["realism"]["score"] == 8, plain["prompt"][-200:])
+code, styled = call(BASE, "POST", "/api/v1/prompt", {"prompt": SCENE, "realism": REAL,
+                    "look": {"style": {"style": "anime-manga"}}})
+check("a stylised Look gets no photo-realism words", styled.get("realism") is None
+      and any("stylised" in w for w in styled.get("warnings", [])), str(styled.get("warnings")))
+code, bad = call(BASE, "POST", "/api/v1/prompt", {"prompt": "x", "realism": {"kind": "robot"}})
+check("an unknown subject kind is refused", code == 400)
+code, bad = call(BASE, "POST", "/api/v1/images", {"prompt": "x", "refine": 5})
+check("more than two Refine retries is refused", code == 400)
+
+print("Refine")
+code, sub = call(BASE, "POST", "/api/v1/images", {"prompt": SCENE, "refine": 2})
+check("refine without an OpenRouter key falls back to one image",
+      code == 202 and sub.get("refine") == 0 and any("OPENROUTER" in w for w in sub["warnings"]),
+      str(sub))
+wait(BASE, sub["id"])
+verdicts = iter([
+    {"ok": True, "verdict": "fur looks plastic", "failing_layers": ["texture", "grain"], "fixes": []},
+    {"ok": True, "verdict": "worse", "failing_layers": ["texture", "grain", "colour"], "fixes": []},
+    {"ok": True, "verdict": "close", "failing_layers": ["grain"], "fixes": []},
+])
+seen_prompts = []
+la.refine_available = lambda: True
+la.brief.critique_image = lambda bank, prompt, path, ask=None: (seen_prompts.append(prompt)
+                                                               or next(verdicts))
+code, sub = call(BASE, "POST", "/api/v1/images", {"prompt": SCENE, "realism": REAL, "refine": 2})
+check("refine accepted", code == 202 and sub.get("refine") == 2, str(sub))
+job = wait(BASE, sub["id"])
+for attempt in job.get("attempts") or []:
+    written.append(Path(attempt["file"]))
+check("three attempts at most", len(job.get("attempts") or []) == 3, str(job.get("attempts")))
+check("the attempt the critique liked best is kept", job.get("chosen") == 3
+      and job.get("file") == job["attempts"][2]["file"], str(job.get("chosen")))
+check("each retry strengthens the layer it was told was weak",
+      len(seen_prompts) == 3 and seen_prompts[1] != seen_prompts[0]
+      and len(seen_prompts[2]) > len(seen_prompts[1]))
+check("a phone-look retry never adds cinema words", "cinematic" not in seen_prompts[-1].lower())
+check("retries stay before the no-text sentence",
+      seen_prompts[-1].endswith("No text, no captions, no watermark."))
+verdicts = iter([{"ok": True, "verdict": "real", "failing_layers": [], "fixes": []}])
+code, sub = call(BASE, "POST", "/api/v1/images", {"prompt": SCENE, "refine": 2})
+job = wait(BASE, sub["id"])
+written.extend(Path(a["file"]) for a in job.get("attempts") or [])
+check("a real-looking first image stops the loop - no retry spent",
+      len(job.get("attempts") or []) == 1 and job.get("state") == "done", str(job.get("attempts")))
+code, ok = call(BASE, "POST", "/api/v1/images/{}/cancel".format(sub["id"]))
+check("cancel answers", code == 200)
+code, health = call(BASE, "GET", "/api/v1/health")
+check("health lists the switches and Refine", health.get("realism") == list(la.REALISM_SWITCHES)
+      and health.get("max_refine") == 2)
 api.stop()
 
 print("Token")

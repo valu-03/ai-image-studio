@@ -3,6 +3,7 @@
   "version": 1,
   "note": "Read from Subject, Wardrobe, Setting and Action (build_material.py). Each material is matched by whole-word keywords; matches are used in the order the text mentions them, at most `max_phrases`. `excludes` drops another match that would contradict this one - iced coffee is cold, so it never gets the coffee's rising steam. A `weak` entry names a shape, not a material (a bowl can be steel, glass or clay): it counts as ceramic only when nothing else in the text names a material, so 'a metal bowl' is metal alone. No match gives nothing - a phrase about a material the scene does not contain is worse than none. When something matched, build_prompt removes lighting_bank.json's generic `material-response` sentence from an explicit lighting choice, so the prompt never says the same thing twice. Wood here is GRAIN only: the warm bounce off wood belongs to scene_light_bank.json.",
   "max_phrases": 2,
+  "ignore_phrases": ["coffee table", "coffee tables", "tea towel", "tea towels", "tea light", "tea lights", "glass door", "glass doors"],
   "generic_technique": "material-response",
   "materials": {
     "eyeglasses": {

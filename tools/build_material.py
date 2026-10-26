@@ -31,6 +31,7 @@ Standard library only. No API keys, no network.
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -62,7 +63,12 @@ def read_materials(bank, spec):
     keys sharing one phrase (a mug and a plate) say it once.
     """
     materials = bank.get("materials", {})
-    keys = bct.mentioned(materials, bct.spec_text(spec, TEXT_FIELDS))
+    text = bct.spec_text(spec, TEXT_FIELDS)
+    # Furniture and fittings named after a material they are not made of:
+    # "a coffee table" must not bring steam off a cup of coffee.
+    for phrase in bank.get("ignore_phrases", []):
+        text = re.sub(r"(?<![\w-])" + re.escape(phrase) + r"(?![\w-])", " ", text, flags=re.IGNORECASE)
+    keys = bct.mentioned(materials, text)
     dropped = {x for k in keys for x in materials[k].get("excludes", [])}
     keys = [k for k in keys if k not in dropped]
     if any(not materials[k].get("weak") for k in keys):

@@ -1565,6 +1565,28 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   lock-guarded Look snapshot (`SpecEditor.look_phrases()`, refreshed on `editor.changed`), never a
   widget. `AIVS_LOCAL_API_PORT` / `AIVS_LOCAL_API_TOKEN` in `.env`. Tests:
   `test_local_api.py` (headless, against mock_api) and `test_local_api_gui.py`.
+  **MCP server** (`mcp_server/server.py`, stdio, registered as `ai-video-studio` in Claude Code
+  and Codex) is a thin client of this API: `avs_status`, `look_options` / `look_current` /
+  `look_compose`, `prompt_preview` (free), `image_generate` (returns the price until
+  `approved=True`), `image_get` / `image_wait` / `image_cancel`. It holds no image logic.
+  **Images-tab realism on a typed prompt** (`realism` on `/prompt` and `/images`): the caller
+  names the subject / action / setting / shot (+ `species`, `kind`, because `build_evidence`
+  reads "Golden Retriever" as an object) and which Compose switches to run (`REALISM_SWITCHES`:
+  face_detail, lived_in, scene_lighting, contact_detail, material_detail, snapshot,
+  background_life, moment - all on unless named false). `realism_spec()` runs build_prompt's own
+  `apply_*` steps on a spec holding only those fields, `free_overrides()` gives their lines, then
+  `fill_layers()` tops up whatever of the eight layers is still missing - `select_layers()`'s own
+  pick first, then the bank's vetted terms (`layer_candidates`: no skin words off a person, no
+  cinema words or studio light on the phone look, coat phrases first for an animal) - until
+  `realism_lint` scores 8/8. `phone: true` keeps the phone vocabulary without the snapshot's
+  who-took-it line (a character sheet). A stylised Look style skips all of it with a warning.
+  **Refine** (`refine`: 0-2 retries, `MAX_REFINE`): `Jobs._attempts()` generates,
+  `brief.critique_image()` names the weak layers, one unused candidate per layer is added before
+  the no-text tail, and the attempt with the fewest failing layers is kept (a worse retry never
+  replaces a better first image). Each try is a History row ("Skit Studio - Refine attempt n").
+  No `OPENROUTER_API_KEY` -> one image and a warning; health reports `refine`.
+  `POST /images/<id>/cancel` stops before the next retry. `material_bank.json` `ignore_phrases`
+  ("coffee table", "tea towel"...) keeps furniture from reading as the material it is named for.
 
 The spec form is tabbed Purpose / Subject / Scene / Identity / More; Scene holds Setting,
 Shot, Lighting, Colour and Composition.
