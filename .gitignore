@@ -24,3 +24,5 @@ dist/
 .DS_Store
 Thumbs.db
 .pytest_cache/
+
+.superpowers/
