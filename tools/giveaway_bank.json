@@ -1,0 +1,96 @@
+{
+  "version": 1,
+  "giveaways": {
+    "posed_centre": {
+      "label": "Posing dead centre",
+      "plain": "The subject sits in the middle and looks straight at the lens, like it was told to hold still.",
+      "example": "Think of a school photo, then think of a snapshot a friend took while you were mid-sentence.",
+      "kinds": ["animal", "human", "object", "place"],
+      "look_for": {
+        "default": "the subject sits dead centre and faces the camera as if posing",
+        "animal": "the animal sits dead centre and stares into the lens as if posing"
+      },
+      "fix": {"framing": "off_centre_candid", "pose": "mid_moment"},
+      "fix_phrase": "Off-centre, caught mid-moment, not looking at the camera."
+    },
+    "too_clean": {
+      "label": "Too clean and smooth",
+      "plain": "Real fur clumps, sheds and catches dust; here it looks brushed by a computer. Skin gets the same treatment: no pores, no marks.",
+      "example": "Like a doll next to a living thing: nothing is out of place anywhere.",
+      "kinds": ["animal", "human"],
+      "look_for": {
+        "default": "skin looks airbrushed or too clean, with no visible pores, marks or small flaws",
+        "animal": "fur looks airbrushed, too even or too clean, with no clumps, stray hairs or dust"
+      },
+      "fix": {"details": "real_wear", "camera": "plain_phone_lens"},
+      "fix_phrase": "Visible pores, stray hairs, small marks and uneven texture."
+    },
+    "generic_room": {
+      "label": "Stock-photo room",
+      "plain": "The room is the usual sunny window and wooden furniture set that appears in every generated picture.",
+      "example": "Like the fake living room in a furniture catalogue, where nobody has ever left a mug.",
+      "kinds": ["animal", "human", "object", "place"],
+      "look_for": {
+        "default": "the room is a generic sunny window with wooden furniture and nothing personal in it"
+      },
+      "fix": {"details": "lived_in_clutter", "light": "practical_mixed"},
+      "fix_phrase": "A specific, lived-in place with everyday clutter instead of a stock room."
+    },
+    "painted_mess": {
+      "label": "Mess that looks drawn on",
+      "plain": "Dirt, mess or wear is spread evenly and looks painted on, not something that built up over time.",
+      "example": "Fake dirt on a costume versus the real scuffs on a shoe you have worn for years.",
+      "kinds": ["animal", "human", "object", "place"],
+      "look_for": {
+        "default": "dirt, mess or wear looks evenly sprinkled or painted on rather than naturally built up"
+      },
+      "fix": {"details": "real_wear"},
+      "fix_phrase": "Wear only where things really wear: edges, handles, folds and corners."
+    },
+    "studio_light": {
+      "label": "Light too perfect",
+      "plain": "The light is soft and flattering everywhere, which does not fit the place. Real rooms have dull corners and mixed lamps.",
+      "example": "A portrait studio's glow in the middle of a messy kitchen.",
+      "kinds": ["animal", "human", "object", "place"],
+      "look_for": {
+        "default": "the lighting is flawless, soft and even in a way that does not suit the place"
+      },
+      "fix": {"light": "practical_mixed", "colour": "muted_natural"},
+      "fix_phrase": "Light that comes from what is really in the place, uneven, with some dark corners."
+    },
+    "anatomy": {
+      "label": "Odd body parts",
+      "plain": "Hands, paws, eyes, teeth or ears look slightly wrong: extra fingers, merged toes, mismatched eyes.",
+      "example": "Count the fingers on a hand. A real hand always gives the same number.",
+      "kinds": ["animal", "human"],
+      "look_for": {
+        "default": "hands, eyes, teeth or ears look wrong (extra or merged fingers, mismatched eyes)",
+        "animal": "paws, eyes, teeth or ears look wrong (extra or merged toes, mismatched eyes, odd ears)"
+      },
+      "fix": {},
+      "fix_phrase": "Correct anatomy: the right number of fingers or toes, matching eyes, natural teeth and ears."
+    },
+    "artefacts": {
+      "label": "Glints, smears and melted details",
+      "plain": "Small areas look smeared or melted, or have odd shiny spots, where the picture ran out of detail.",
+      "example": "Like a thumbprint smudged across a wet drawing: fine from afar, wrong up close.",
+      "kinds": ["animal", "human", "object", "place"],
+      "look_for": {
+        "default": "there are smears, melted details, odd glints or blurred patches that should be sharp"
+      },
+      "fix": {},
+      "fix_phrase": "Clean, sharp small details with no smears, melting or stray glints."
+    },
+    "bad_text": {
+      "label": "Garbled lettering",
+      "plain": "Any writing in the picture is jumbled or made of letter-like shapes that do not spell real words.",
+      "example": "A shop sign that says CAFFEEE OPEN in squiggles instead of a real name.",
+      "kinds": ["animal", "human", "object", "place"],
+      "look_for": {
+        "default": "any visible writing is garbled, misspelled or made of letter-like shapes"
+      },
+      "fix": {},
+      "fix_phrase": "No visible writing, or only short words that are spelled correctly."
+    }
+  }
+}

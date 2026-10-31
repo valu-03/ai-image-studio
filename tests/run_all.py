@@ -45,6 +45,7 @@ ORDER = [
     "test_midjourney.py",
     "test_history.py",
     "test_vision_lint.py",
+    "test_giveaways.py",
     "test_coherence_lint.py",
     "test_lighting_bank.py",
     "test_lighting.py",
