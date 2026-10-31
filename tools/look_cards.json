@@ -1,0 +1,328 @@
+{
+  "version": 1,
+  "cards": [
+    {
+      "id": "light",
+      "title": "Light",
+      "plain": "Where the light comes from and how hard it is. It decides the mood and how real the picture feels.",
+      "example": "A lamp on in the evening feels different from a bright window at noon.",
+      "kinds": ["animal", "human", "object", "place"],
+      "advanced_part": "lighting",
+      "rotate": true,
+      "options": [
+        {
+          "key": "practical_mixed", "label": "Lamps and window",
+          "plain": "Light from what is really in the room: a lamp, a window, a screen. Uneven, with dull corners.",
+          "example": "A kitchen at 6pm with the ceiling light on and a grey window behind.",
+          "look": {"lighting": {"source": "practical", "custom": "mixed with dim window daylight, uneven, with some dull corners"}}
+        },
+        {
+          "key": "window_daylight", "label": "Window daylight",
+          "plain": "Soft daylight coming in from one side, with shade on the other.",
+          "example": "Reading by a window on a cloudy morning.",
+          "look": {"lighting": {"source": "open-shade", "quality": "soft", "custom": "from a single window to one side"}}
+        },
+        {
+          "key": "overcast_day", "label": "Cloudy day",
+          "plain": "Even grey daylight with no hard shadows. Calm and plain.",
+          "example": "A walk outside when the sky is a flat white.",
+          "look": {"lighting": {"source": "overcast"}}
+        },
+        {
+          "key": "warm_evening", "label": "Warm evening lamp",
+          "plain": "Warm yellow light from a household lamp, with the rest of the room falling into dark.",
+          "example": "A sofa corner with one table lamp on after dinner.",
+          "look": {"lighting": {"source": "tungsten", "custom": "a single household lamp, the far side of the room dim"}}
+        },
+        {
+          "key": "low_sun", "label": "Low sun",
+          "plain": "Warm light from a sun low in the sky, with long shadows.",
+          "example": "The hour before sunset when everything turns gold.",
+          "look": {"lighting": {"source": "golden-hour"}}
+        },
+        {
+          "key": "phone_flash", "label": "Phone flash",
+          "plain": "A quick flash straight from the phone. Bright front, hard shadow behind.",
+          "example": "A photo taken in a dark hallway at night.",
+          "look": {"lighting": "direct on-camera phone flash, slightly harsh, with a hard small shadow behind the subject"}
+        }
+      ]
+    },
+    {
+      "id": "camera",
+      "title": "Camera",
+      "plain": "Where the camera stands and what it is. A plain phone shot looks like someone just took it.",
+      "example": "A photo from your pocket at chest height, not from a tripod.",
+      "kinds": ["animal", "human", "object", "place"],
+      "advanced_part": "camera",
+      "default": "plain_phone_lens",
+      "options": [
+        {
+          "key": "plain_phone_lens", "label": "Plain phone",
+          "plain": "An ordinary phone camera held at normal height. A bit wide, nothing fancy.",
+          "example": "A snapshot you send to a friend in the group chat.",
+          "look": {"camera": {"vertical": "eye-level", "size": "medium-wide", "custom": "shot on an ordinary phone camera, slightly wide lens, no depth-of-field tricks"}}
+        },
+        {
+          "key": "close_and_level", "label": "Close, at eye level",
+          "plain": "Near the subject, looking straight across at it.",
+          "example": "Crouching down to look a cat in the face.",
+          "look": {"camera": {"vertical": "eye-level", "size": "close-up"}}
+        },
+        {
+          "key": "from_above", "label": "From above",
+          "plain": "Held up high, looking down at the subject.",
+          "example": "Leaning over a table to snap your lunch.",
+          "look": {"camera": {"vertical": "high-angle", "size": "medium"}}
+        },
+        {
+          "key": "low_down", "label": "Down low",
+          "plain": "Held near the floor, looking slightly up.",
+          "example": "A photo taken from the pet's own height.",
+          "look": {"camera": {"vertical": "low-angle", "size": "medium"}}
+        },
+        {
+          "key": "side_on", "label": "From the side",
+          "plain": "The camera sees the subject side-on instead of face-on.",
+          "example": "Catching someone walking past you.",
+          "look": {"camera": {"vertical": "eye-level", "side": "profile", "size": "medium"}}
+        }
+      ]
+    },
+    {
+      "id": "framing",
+      "title": "Framing",
+      "plain": "Where the subject sits in the picture. Off to one side feels caught, dead centre feels posed.",
+      "example": "A friend's snapshot with you a bit to the left, not a school portrait.",
+      "kinds": ["animal", "human", "object", "place"],
+      "advanced_part": "composition",
+      "default": "off_centre_candid",
+      "options": [
+        {
+          "key": "off_centre_candid", "label": "Off-centre snapshot",
+          "plain": "The subject sits to one side, a little crooked, like it was caught rather than set up.",
+          "example": "A photo taken quickly, with some empty floor on one side.",
+          "look": {"composition": "off-centre and slightly crooked, framed like a quick candid snapshot with the subject away from the middle"}
+        },
+        {
+          "key": "rule_of_thirds", "label": "Off to a third",
+          "plain": "The subject sits on one of the lines that split the picture into three.",
+          "example": "A person standing a third of the way in from the edge.",
+          "look": {"composition": {"guide": "rule-of-thirds"}}
+        },
+        {
+          "key": "room_to_move", "label": "Room to move into",
+          "plain": "Empty space in front of where the subject is looking or heading.",
+          "example": "A dog trotting left with open path ahead of it.",
+          "look": {"composition": {"guide": "rule-of-thirds", "techniques": ["lead-room"]}}
+        },
+        {
+          "key": "layers_in_depth", "label": "Things in front and behind",
+          "plain": "Something near, the subject in the middle, something far. It feels like a real place.",
+          "example": "A chair arm in front, the subject, then a doorway behind.",
+          "look": {"composition": {"guide": "diagonals", "techniques": ["depth-layering"]}}
+        },
+        {
+          "key": "cropped_tight", "label": "Cropped by the edge",
+          "plain": "The frame cuts off a bit of the subject, like a quick snap.",
+          "example": "A photo where the tail or elbow is missing.",
+          "look": {"composition": "cropped tight and a little careless, part of the subject cut off by the frame edge, like a quick snap"}
+        }
+      ]
+    },
+    {
+      "id": "colour",
+      "title": "Colour",
+      "plain": "How strong or soft the colours are. Real phone photos are rarely loud.",
+      "example": "A photo where the green is dull and the white is slightly yellow.",
+      "kinds": ["animal", "human", "object", "place"],
+      "advanced_part": "color",
+      "default": "muted_natural",
+      "options": [
+        {
+          "key": "muted_natural", "label": "Muted and natural",
+          "plain": "Soft, everyday colours as the phone saw them, with no heavy colour effect on top.",
+          "example": "A holiday snapshot straight from your camera roll.",
+          "look": {"color": "muted natural colours as a phone records them, no heavy colour grading, slightly flat contrast"}
+        },
+        {
+          "key": "warm_film", "label": "Warm and faded",
+          "plain": "Warm tones with slightly faded blacks, like an old print.",
+          "example": "Photos in a family album from years ago.",
+          "look": {"color": {"mood": "vintage-nostalgic"}}
+        },
+        {
+          "key": "clean_daylight", "label": "Clean and bright",
+          "plain": "Clear, bright colours that stay close to what your eyes saw.",
+          "example": "A tidy product shot on a bright afternoon.",
+          "look": {"color": {"mood": "clean-corporate"}}
+        },
+        {
+          "key": "rich_nature", "label": "Rich and earthy",
+          "plain": "Deep greens and warm browns, like a nature film.",
+          "example": "A garden after rain.",
+          "look": {"color": {"mood": "nature-documentary"}}
+        },
+        {
+          "key": "cool_grey", "label": "Cool and grey",
+          "plain": "Cooler, greyer colours that feel quiet and a bit cold.",
+          "example": "A winter morning by the window.",
+          "look": {"color": "cool grey-blue tones, low saturation, quiet and slightly cold"}
+        }
+      ]
+    },
+    {
+      "id": "pose",
+      "title": "Pose",
+      "plain": "What the subject is doing. Caught doing something feels real. Looking at the lens feels posed.",
+      "example": "Mid-laugh, turned to someone out of frame.",
+      "kinds": ["animal", "human", "object", "place"],
+      "advanced_part": "posing",
+      "default": "mid_moment",
+      "options": [
+        {
+          "key": "mid_moment", "label": "Caught mid-moment",
+          "plain": "Doing something and not looking at the camera, as if no one was taking a picture.",
+          "example": "Half-turned, busy with something else.",
+          "kinds": ["animal", "human"],
+          "look": {"posing": {"pose": "mid-gesture", "custom": "not looking at the camera, attention on something else"}}
+        },
+        {
+          "key": "mid_stride", "label": "Moving",
+          "plain": "Frozen halfway through a step or a turn.",
+          "example": "A dog trotting across the room.",
+          "kinds": ["animal", "human"],
+          "look": {"posing": {"pose": "walking-mid-stride"}}
+        },
+        {
+          "key": "glancing_away", "label": "Glancing away",
+          "plain": "Head turned toward something outside the picture.",
+          "example": "Looking up because the door just opened.",
+          "kinds": ["animal", "human"],
+          "look": {"posing": "head turned, glancing at something off-frame, not at the camera"}
+        },
+        {
+          "key": "natural_reaction", "label": "Real reaction",
+          "plain": "A laugh or a surprised look caught half-way, not a held smile.",
+          "example": "Someone laughing at a joke you missed.",
+          "kinds": ["human"],
+          "look": {"posing": {"pose": "natural-reaction"}}
+        },
+        {
+          "key": "soft_slouch", "label": "Relaxed slouch",
+          "plain": "Shoulders dropped, standing or sitting the way people do when no one is watching.",
+          "example": "Leaning on the counter waiting for the kettle.",
+          "kinds": ["human"],
+          "look": {"posing": {"pose": "soft-slouch"}}
+        },
+        {
+          "key": "resting", "label": "Resting",
+          "plain": "Settled and loose, eyes half closed, not performing.",
+          "example": "A cat stretched out on the sofa arm.",
+          "kinds": ["animal"],
+          "look": {"posing": "resting loosely, weight settled, eyes half closed, not performing for the camera"}
+        },
+        {
+          "key": "set_down_casually", "label": "Set down casually",
+          "plain": "Left where someone put it, not lined up with the frame.",
+          "example": "A bag dropped on a bench.",
+          "kinds": ["object", "place"],
+          "look": {"posing": "set down casually, not squared up to the camera"}
+        },
+        {
+          "key": "at_an_angle", "label": "At an angle",
+          "plain": "Turned a little, so you see it from a corner and not head-on.",
+          "example": "A mug with its handle pointing away.",
+          "kinds": ["object", "place"],
+          "look": {"posing": "turned at a slight angle, seen from a corner rather than head-on"}
+        },
+        {
+          "key": "in_use", "label": "Just used",
+          "plain": "It looks like someone was using it a moment ago.",
+          "example": "A book left open, face down.",
+          "kinds": ["object", "place"],
+          "look": {"posing": "looks as if it was just being used and left, nothing arranged for the picture"}
+        },
+        {
+          "key": "half_tucked", "label": "Half out of sight",
+          "plain": "Partly tucked behind or under something else.",
+          "example": "Keys peeking out from under a scarf.",
+          "kinds": ["object", "place"],
+          "look": {"posing": "partly tucked behind or under something else in the scene, not fully on show"}
+        }
+      ]
+    },
+    {
+      "id": "details",
+      "title": "Small details",
+      "plain": "The little untidy things that real life has. They are what makes a picture feel lived in.",
+      "example": "A hair out of place, a crease in a sleeve, a mug left on the side.",
+      "kinds": ["animal", "human", "object", "place"],
+      "advanced_part": "evidence",
+      "rotate": true,
+      "options": [
+        {
+          "key": "real_wear", "label": "Real wear",
+          "plain": "Scuffs and marks only where things really wear: edges, handles, folds and corners.",
+          "example": "The worn patch on a shoe, where it always bends.",
+          "look": {"evidence": "wear only where things really wear: edges, handles, folds and corners, small scuffs and marks"}
+        },
+        {
+          "key": "lived_in_clutter", "label": "Everyday clutter",
+          "plain": "A few ordinary things left lying around the place.",
+          "example": "A charger cable, a mug and a jacket over a chair.",
+          "look": {"evidence": "a few everyday things left lying about, such as a charger cable, a mug and a jacket over a chair"}
+        },
+        {
+          "key": "fur_texture", "label": "Uneven fur",
+          "plain": "Fur that clumps and sticks up in places, with a little dust in it.",
+          "example": "A cat's coat after a nap, flat on one side.",
+          "kinds": ["animal"],
+          "look": {"evidence": {"kind": "animal", "details": ["flattened-fur", "shed-hairs"]}}
+        },
+        {
+          "key": "whiskers_and_nose", "label": "Whiskers and nose",
+          "plain": "One whisker bent, a damp nose catching light.",
+          "example": "A dog's nose just after it licked it.",
+          "kinds": ["animal"],
+          "look": {"evidence": {"kind": "animal", "details": ["bent-whisker", "damp-nose"]}}
+        },
+        {
+          "key": "real_skin", "label": "Real skin",
+          "plain": "Visible pores, fine lines and small marks, and a slightly uneven skin tone.",
+          "example": "Look closely at a friend's cheek in daylight.",
+          "kinds": ["human"],
+          "look": {"evidence": "visible pores, fine lines, small marks and an uneven skin tone, true to real skin"}
+        },
+        {
+          "key": "flyaway_hair", "label": "Stray hairs",
+          "plain": "A few loose hairs sticking out and hair flattened on one side.",
+          "example": "Hair after wearing a hat.",
+          "kinds": ["human"],
+          "look": {"evidence": {"kind": "human", "details": ["slept-hair"], "custom": "a few flyaway hairs catching the light"}}
+        },
+        {
+          "key": "fabric_creases", "label": "Creased clothes",
+          "plain": "Folds and creases in clothes where the body bends them.",
+          "example": "A shirt crumpled at the elbow after a day of sitting.",
+          "kinds": ["human"],
+          "look": {"evidence": {"kind": "human", "details": ["strap-crease"], "custom": "creases in the clothing at the elbows and waist"}}
+        },
+        {
+          "key": "dust_and_marks", "label": "Dust and fingerprints",
+          "plain": "A thin film of dust and a fingerprint or two where hands really touch.",
+          "example": "A glass table the day after a party.",
+          "kinds": ["object", "place"],
+          "look": {"evidence": "a thin film of dust, faint scuffs and a fingerprint or two where hands really touch"}
+        },
+        {
+          "key": "just_handled", "label": "Just handled",
+          "plain": "Small signs that someone picked it up and put it back a moment ago.",
+          "example": "A lid not quite square after you opened the jar.",
+          "kinds": ["object", "place"],
+          "look": {"evidence": "small signs it was just handled, a lid or cushion slightly out of square, one thing nudged out of line"}
+        }
+      ]
+    }
+  ]
+}
