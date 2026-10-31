@@ -66,6 +66,8 @@ def check(image_path, kind, reference_path=None, model=None, ask=None):
     bank key the model marked seen, in bank order. `ask` defaults to
     ask_llm.ask and exists so a test can inject a fake.
     """
+    if kind not in KINDS:
+        raise ValueError("Unknown kind {!r}; expected one of {}".format(kind, ", ".join(KINDS)))
     ask = ask or ask_llm.ask
     bank = load_bank()["giveaways"]
     images = [image_path] + ([reference_path] if reference_path else [])
@@ -76,8 +78,12 @@ def check(image_path, kind, reference_path=None, model=None, ask=None):
     if not isinstance(payload, dict):
         return None, UNREADABLE
 
+    asked = _keys_for(bank, kind)
+    if not any(k in payload for k in asked):
+        return None, UNREADABLE
+
     found = []
-    for key in _keys_for(bank, kind):
+    for key in asked:
         entry = payload.get(key)
         if not (isinstance(entry, dict) and entry.get("seen") is True):
             continue

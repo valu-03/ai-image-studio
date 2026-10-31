@@ -50,9 +50,24 @@ check("fixable is true when the bank has a fix", first["fixable"] is True)
 
 print()
 print("=== UNKNOWN KEYS ARE IGNORED ===")
-found, error = gv.check("img.png", "animal",
-                        ask=fake_ask(json.dumps({"looks_ai": {"seen": True}})))
+found, error = gv.check("img.png", "animal", ask=fake_ask(json.dumps(
+    {"posed_centre": {"seen": False}, "looks_ai": {"seen": True}})))
 check("empty list, no error", found == [] and error is None, str((found, error)))
+
+print()
+print("=== NO EXPECTED KEYS IS AN ERROR ===")
+for reply_text in ("{}", '{"foo": 1}'):
+    check("reply " + reply_text, gv.check("img.png", "animal", ask=fake_ask(reply_text))
+          == (None, gv.UNREADABLE))
+
+print()
+print("=== UNKNOWN KIND RAISES ===")
+try:
+    gv.check("img.png", "robot", ask=fake_ask("{}"))
+    raised = ""
+except ValueError as e:
+    raised = str(e)
+check("ValueError names the kind", "robot" in raised, raised)
 
 print()
 print("=== NON-JSON IS AN ERROR, NOT A PASS ===")
