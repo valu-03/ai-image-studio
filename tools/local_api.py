@@ -652,7 +652,8 @@ def parse_prompt_request(body, current_look):
         if not sv.names_light_source(prompt):
             kind = bev.subject_kind(bev.load_bank(), realism.get("subject") or base)
             key = str(body.get("tag") or "").strip() or base
-            prompt = insert_before_tail(prompt, [sv.pick(key, kind)["light"]])
+            outdoor = sv.names_outdoor(" ".join([prompt, str(realism.get("setting") or "")]))
+            prompt = insert_before_tail(prompt, [sv.pick(key, kind, outdoor)["light"]])
         extra, report = apply_realism(prompt, realism)
         prompt = insert_before_tail(prompt, extra)
     return base, prompt, phrases, warnings, report

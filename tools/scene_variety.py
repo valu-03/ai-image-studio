@@ -37,6 +37,20 @@ LIGHTS = [
     "shaded open-door daylight on a back step",
 ]
 
+# Outdoor situations, used when the prompt's setting is outside. Never sun + wood.
+OUTDOOR_LIGHTS = [
+    "flat overcast midday light",
+    "open shade beside a building in bright daylight",
+    "late-afternoon low sun with long shadows",
+    "grey drizzle daylight, everything slightly damp",
+    "streetlight glow at dusk with a deep blue sky",
+    "pale early morning daylight under thin cloud",
+    "hard midday sun straight overhead on pavement",
+    "a passing headlight glow and shop light on a wet evening street",
+    "soft hazy daylight through high cloud",
+    "cool overcast light after rain",
+]
+
 PLACES = {
     "default": [
         "a small galley kitchen with tiled walls",
@@ -81,16 +95,37 @@ def names_light_source(text):
     return bool(_SOURCE_RE.search(str(text or "")))
 
 
+# Words that mean the scene is outdoors (whole words, case-insensitive).
+_OUTDOOR_WORDS = [
+    "street", "road", "park", "garden", "yard", "backyard", "beach", "field",
+    "forest", "woods", "outside", "outdoors", "outdoor", "snow", "pavement",
+    "sidewalk", "alley", "playground", "meadow", "lake", "river", "hill",
+    "mountain", "trail", "rooftop", "patio", "porch", "farm", "parking lot",
+    "shore", "sand", "campsite", "market square", "courtyard",
+]
+_OUTDOOR_RE = re.compile(r"(?<![a-z])(?:" + "|".join(
+    re.escape(w) for w in sorted(_OUTDOOR_WORDS, key=len, reverse=True)) + r")(?![a-z])",
+    re.IGNORECASE)
+
+
+def names_outdoor(text):
+    """True when `text` puts the scene outdoors (see _OUTDOOR_WORDS)."""
+    return bool(_OUTDOOR_RE.search(str(text or "")))
+
+
 def _index(key, salt, size):
     digest = hashlib.sha256("{}|{}".format(salt, key).encode("utf-8")).digest()
     return int.from_bytes(digest[:8], "big") % size
 
 
-def pick(key, kind):
-    """{"light": phrase, "place": phrase} for `key`; `kind` is human/animal/place/object."""
+def pick(key, kind, outdoor=False):
+    """{"light": phrase, "place": phrase} for `key`; `kind` is human/animal/place/object.
+    `outdoor` picks the light from OUTDOOR_LIGHTS; each list is indexed by `key`
+    alone, so one tag keeps one indoor light and one outdoor light."""
     key = str(key or "")
     places = PLACES.get(kind, PLACES["default"])
-    return {"light": LIGHTS[_index(key, "light", len(LIGHTS))],
+    lights = OUTDOOR_LIGHTS if outdoor else LIGHTS
+    return {"light": lights[_index(key, "light", len(lights))],
             "place": places[_index(key, "place", len(places))]}
 
 

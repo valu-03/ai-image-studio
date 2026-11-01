@@ -31,6 +31,18 @@ check("'lighting' and 'light grey' are not sources",
 check("'Sunday' is not the sun", not sv.names_light_source("a cat on Sunday"))
 check("empty key still picks", set(sv.pick("", "human")) == {"light", "place"})
 
+OUT = [sv.pick(k, "animal", True)["light"] for k in KEYS]
+check("outdoor_pick_from_outdoor_list", all(p in sv.OUTDOOR_LIGHTS for p in OUT))
+check("outdoor_spread_ge_5", len(set(OUT)) >= 5, str(len(set(OUT))))
+check("outdoor_no_sunny_wood", not any("sun" in p.lower() and "wood" in p.lower()
+                                       for p in sv.OUTDOOR_LIGHTS))
+check("outdoor lights name a light source", all(sv.names_light_source(p) for p in sv.OUTDOOR_LIGHTS))
+check("outdoor deterministic", sv.pick("skit-1", "human", True) == sv.pick("skit-1", "human", True))
+check("indoor default stays indoor", sv.pick("skit-1", "human")["light"] in sv.LIGHTS)
+check("street and beach are outdoors", sv.names_outdoor("a cat walks down the street")
+      and sv.names_outdoor("a dog on the beach"))
+check("'forestry' / 'parkour' are not outdoor words", not sv.names_outdoor("a cat in the kitchen"))
+
 if fails:
     print("\n{} FAILED: {}".format(len(fails), ", ".join(fails)))
     sys.exit(1)

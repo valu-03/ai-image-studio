@@ -213,6 +213,17 @@ code, lit = call(BASE, "POST", "/api/v1/prompt", {"prompt": "A cat by the window
                                                  "realism": {"subject": "a cat"}})
 check("a prompt that names its light gets no extra one", light1 not in lit["prompt"].lower())
 
+code, out1 = call(BASE, "POST", "/api/v1/prompt", {"prompt": "A cat walks down the street.", "tag": "skit-1",
+                                                  "realism": {"subject": "a cat"}})
+code, out2 = call(BASE, "POST", "/api/v1/prompt", {"prompt": "A cat sits on the beach.", "tag": "skit-1",
+                                                  "realism": {"subject": "a cat"}})
+outl = sv.pick("skit-1", "animal", True)["light"].lower()
+check("outdoor prompt gets an outdoor light", outl in out1["prompt"].lower(), out1["prompt"][-250:])
+check("same tag, outdoor scenes share the outdoor light", outl in out2["prompt"].lower())
+check("an outdoor prompt gets no indoor light", light1 not in out1["prompt"].lower())
+check("an indoor prompt still gets the indoor light", light1 in one["prompt"].lower()
+      and outl not in one["prompt"].lower())
+
 print("Refine")
 code, sub = call(BASE, "POST", "/api/v1/images", {"prompt": SCENE, "refine": 2})
 check("refine without an OpenRouter key falls back to one image",
