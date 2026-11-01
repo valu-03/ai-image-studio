@@ -193,6 +193,26 @@ check("an unknown subject kind is refused", code == 400)
 code, bad = call(BASE, "POST", "/api/v1/images", {"prompt": "x", "refine": 5})
 check("more than two Refine retries is refused", code == 400)
 
+import scene_variety as sv  # noqa: E402
+
+code, cat = call(BASE, "POST", "/api/v1/prompt", {"prompt": "A cat eats from a bowl.",
+                                                 "realism": {"subject": "a cat"}})
+check("realism_prompt_does_not_lead_with_photorealistic",
+      code == 200 and not cat["prompt"].lower().startswith("photorealistic")
+      and "photorealistic" not in cat["prompt"].lower(), cat.get("prompt", "")[:200])
+check("a prompt with no light gets one light phrase",
+      sv.pick("A cat eats from a bowl.", "animal")["light"].lower() in cat["prompt"].lower())
+code, one = call(BASE, "POST", "/api/v1/prompt", {"prompt": "A cat eats from a bowl.", "tag": "skit-1",
+                                                 "realism": {"subject": "a cat"}})
+code, two = call(BASE, "POST", "/api/v1/prompt", {"prompt": "A cat leaps onto a chair.", "tag": "skit-1",
+                                                 "realism": {"subject": "a cat"}})
+light1 = sv.pick("skit-1", "animal")["light"].lower()
+check("same_tag_same_light", light1 in one["prompt"].lower() and light1 in two["prompt"].lower(),
+      one["prompt"][-250:])
+code, lit = call(BASE, "POST", "/api/v1/prompt", {"prompt": "A cat by the window lamp.", "tag": "skit-1",
+                                                 "realism": {"subject": "a cat"}})
+check("a prompt that names its light gets no extra one", light1 not in lit["prompt"].lower())
+
 print("Refine")
 code, sub = call(BASE, "POST", "/api/v1/images", {"prompt": SCENE, "refine": 2})
 check("refine without an OpenRouter key falls back to one image",

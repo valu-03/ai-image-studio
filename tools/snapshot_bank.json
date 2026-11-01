@@ -5,7 +5,7 @@
   "snapshot": {
     "preset": "phone-candid",
     "phone_presets": ["phone-candid", "selfie"],
-    "layer_skip": {"core": ["cinematic realism", "ultra-realistic"], "grain": ["cinematic grain"]},
+    "layer_skip": {"core": [], "grain": ["cinematic grain"]},
     "who": {
       "animal": [
         "a phone video frame taken by a passer-by who crouched down, the phone held low near the ground at the animal's eye level",

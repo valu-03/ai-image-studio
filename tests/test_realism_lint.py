@@ -190,6 +190,12 @@ check("a banned term fails the banned row", not banned_rows[8]["passed"])
 check("and 'no 3d render' does not", rl.checks_for("photorealistic, no 3d render", BANK)[8]["passed"])
 
 
+CORE = BANK["layers"]["core"]
+check("core_has_no_photorealistic_opener",
+      not {"photorealistic", "ultra-realistic", "cinematic realism"} & set(CORE["terms"]), str(CORE["terms"]))
+core_present, _m, _b, _w, _n = rl.lint(", ".join(CORE["terms"][:CORE["pick"]]), BANK)
+check("core still passes its pick terms",
+      any("core" in str(row).lower() for row in core_present), str(core_present))
 
 
 print()

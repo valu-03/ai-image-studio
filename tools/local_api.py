@@ -67,6 +67,7 @@ import build_style as bst  # noqa: E402
 import generate_image as gi  # noqa: E402
 import history  # noqa: E402
 import realism_lint as rl  # noqa: E402
+import scene_variety as sv  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 APP = "AI Video Studio"
@@ -645,6 +646,13 @@ def parse_prompt_request(body, current_look):
         warnings = warnings + ["realism: the Look's style is stylised - no photo-realism "
                                "words added"]
     elif realism:
+        # Scene variety: a prompt that names no light source gets one, chosen
+        # from the skit tag (so a skit's shots share it) or else the prompt text.
+        # parse_image_request delegates here, so /images inherits this.
+        if not sv.names_light_source(prompt):
+            kind = bev.subject_kind(bev.load_bank(), realism.get("subject") or base)
+            key = str(body.get("tag") or "").strip() or base
+            prompt = insert_before_tail(prompt, [sv.pick(key, kind)["light"]])
         extra, report = apply_realism(prompt, realism)
         prompt = insert_before_tail(prompt, extra)
     return base, prompt, phrases, warnings, report

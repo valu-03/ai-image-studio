@@ -23,6 +23,7 @@ ORDER = [
     # a dozen downstream failures are only echoes of this one.
     "test_realism_lint.py",
     "test_pet_realism.py",
+    "test_scene_variety.py",
     "test_capture_bank.py",
     "test_evidence_bank.py",
     "test_face_detail.py",

@@ -206,7 +206,7 @@ HASHES = {
     # opt-in now (skin_features_bank.json). Ratings reference terms, not
     # example prose, so history.usable() is unaffected -
     # tests/test_skin_features.py asserts the examples stay clean.
-    "tools/prompt_bank.json": "36f5634e42737c94",
+    "tools/prompt_bank.json": "e8fd39220a91b94a",
     # Bumped for the new Lighting section's DETECT["lighting"]["keys"]
     # additions (rembrandt, split lighting, catchlight, colour temperature,
     # falling off, ...) - every one of tools/lighting_bank.json's phrases
@@ -389,7 +389,7 @@ HASHES = {
     # Bumped a sixth time for one `lighting` key, "caustic light", so the
     # Lighting bank's opt-in caustics technique is visible to the gate. Purely
     # ADDITIVE - it names no source of its own, so no existing key covered it.
-    "tools/realism_lint.py": "108580c44f78a9b6",
+    "tools/realism_lint.py": "6b59ad996ea87ea1",
     # Bumped for a larger style_presets list (version 2 -> 3) - ten more
     # camera/lighting/grade combinations drawn from the same PDF vocabulary
     # the image side already had, cycled by seed the same way the original

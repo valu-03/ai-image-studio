@@ -1,6 +1,6 @@
 {
   "source": "AI Video Bootcamp - Phase 2 ARCHITECT - Lesson 20: Creating More Realistic Avatars",
-  "version": 13,
+  "version": 14,
   "default_model": "Nano Banana Pro",
   "layers": {
     "core": {
@@ -8,14 +8,11 @@
       "note": "Always include at least 2-3 of these. Without them the model has to guess.",
       "pick": 3,
       "terms": [
-        "photorealistic",
-        "ultra-realistic",
         "real-world photography",
-        "cinematic realism",
-        "lifelike details",
         "natural imperfections",
         "true-to-life textures",
-        "realistic skin textures"
+        "unretouched",
+        "candid snapshot"
       ]
     },
     "camera": {
