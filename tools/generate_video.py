@@ -45,14 +45,9 @@ import generate_image as gi  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT_DIR = ROOT / "temp" / "outputs" / "videos"
-# Overridable so a suite can price against a disposable copy - the same reasoning
-# as history.py's AIVS_HISTORY_FILE. Without this seam, ANY code path that calls
-# save_measured()/record_actual() with no explicit `path=` - including a real
-# clip generated once through the CLI to verify a feature, exactly as intended -
-# permanently overwrites the tracked seed file with a real charge, and every test
-# run after that silently assumes numbers that are no longer the seed.
-PRICING_PATH = Path(os.environ.get("AIVS_PRICING_FILE")
-                    or (Path(__file__).resolve().parent / "pricing.json"))
+# PRICING_PATH, load_pricing and estimate live in pricing.py (a kept module);
+# re-imported here so every existing gv.* caller keeps working.
+from pricing import PRICING_PATH, load_pricing, estimate  # noqa: E402,F401
 
 DEFAULT_MODEL = "kling-3.0/video"
 MODEL_VAR = "KIE_VIDEO_MODEL"
@@ -66,39 +61,9 @@ MODES = ("std", "pro", "4K")
 DEFAULTS = {"aspect_ratio": "9:16", "mode": "std", "sound": False, "multi_shots": False}
 
 
-def load_pricing():
-    with PRICING_PATH.open(encoding="utf-8") as fh:
-        return json.load(fh)
-
-
 # --------------------------------------------------------------------------- #
 # What it will cost, before it costs it
 # --------------------------------------------------------------------------- #
-def estimate(model, units, pricing=None, **options):
-    """(credits, confidence, note) for `units` images or seconds.
-
-    `units` is images for an image model and seconds for a video one, which is
-    what the table's `unit` field says. Returns None credits when the model is
-    not in the table rather than inventing a number.
-    """
-    pricing = pricing or load_pricing()
-    cfg = (pricing.get("models") or {}).get(model)
-    if not cfg:
-        return None, "unknown", "{} is not in pricing.json".format(model)
-
-    total = float(cfg.get("credits_per_unit", 0)) * float(units)
-    for name, table in (cfg.get("multipliers") or {}).items():
-        value = options.get(name)
-        if value is None:
-            continue
-        key = str(value).lower() if isinstance(value, bool) else str(value)
-        for candidate, factor in table.items():
-            if str(candidate).lower() == key.lower():
-                total *= float(factor)
-                break
-    return round(total), cfg.get("confidence", "estimated"), cfg.get("note", "")
-
-
 def price_note(model, units, credits_left=None, pricing=None, **options):
     """One line for the button that is about to spend it."""
     total, confidence, _ = estimate(model, units, pricing, **options)

@@ -138,6 +138,18 @@ for card in raw["cards"]:
 check("feynman_copy_present", good)
 
 print()
+print("=== WEIGHTS ===")
+_light = next(c for c in lc.cards("animal") if c["id"] == "light")
+_fav = _light["options"][2]["key"]
+_w = {"light": {_fav: 4.5}}
+check("weights_tilt_ties",
+      all(lc.defaults("animal", s, weights=_w)["light"] == _fav for s in range(8))
+      and all(lc.defaults("animal", s, avoid=[{"light": _fav}], weights=_w)["light"] != _fav
+              for s in range(8))
+      and all(lc.defaults("animal", s, weights={"light": {}}) == lc.defaults("animal", s)
+              for s in range(8)))
+
+print()
 if fails:
     print("FAILURES: " + ", ".join(fails))
     sys.exit(1)

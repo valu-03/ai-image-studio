@@ -45,6 +45,7 @@ ORDER = [
     "test_refine.py",
     "test_midjourney.py",
     "test_history.py",
+    "test_pricing.py",
     "test_vision_lint.py",
     "test_giveaways.py",
     "test_look_cards.py",

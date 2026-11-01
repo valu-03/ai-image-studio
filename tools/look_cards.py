@@ -48,12 +48,17 @@ def cards(kind):
     return out
 
 
-def defaults(kind, seed, avoid=()):
+def defaults(kind, seed, avoid=(), weights=None):
     """{card_id: option_key}. Same seed, same answer.
 
     Light and details rotate with the seed and skip any choice used in
     `avoid` (recent states) when another exists; the other cards take their
     fixed candid default (or the first option if it does not suit the kind).
+
+    `weights` ({card_id: {option_key: float}}, see history.card_weights) only
+    tilts the rotating cards: among the candidates left after `avoid`, keep
+    those with the top weight (an unweighted option counts as the neutral
+    3.0) and let the seed pick within that group. `avoid` is never broken.
     """
     state = {}
     for card in cards(kind):
@@ -62,7 +67,10 @@ def defaults(kind, seed, avoid=()):
             used = {a.get(card["id"]) for a in avoid}
             start = seed % len(keys)
             ordered = keys[start:] + keys[:start]
-            state[card["id"]] = next((k for k in ordered if k not in used), ordered[0])
+            pool = [k for k in ordered if k not in used] or ordered
+            w = (weights or {}).get(card["id"]) or {}
+            top = max(w.get(k, 3.0) for k in pool)
+            state[card["id"]] = next(k for k in pool if w.get(k, 3.0) == top)
         else:
             want = card.get("default")
             state[card["id"]] = want if want in keys else keys[0]

@@ -30,7 +30,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import generate_image as gi  # noqa: E402
 import generate_sound as gs  # noqa: E402  (shared ElevenLabs transport)
-import generate_video as gv  # noqa: E402  (PRICING_PATH/load_pricing - one seeded pricing.json)
+import pricing as _pricing  # noqa: E402  (PRICING_PATH/load_pricing - one seeded pricing.json)
 
 OUT_DIR = ROOT / "temp" / "outputs" / "voice"
 
@@ -56,7 +56,7 @@ def estimate_cost(text, pricing=None):
     as every other cost estimate in this project.
     """
     characters = len(text or "")
-    pricing = pricing or gv.load_pricing()
+    pricing = pricing or _pricing.load_pricing()
     cfg = (pricing.get("elevenlabs") or {}).get("text_to_speech", {})
     credits = round(characters * float(cfg.get("credits_per_unit", 1)))
     confidence = (pricing.get("elevenlabs") or {}).get("confidence", "estimated")

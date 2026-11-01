@@ -165,6 +165,38 @@ for bad in ({"rating": "5"}, {"rating": 4.0}, {"rating": 99}, {"rating": -1},
               "{}: {}".format(type(exc).__name__, exc))
 
 print()
+print("=== CARD CHOICES ===")
+_ver = hist.current_bank_version()
+
+
+def _e(light, rating):
+    return {"id": light + str(rating), "rating": rating, "bank_version": _ver,
+            "look": {"kind": "animal", "cards": {"light": light}}}
+
+
+_ents = [_e("overcast", 5), _e("overcast", 5), _e("lamp", 1),
+         dict(_e("lamp", 5), bank_version=_ver - 1)]
+_w = hist.card_weights(_ents)
+check("look_stored_and_weighted", _w["light"]["overcast"] > _w["light"]["lamp"], str(_w))
+check("stale_bank_ignored", abs(_w["light"]["lamp"] - (6 + 1) / 3) < 1e-9)
+check("thumbs", hist.THUMBS == {"up": 5, "down": 1})
+
+with tempfile.TemporaryDirectory() as _d:
+    _old = hist.HISTORY
+    hist.HISTORY = Path(_d) / "h.jsonl"
+    _img = Path(_d) / "a.png"
+    _img.write_bytes(b"x")
+    _a = hist.append({"seed": 1}, "p", {}, 5, True, image=str(_img),
+                     look={"kind": "animal", "cards": {"light": "lamp"}})
+    _b = hist.append({"seed": 2}, "p", {}, 5, True, image=str(Path(_d) / "gone.png"))
+    _c = hist.append({"seed": 3}, "p", {}, 5, True, image=str(_img))
+    _r = hist.recent()
+    check("recent_skips_missing_files", [e["id"] for e in _r] == [_c, _a], str([e["id"] for e in _r]))
+    check("look_saved_on_entry", _r[1]["look"] == {"kind": "animal", "cards": {"light": "lamp"}})
+    check("recent_limit", len(hist.recent(1)) == 1)
+    hist.HISTORY = _old
+
+print()
 if fails:
     print("FAILED: {}".format(", ".join(fails)))
 else:

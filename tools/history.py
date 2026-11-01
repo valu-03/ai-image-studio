@@ -120,7 +120,7 @@ def new_id():
     return datetime.now().strftime("%Y%m%d-%H%M%S-%f")[:22]
 
 
-def append(spec, prompt, layers, score, passed, detailed=False, image=None, note=""):
+def append(spec, prompt, layers, score, passed, detailed=False, image=None, note="", look=None):
     """Record one generated prompt. Returns the entry id.
 
     `note` is additive - every existing call site omits it and gets the same
@@ -152,6 +152,9 @@ def append(spec, prompt, layers, score, passed, detailed=False, image=None, note
         "rating": None,
         "note": note or "",
     }
+    if look:
+        entry["look"] = {"kind": look.get("kind", ""),
+                         "cards": dict(look.get("cards") or {})}
     HISTORY.parent.mkdir(parents=True, exist_ok=True)
     with HISTORY.open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
@@ -298,6 +301,51 @@ def weights(entries=None, bank=None):
             bonus = EXPLORATION_C * math.sqrt(math.log(layer_total + 2) / (n + 1))
             result[term] = max(0.1, exploit + bonus)
     return result
+
+
+THUMBS = {"up": 5, "down": 1}
+CARD_PRIOR_RATING = 3.0
+CARD_PRIOR_WEIGHT = 2
+
+
+def recent(limit=30):
+    """Newest first, only entries whose image file still exists."""
+    out = []
+    for entry in reversed(load()):
+        image = entry.get("image")
+        if not image:
+            continue
+        path = Path(image)
+        if not path.is_absolute():
+            path = ROOT / path
+        if path.is_file():
+            out.append(entry)
+            if len(out) >= limit:
+                break
+    return out
+
+
+def card_weights(entries=None):
+    """{card_id: {option_key: mean rating}} from rated entries that stored a look.
+
+    The mean is shrunk toward a neutral 3 with the weight of two ratings, so
+    one thumb moves an option only a little. Current bank version only.
+    """
+    fresh, _ = usable(entries)
+    sums = {}
+    for entry in fresh:
+        cards = (entry.get("look") or {}).get("cards") or {}
+        for card_id, key in cards.items():
+            total, n = sums.setdefault(card_id, {}).get(key, (0.0, 0))
+            sums[card_id][key] = (total + float(entry["rating"]), n + 1)
+    return {
+        card_id: {
+            key: (CARD_PRIOR_RATING * CARD_PRIOR_WEIGHT + total)
+            / (CARD_PRIOR_WEIGHT + n)
+            for key, (total, n) in options.items()
+        }
+        for card_id, options in sums.items()
+    }
 
 
 def segments(prompt):
