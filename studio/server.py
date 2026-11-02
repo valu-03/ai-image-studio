@@ -79,7 +79,7 @@ def create_app(static_dir, state):
     jobs_lock = threading.Lock()
     metas = {}
     session_seed = int(time.time()) % 100000
-    app = FastAPI(title="AI Video Studio - photo studio")
+    app = FastAPI(title="AI Image Studio - photo studio")
     app.state.ask = _fake_ask if os.environ.get("STUDIO_FAKE_ASK") == "1" else None
     # The desktop shell reports the Skit Studio connection here.
     app.state.local_api = {"running": False, "error": ""}
@@ -353,6 +353,10 @@ def create_app(static_dir, state):
     if static_dir:
         app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="static")
     return app
+
+
+def dev_app():
+    return create_app(None, LookState())
 
 
 def main(argv=None):

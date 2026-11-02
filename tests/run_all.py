@@ -94,6 +94,7 @@ ORDER = [
     "test_local_api_gui.py",
     "test_studio_look.py",
     "test_studio_photos.py",
+    "test_studio_desktop.py",
     "test_story.py",
     "test_safety_lint.py",
     "test_sitcom.py",
