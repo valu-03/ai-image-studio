@@ -26,3 +26,6 @@ Thumbs.db
 .pytest_cache/
 
 .superpowers/
+.impeccable/
+web/node_modules/
+web/dist/
