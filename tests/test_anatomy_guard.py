@@ -99,11 +99,6 @@ print()
 print("=== the guard reaches the GUI, not just the CLI ===")
 # The whole point of the recent work was closing CLI-only gaps, so a new
 # opt-in nobody can reach would be the same mistake in a new place.
-compose_src = io.open(ROOT / "ui" / "views" / "compose.py", encoding="utf-8").read()
-check("Compose builds a checkbox for it", "self.anatomy_guard" in compose_src)
-check("...and passes it into compose()", "anatomy_guard=self.anatomy_guard" in compose_src)
-check("...and recomposes when it is toggled",
-      "self.anatomy_guard.toggled.connect" in compose_src)
 bp_src = io.open(ROOT / "tools" / "build_prompt.py", encoding="utf-8").read()
 check("the CLI exposes it too", "--anatomy-guard" in bp_src)
 check("...and the docstring says it is off by default",

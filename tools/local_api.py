@@ -1,6 +1,6 @@
 """Local API - lets Skit Studio use this app's image engine and Look while it is open.
 
-The same idea as VoiceStudio's local API on port 3900: while AI Video Studio
+The same idea as VoiceStudio's local API on port 3900: while AI Image Studio
 runs, a small HTTP server on 127.0.0.1 answers Skit Studio (or any loopback
 caller). Skit Studio sends its scene prompt and reference sheets; this app adds
 the Look (the phrases the Look tab builds), generates through the same
@@ -70,7 +70,7 @@ import realism_lint as rl  # noqa: E402
 import scene_variety as sv  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
-APP = "AI Video Studio"
+APP = "AI Image Studio"
 VERSION = 1
 DEFAULT_PORT = 8785
 PORT_VAR = "AIVS_LOCAL_API_PORT"
@@ -369,7 +369,7 @@ def layer_candidates(layer, kind, phone=False, species=""):
 
 
 def fill_layers(text, spec, kind, phone=False):
-    """Terms that bring `text` to 8/8: AI Video Studio's own weighted pick for
+    """Terms that bring `text` to 8/8: AI Image Studio's own weighted pick for
     the layer first (select_layers - scene-matched light, phone camera), then
     the rest of the bank's vetted terms, one at a time, only while they still
     add a hit the layer is short of."""
@@ -781,7 +781,7 @@ def make_handler(jobs, current_look, token):
                     request = parse_image_request(body, current_look)
                     if request["refine"] and not refine_available():
                         request["warnings"].append(
-                            "refine: no OPENROUTER_API_KEY in AI Video Studio's .env - "
+                            "refine: no OPENROUTER_API_KEY in AI Image Studio's .env - "
                             "one image, no critique")
                         request["refine"] = 0
                     job_id = jobs.submit(request)
@@ -855,7 +855,7 @@ def main(argv=None):
         return 0
     if args.serve:
         api = start(args.port)
-        print("AI Video Studio local API on http://127.0.0.1:{}".format(api.port), flush=True)
+        print("AI Image Studio local API on http://127.0.0.1:{}".format(api.port), flush=True)
         try:
             threading.Event().wait()
         except KeyboardInterrupt:

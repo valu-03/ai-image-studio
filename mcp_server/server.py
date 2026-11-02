@@ -1,17 +1,17 @@
-"""AI Video Studio MCP server - lets Codex, Claude or any MCP client use the Images and Look sections.
+"""AI Image Studio MCP server - lets Codex, Claude or any MCP client use the Images and Look sections.
 
     python mcp_server/server.py                 # stdio
 
 Register it:
 
-    codex:   [mcp_servers.ai-video-studio] in ~/.codex/config.toml
+    codex:   [mcp_servers.ai-image-studio] in ~/.codex/config.toml
              command = python, args = ["<project>/mcp_server/server.py"]
-    claude:  claude mcp add ai-video-studio -- python "<project>/mcp_server/server.py"
+    claude:  claude mcp add ai-image-studio -- python "<project>/mcp_server/server.py"
 
 A thin client of the Local API (tools/local_api.py, http://127.0.0.1:8785 by default;
 AIVS_LOCAL_API_PORT to change, AIVS_LOCAL_API_TOKEN sent when set). It holds no image
 logic: the open app's Look, the Images tab's free realism switches and its paid Refine
-all run inside AI Video Studio, and every image lands in its History. The app must be
+all run inside AI Image Studio, and every image lands in its History. The app must be
 open with the Local API on (Settings), or run headless: python tools/local_api.py --serve
 
 Spending: image_generate costs Kie credits (Nano Banana Pro, ~24 credits = ~$0.12 per
@@ -44,7 +44,7 @@ CREDIT_USD = 0.005
 MAX_REFINE = 2
 LOOK_PARTS = ("style", "lighting", "camera", "composition", "posing", "color", "capture", "evidence")
 
-INSTRUCTIONS = """You drive AI Video Studio's image engine: its Look section (lighting, camera,
+INSTRUCTIONS = """You drive AI Image Studio's image engine: its Look section (lighting, camera,
 composition, posing, color, style, capture, evidence) and its Images section (the free realism
 switches that make a prompt read as a real photo, and the paid Refine that retries the weak
 layer). Start with avs_status. Build the look with look_options / look_compose (or use the
@@ -53,7 +53,7 @@ prompt_preview (free), then image_generate. image_generate spends Kie credits: s
 the price it reports and only call it again with approved=True after an explicit yes.
 Then image_wait gives the saved file path."""
 
-mcp = _Server("ai-video-studio", instructions=INSTRUCTIONS)
+mcp = _Server("ai-image-studio", instructions=INSTRUCTIONS)
 
 
 def base_url():
@@ -78,9 +78,9 @@ def call(method, path, body=None, timeout=60):
             detail = json.loads(exc.read().decode("utf-8")).get("error")
         except ValueError:
             detail = exc.reason
-        raise RuntimeError("AI Video Studio said {}: {}".format(exc.code, detail))
+        raise RuntimeError("AI Image Studio said {}: {}".format(exc.code, detail))
     except urllib.error.URLError as exc:
-        raise RuntimeError("AI Video Studio's Local API is not answering at {} ({}). Open the app "
+        raise RuntimeError("AI Image Studio's Local API is not answering at {} ({}). Open the app "
                            "(Settings > Local API on) or run `python tools/local_api.py --serve`."
                            .format(base_url(), exc.reason))
 
@@ -109,7 +109,7 @@ def _price(refine):
 
 @mcp.tool()
 def avs_status() -> dict:
-    """Is AI Video Studio up? Version, which image keys it has, whether a Look is applied,
+    """Is AI Image Studio up? Version, which image keys it has, whether a Look is applied,
     the realism switches it knows and whether Refine is available (needs its OpenRouter key)."""
     return call("GET", "/health")
 
@@ -156,7 +156,7 @@ def image_generate(prompt: str, look: Optional[object] = "current", realism: Opt
                    refine: int = 0, aspect: str = "9:16", resolution: Optional[str] = None,
                    references: Optional[list] = None, tag: str = "Codex",
                    approved: bool = False) -> dict:
-    """Generate one image through AI Video Studio (Nano Banana Pro on Kie). PAID.
+    """Generate one image through AI Image Studio (Nano Banana Pro on Kie). PAID.
     Without approved=True it only returns the price and the finished prompt - show both to the
     user and call again with approved=True after they say yes.
     refine: 0-2 paid retries; the vision critique names the weak layer, it is strengthened, and

@@ -71,7 +71,7 @@ Scripts the agent calls to get things done. Workflows hold the sequence; tools h
 | `build_sound.py` | Source + action → one prompt; a scene → its three layers (ambience, key, accent), or five when a format passes `extra=`. Everything it emits is pre-scored by `sound_lint`, extras included. | no |
 | `sound_lint.py` | The sound gate: describes an event, short enough, and is an effect rather than music or speech. The 100 examples are its fixture. | no |
 | `make_icons.py` | Regenerates the SVG icon set into `assets/icons/`. Run after editing a glyph. `ICON_NAMES` is what `tests/test_layout.py` checks `ui/assets.py` against. (It still writes the old aperture `app.svg`, which nothing uses any more - the app mark is `app.png`, below.) | no |
-| `make_app_icon.py` | Cuts the application mark out of the user's logo (`assets/icons/app-source.jpg`), leaving the "AI VIDEO STUDIO" lettering out, and centres it on a white rounded tile as `assets/icons/app.png` (512px), which is the window, taskbar and rail icon. Run after replacing the logo. | no |
+| `make_app_icon.py` | Cuts the application mark out of the user's logo (`assets/icons/app-source.jpg`), leaving the "AI IMAGE STUDIO" lettering out, and centres it on a white rounded tile as `assets/icons/app.png` (512px), which is the window, taskbar and rail icon. Run after replacing the logo. | no |
 | `make_exe_icon.py` | Packs `app.png` into `assets/icons/app.ico` (6 sizes, each resampled straight from the 512px source) for `AIVideoStudio.spec`'s `EXE(icon=...)`. Run after `make_app_icon.py`, before rebuilding the .exe. | no |
 | `upscale_image.py` | The course's "upscale before you animate" rule: `generate_image.generate()` with the image being upscaled as its own sole reference and a fixed 4K instruction prompt instead of a written one. | yes |
 | `refine_image.py` | Generate, critique the result through `brief.critique_image()`, strengthen whichever realism layer came back weak using only the bank's own vocabulary, and retry - capped at 2 retries. Closes the loop that used to be entirely manual. | yes (Kie/Higgsfield for the image, OpenRouter for the critique) |
@@ -235,7 +235,7 @@ no way to rise above it. With zero ratings anywhere every term in a layer gets a
 bonus, which degrades to plain uniform sampling — the same behaviour the app has always had
 before anything is rated, not something new and unverified on a fresh install.
 
-Tools are standard library only. `PyQt6` is needed for the GUI, not for these.
+Tools are standard library only. `pywebview` is needed for the GUI, not for these.
 
 ### Exit codes (`generate_image.py`)
 

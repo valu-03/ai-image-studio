@@ -1,4 +1,4 @@
-# AI Video Studio
+# AI Image Studio
 
 An AI video and avatar production workspace, built on the method from the AI Video Bootcamp
 (`C:\Users\Valentin\Downloads\Daniel Riley - AI Video Bootcamp\`). The course knowledge lives
@@ -37,62 +37,35 @@ tool does one job, runs from the command line, and is deterministic. Tools hold 
 workflows hold the sequence; the agent connects them.
 
 ### The GUI is a fourth thing, and it is not a fourth letter
-`gui.py` plus `ui/` is a **front end over W and T for the human**, for when you'd rather turn
-a dial than retype a command. It composes prompts by calling `build_prompt.compose()`, scores
-them with `realism_lint.lint()`, logs outcomes through `history.py` and generates through
-`generate_image.py` — the exact functions the CLI uses. It must never grow its own copy of
-that logic: if the GUI and the CLI could ever disagree about what a good prompt is, the
-framework has been broken. New logic goes in `/tools/`, and the GUI calls it.
-
-Its build contract is `pyqt6_system_prompt.md` — navigation rail, top utility bar,
-`QStackedWidget` canvas, the mandated dark palette, `QRunnable` workers for anything
-network- or disk-bound. Read it before touching `ui/`.
-
-Its design system is written down in `DESIGN.md` (tokens in `ui/tokens.py`, applied by
-`ui/theme.py`). The short version, each rule enforced by a test:
-- **Colours:** no colour literal in `ui/` outside tokens.py (`test_design_tokens.py`). Use the
-  palette, `theme.color()` or `theme.token_color()`. Text pairs are AA in both themes.
-- **Fonts:** Inter and JetBrains Mono ship in `assets/fonts` and load in `ThemeManager`.
-  Font sizes come from `TYPO` through `build_qss(c, scale)`, the Settings text-size option.
-- **Shared helpers** (`ui/widgets.py`), all run once from `MainWindow`:
-  - `readable_tabs()`: tabs are never elided; a narrow bar scrolls;
-  - `name_controls()`: every control gets an accessible name (`test_ui_polish.py`);
-  - `set_empty_hint()`: an empty list says what goes in it;
-  - `show_status()` / `status_line()`: the status bar shows one line with no full paths;
-  - `short_paths()`: for tools/ messages shown inside a view.
-- **Screenshots:** `python tests/screenshot_all.py <dir> [section]` takes every section and tab,
-  in both themes, at the minimum and default sizes. Take them before and after any UI change.
+studio/ (FastAPI app server + pywebview desktop shell) plus web/ (React + Vite + TypeScript + Tailwind Darkroom UI) is a front end over W and T for the human, launched with start.bat (or dev.bat for live reload). It composes prompts through local_api.parse_image_request() and look_cards.py, checks finished images with giveaways.py, logs outcomes through history.py, prices jobs through pricing.py, and generates through generate_image.py — the exact functions the CLI uses. New logic goes in /tools/, and the GUI calls it.
 
 ### The loop that makes this more than a prompt builder
-The linter scores whether a realism term is **present**. The history log records whether it
-**worked**. Rating a generation feeds `history.weights()`, which biases future vocabulary
-selection. Every rating makes the next prompt better informed, so the bank becomes calibrated
-to your results rather than to a PDF. Encourage rating — an unrated generation is a wasted
-experiment.
+The linter scores whether a realism term is present. The giveaway check (tools/giveaways.py) reads the finished picture for AI tells. The history log records whether it worked. Rating a generation with thumbs up/down feeds history.weights() and history.card_weights(), which bias future vocabulary and Look card defaults.
 
 ---
 
 ## Folder map
 
 ```
-AI Video Studio\
+AI Image Studio\
   CLAUDE.md            this file — read every session
+  AGENTS.md            short orientation for Codex and other agents
   .env                 API keys and secrets. NEVER commit. NEVER print its values.
   .env.example         committed template showing which keys exist
-  gui.py               desktop front end — `python gui.py`
-  pyqt6_system_prompt.md   the GUI's build contract; ui/ implements it
-  ui\                  PyQt6 UI layer (tokens, assets, theme, widgets, workers, views)
-  assets\icons\        generated SVG icon set (`python tools/make_icons.py`)
+  start.bat            builds web/ if needed and launches the desktop window
+  dev.bat              runs uvicorn (--reload on 8790) + Vite dev server (5178)
+  studio\              FastAPI app server (server.py), LookState (state.py), pywebview window (desktop.py)
+  web\                 React 18 + Vite 6 + TypeScript + Tailwind v4 one-page Darkroom UI
+  mcp_server\          MCP server wrapping the Local API (server.py)
+  assets\fonts\        Inter and JetBrains Mono fonts
   workflows\           W — step-by-step procedures (see workflows/README.md for the index)
-  tools\               T — scripts and integrations (see tools/README.md for the index)
-  tests\               every suite; `python tests/run_all.py` runs them all
+  tools\               T — stdlib scripts and banks (see tools/README.md for the index)
+  tests\               every Python suite; python tests/run_all.py runs them all
   temp\
     outputs\           generated artifacts. Disposable — safe to clear.
-      prompts\         built prompts, ready to paste
       images\          generated images
       history.jsonl    the outcome log — what was made and how good it was
     resources\         reference INPUTS the agent reads from. NOT disposable.
-      characters\      character spec JSON — reusable avatar identities
 ```
 
 `temp/outputs/` is scratch — anything there can be regenerated. `temp/resources/` is the
@@ -647,7 +620,7 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
 - **Every GUI test that builds a `MainWindow` was reading AND WRITING the user's real, live
   `QSettings` - provider, model, theme, form_mode, learned, and the saved window geometry -
   through the entire history of this project, in all nine suites that construct one.**
-  `MainWindow.__init__` opened `QSettings("AI Video Studio", "Studio")` unconditionally; nothing
+  `MainWindow.__init__` opened `QSettings("AI Image Studio", "Studio")` unconditionally; nothing
   redirected it, unlike every other piece of live state this project is careful about
   (`AIVS_ENV_FILE`, `AIVS_HISTORY_FILE`, `AIVS_PRICING_FILE`, `assets.CHARACTERS_DIR`). Confirmed
   destructively, by accident, investigating the bug below: a probe script that simulated a saved
@@ -1541,7 +1514,7 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
 - `workflows/cat-story-video.md` — a story in scenes, with its CapCut edit sheet
 - `workflows/sound-design.md` — three layers of ElevenLabs prompts per scene
 - **Videos -> Skit Studio tab** — a finished talking-pet skit from one idea, made by the separate
-  **Skit Studio** app (`..\Skit Studio`) over its REST API. AI Video Studio is
+  **Skit Studio** app (`..\Skit Studio`) over its REST API. AI Image Studio is
   only a client here: `tools/skit_client.py` is the one place that speaks the API,
   `ui/views/skit_studio.py` the tab, `ui/workers.py` `SkitTask` the worker. The tab has
   "Auto-generate idea" (Skit Studio's `POST /ideas`) and a Clips picker (`video_model`: Kling 3.0
@@ -1565,7 +1538,7 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   lock-guarded Look snapshot (`SpecEditor.look_phrases()`, refreshed on `editor.changed`), never a
   widget. `AIVS_LOCAL_API_PORT` / `AIVS_LOCAL_API_TOKEN` in `.env`. Tests:
   `test_local_api.py` (headless, against mock_api) and `test_local_api_gui.py`.
-  **MCP server** (`mcp_server/server.py`, stdio, registered as `ai-video-studio` in Claude Code
+  **MCP server** (`mcp_server/server.py`, stdio, registered as `ai-image-studio` in Claude Code
   and Codex) is a thin client of this API: `avs_status`, `look_options` / `look_current` /
   `look_compose`, `prompt_preview` (free), `image_generate` (returns the price until
   `approved=True`), `image_get` / `image_wait` / `image_cancel`. It holds no image logic.

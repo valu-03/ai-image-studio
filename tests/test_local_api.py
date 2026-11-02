@@ -100,7 +100,7 @@ done_events = []
 api.jobs.on_image = done_events.append
 
 code, health = call(BASE, "GET", "/api/v1/health")
-check("health answers", code == 200 and health.get("app") == "AI Video Studio", str(health))
+check("health answers", code == 200 and health.get("app") == "AI Image Studio", str(health))
 check("health says the Kie key is set", health.get("providers", {}).get("kie") is True)
 check("health says a look is applied", health.get("look_current") is True)
 code, current = call(BASE, "GET", "/api/v1/look/current")

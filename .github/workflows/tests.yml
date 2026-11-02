@@ -1,12 +1,8 @@
 name: Tests
 
-# Runs every suite tests/run_all.py knows about - no test framework, no real
-# API calls (every provider is mocked, see tests/mock_api.py/mock_elevenlabs.py),
-# Qt runs offscreen so nothing needs a display. See tests/run_all.py's own
-# docstring for what "every suite" means.
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "photo-studio"]
   pull_request:
 
 jobs:
@@ -20,76 +16,8 @@ jobs:
           python-version: "3.11"
           cache: "pip"
 
-      # PyQt6's "offscreen" platform plugin still dynamically links several
-      # X11/EGL/DBus shared libraries at import time even though it never
-      # opens a real display - a bare ubuntu-latest runner is missing all of
-      # them, and the failure mode is an import-time crash, not a graceful
-      # fallback. Found by actually running this on a fresh runner, the same
-      # way AIVideoStudio.spec's own header describes finding its `uuid`
-      # hidden-import gap - not by reading PyQt6's docs.
-      - name: Install Qt's offscreen platform runtime dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            libegl1 libopengl0 libxkbcommon0 libxkbcommon-x11-0 \
-            libdbus-1-3 libnss3 libxcomposite1 libxdamage1 libxrandr2 \
-            libxtst6 libxi6 libxrender1 libfontconfig1
-          # Renamed libasound2 -> libasound2t64 in Ubuntu 24.04's time_t
-          # transition; try the current runner's name first so this does not
-          # silently stop installing anything the day ubuntu-latest moves on.
-          sudo apt-get install -y --no-install-recommends libasound2t64 \
-            || sudo apt-get install -y --no-install-recommends libasound2
-          # ...and an actual FONT. libfontconfig1 above is the library, not any
-          # typeface: a bare runner has no font files at all, so Qt falls back
-          # to metrics no real desktop produces, and every height this app
-          # computes from a font moves with it. tests/test_layout.py caught
-          # exactly that - a 12px badge whose line box measured 14px instead of
-          # 12px stopped fitting the minimum window, and the Compose column
-          # shared the shortfall out across its children. A desktop app tested
-          # with zero fonts is being tested in a configuration no user has.
-          sudo apt-get install -y --no-install-recommends fonts-dejavu-core
-
       - name: Install Python dependencies
-        run: pip install -r requirements.txt
+        run: pip install fastapi>=0.115 uvicorn>=0.30 httpx>=0.27
 
-      # Record what actually ran. A suite that passes on a developer's machine
-      # and fails here differs by exactly two things - the OS and these
-      # versions - so printing them turns "green locally, red on CI" from a
-      # guessing game into a diff.
-      - name: Record the environment
-        run: |
-          py=$(python -VV | tr '\n' ' ')
-          qt=$(python -c "import PyQt6.QtCore as c; print('Qt', c.QT_VERSION_STR, 'PyQt', c.PYQT_VERSION_STR)")
-          fonts=$(fc-list | wc -l)
-          metrics=$(QT_QPA_PLATFORM=offscreen python -c "
-          from PyQt6.QtWidgets import QApplication
-          from PyQt6.QtGui import QFont, QFontInfo, QFontMetrics
-          a = QApplication([])
-          f = QFont(a.font()); f.setPixelSize(12)
-          print('12px line box:', QFontMetrics(f).height(), 'px, resolved to', repr(QFontInfo(f).family()))
-          ")
-          echo "$py"; echo "$qt"; echo "fonts installed: $fonts"; echo "$metrics"
-          # Emitted as an annotation too, not just to the log: the log needs
-          # authentication to read and annotations do not, so this is the only
-          # way the numbers are visible to anyone without repo credentials.
-          echo "::notice title=Runner environment::${py}%0A${qt}%0Afonts installed: ${fonts}%0A${metrics}"
-
-      # The job log needs authentication to read; check ANNOTATIONS do not.
-      # So on failure the failing lines are re-emitted as an ::error::
-      # annotation, which makes them visible on the commit and in the API
-      # without anyone downloading a log. %0A is how a workflow command
-      # encodes a newline inside a single annotation.
-      - name: Run every suite
-        run: |
-          set +e
-          python tests/run_all.py > suite.log 2>&1
-          status=$?
-          cat suite.log
-          if [ "$status" -ne 0 ]; then
-            detail=$(grep -E "^ +FAIL|[1-9][0-9]* failed|\(exit [0-9]+\)|Traceback|^[A-Za-z_.]*Error" suite.log \
-              | head -40 \
-              | sed 's/%/%25/g' \
-              | sed ':a;N;$!ba;s/\n/%0A/g')
-            echo "::error title=Failing suites::${detail}"
-          fi
-          exit $status
+      - name: Run every Python suite
+        run: python tests/run_all.py

@@ -1,5 +1,5 @@
 ---
-name: AI Video Studio
+name: AI Image Studio
 description: A dark-first PyQt6 workspace for composing, scoring and generating photorealistic avatar prompts.
 colors:
   bg: "#0B0E14"
@@ -59,7 +59,7 @@ components:
   nav-item-checked: {backgroundColor: "{colors.primary-fixed}", textColor: "{colors.primary}", rounded: "{rounded.md}"}
 ---
 
-# AI Video Studio design system
+# AI Image Studio design system
 
 **Source of truth:** `ui/tokens.py` (values) and `ui/theme.py` `build_qss()` (how they are applied).
 This file describes them; when the two disagree, the code wins and this file is stale. The binding

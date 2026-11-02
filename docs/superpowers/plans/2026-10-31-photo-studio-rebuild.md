@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Turn AI Video Studio into a one-page Darkroom photo studio (Look + Image only):
+**Goal:** Turn AI Image Studio into a one-page Darkroom photo studio (Look + Image only):
 - a picture-reading "Does this look real?" check with click-to-Fix;
 - better default realism, reaching Skit Studio's stills too.
 
@@ -294,7 +294,7 @@
   - `studio.desktop.main()`:
     - starts uvicorn on a free port in a daemon thread;
     - starts the Local API with `current_look=state.current_phrases`;
-    - opens a pywebview window titled "AI Video Studio" (1440×900, minimum 1280×720) once the server is up;
+    - opens a pywebview window titled "AI Image Studio" (1440×900, minimum 1280×720) once the server is up;
     - on close, stops the Local API and uvicorn.
   - `start.bat`: `npm ci` if `web/node_modules` is missing, then `npm run build`, then `python -m studio.desktop`.
   - `dev.bat`: uvicorn `--reload` on 8790 plus `npm run dev` on 5178.

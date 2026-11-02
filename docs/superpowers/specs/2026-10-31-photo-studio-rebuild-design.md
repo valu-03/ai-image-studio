@@ -1,10 +1,10 @@
-# AI Video Studio → a one-page photo studio: rebuild design
+# AI Image Studio → a one-page photo studio: rebuild design
 
 Date: 2026-10-31. Status: draft for approval.
 
 ## Intent and the why
 
-AI Video Studio grew into a large PyQt6 workspace. It has:
+AI Image Studio grew into a large PyQt6 workspace. It has:
 - about 19k lines of UI and 20k of tools;
 - tabs for Compose, Look, Images, Ads, Cats, Sound, Videos, Influencer Studio, Brief, Assistant, Advisor, History, Insights and Skit Studio.
 
@@ -69,7 +69,7 @@ What we saw in the user's own output (`temp/outputs/`, read-only recon):
 - **Removing, faking or evading provenance**, such as C2PA metadata or SynthID-style watermarks, or "beat the AI detector" features. Realism comes from photography (light, lens, texture, imperfection) only.
 - Spending money without a click.
 - A score that says "8/8 passed" on a photo that obviously looks AI. The check must judge pixels.
-- Breaking Skit Studio or the `ai-video-studio` MCP server. Better photos for them is a goal; a broken call is a failure.
+- Breaking Skit Studio or the `ai-image-studio` MCP server. Better photos for them is a goal; a broken call is a failure.
 - Jargon left unexplained on screen.
 - A "kitchen sink" page: if the left column needs scrolling past one screen at 1366×768, there are too many controls.
 
@@ -78,7 +78,7 @@ What we saw in the user's own output (`temp/outputs/`, read-only recon):
 - **The Local API contract keeps the same routes, fields, token and port.** The prompt text it produces may change (Goal 8), but nothing the callers parse may change.
   - Address: `127.0.0.1:8785`, with the same token from `.env`.
   - Routes: `GET /api/v1/health`, `/look/options`, `/look/current`; `POST /api/v1/look/compose`, `/prompt`, `/images`, plus the job polling they use.
-  - Skit Studio (its client is `Skit Studio/tools/avs.py`; AI Video Studio's own `tools/skit_client.py` belongs to the deleted Skit Studio tab) and `mcp_server/server.py` call it.
+  - Skit Studio (its client is `Skit Studio/tools/avs.py`; AI Image Studio's own `tools/skit_client.py` belongs to the deleted Skit Studio tab) and `mcp_server/server.py` call it.
   - Today the PyQt `MainWindow` starts it when the app opens. The new app must do the same. `python tools/local_api.py --serve` keeps working headless.
   - `look/current` must return the Look set on the new page.
 - **The engine stays.** `tools/` stays standard-library Python and deterministic, with CLIs that document themselves. The WAT rules in `CLAUDE.md` still apply: the GUI is a front end over the same tools, and "a text model suggests, a linter decides". The new vision check is display-only, the same authority as a rating. A Fix changes Look cards through the same builders, never by pasting model text into the prompt.
@@ -133,7 +133,7 @@ What we saw in the user's own output (`temp/outputs/`, read-only recon):
   - the scene-variety default;
   - the Local API contract (the existing `test_local_api.py` keeps passing unchanged).
 - Skit Studio smoke test: with the new app open, Skit Studio's still generation still works, either through the mock server or one real approved generation.
-- The `ai-video-studio` MCP tools still answer (`avs_status`, `look_options`, `prompt_preview`).
+- The `ai-image-studio` MCP tools still answer (`avs_status`, `look_options`, `prompt_preview`).
 - Screenshots of the page:
   - empty state, generating, a result with giveaways, and the missing-key state;
   - at 1366×768 and 1920×1080.
