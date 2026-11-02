@@ -29,7 +29,8 @@ ROOT = Path(__file__).resolve().parent.parent
 # quietly bias the vocabulary the app suggests. The same reasoning as
 # AIVS_ENV_FILE: the test must not be able to reach the live data at all.
 HISTORY = Path(os.environ.get("AIVS_HISTORY_FILE")
-               or (ROOT / "temp" / "outputs" / "history.jsonl"))
+               or (Path(os.environ.get("AIVS_OUTPUTS_DIR") or (ROOT / "temp" / "outputs"))
+                   / "history.jsonl"))
 
 LAYERS = ["core", "camera", "lens", "lighting", "texture", "colour", "composition", "grain"]
 

@@ -52,7 +52,10 @@ ROOT = Path(__file__).resolve().parent.parent
 # this, a suite that simulates "no key" by clearing the process environment would
 # start failing the moment a real key is written to .env - read_env() wins.
 ENV_PATH = Path(os.environ.get("AIVS_ENV_FILE") or (ROOT / ".env"))
-OUT_DIR = ROOT / "temp" / "outputs" / "images"
+# AIVS_OUTPUTS_DIR is the test/screenshot seam for the whole outputs folder, so a
+# suite never writes into the user's real temp/outputs.
+OUTPUTS_DIR = Path(os.environ.get("AIVS_OUTPUTS_DIR") or (ROOT / "temp" / "outputs"))
+OUT_DIR = OUTPUTS_DIR / "images"
 
 TIMEOUT = 180
 # How long to wait for an async job, and how often to ask.

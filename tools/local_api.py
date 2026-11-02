@@ -80,7 +80,7 @@ MAX_JOBS = 3
 KEEP_JOBS = 200
 # A still plus up to three reference sheets, base64'd, is a few MB; refuse anything silly.
 MAX_BODY = 40 * 1024 * 1024
-REF_DIR = ROOT / "temp" / "outputs" / "local_api"
+REF_DIR = gi.OUTPUTS_DIR / "local_api"
 HISTORY_NOTE = "Skit Studio"
 
 # Prompt order: style leads (it sets the whole medium), the rest follow the
@@ -562,8 +562,11 @@ class Jobs:
             attempt = {"round": round_number + 1, "file": str(path), "prompt": prompt,
                        "failing_layers": [], "verdict": ""}
             attempts.append(attempt)
-            record_history(dict(request, prompt=prompt), path,
-                           note=REFINE_NOTE.format(round_number + 1) if retries else None)
+            attempt["history_id"] = record_history(
+                dict(request, prompt=prompt), path,
+                note=REFINE_NOTE.format(round_number + 1) if retries
+                else request.get("history_note"),
+                look=request.get("studio_look"))
             if not retries:
                 break
             on_stage("checking how real it looks...")
@@ -605,7 +608,7 @@ def refine_available():
     return bool(gi.env_value(ask_llm.KEY_VAR))
 
 
-def record_history(request, path, note=None):
+def record_history(request, path, note=None, look=None):
     """One History row, scored by the same realism gate as any other prompt."""
     prompt = request["prompt"]
     bank = bp.load_bank()
@@ -615,8 +618,9 @@ def record_history(request, path, note=None):
     spec = {"subject": (request.get("base") or prompt)[:300],
             "slug": request.get("tag") or "skit-studio", "seed": 0,
             "aspect": (request.get("spec") or {}).get("aspect", "")}
-    history.append(spec, prompt, layers, len(present),
-                   len(present) == 8 and not banned, image=str(path), note=note or HISTORY_NOTE)
+    return history.append(spec, prompt, layers, len(present),
+                          len(present) == 8 and not banned, image=str(path),
+                          note=note or HISTORY_NOTE, look=look)
 
 
 # --------------------------------------------------------------------------- #

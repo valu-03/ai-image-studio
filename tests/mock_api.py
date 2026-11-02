@@ -24,11 +24,12 @@ PNG = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
 )
 
-STATE = {"last": None, "last_get": None, "last_status": None,
+STATE = {"creates": 0, "last": None, "last_get": None, "last_status": None,
          "reply": "mock reply text", "polls": {}}
 
 
 def reset():
+    STATE["creates"] = 0
     STATE["last"] = None
     STATE["last_get"] = None
     STATE["last_status"] = None
@@ -84,7 +85,12 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, {"success": True, "data": {
                 "fileUrl": self._origin + "/uploads/reference.png"}})
 
+        if _flag(self.path, "nocredit") and "createTask" in self.path:
+            STATE["creates"] += 1
+            return self._send(402, {"code": 402, "msg": "Insufficient credits"})
+
         if "createTask" in self.path:
+            STATE["creates"] += 1
             return self._send(200, {"code": 200, "msg": "success",
                                     "data": {"taskId": "task_mock_1"}})
 
