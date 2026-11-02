@@ -284,9 +284,8 @@ def create_app(static_dir, state):
             _bad("thumb must be 'up' or 'down'.")
         job = jobs.get(photo_id)
         attempts = (job or {}).get("attempts") or []
-        if not attempts or not attempts[0].get("history_id"):
-            _bad("No such photo.", 404)
-        entry = history.rate(attempts[0]["history_id"], history.THUMBS[thumb])
+        hist_id = attempts[0].get("history_id") if attempts and attempts[0].get("history_id") else photo_id
+        entry = history.rate(hist_id, history.THUMBS[thumb])
         if entry is None:
             _bad("No such photo.", 404)
         return {"history_id": entry["id"], "rating": entry["rating"]}

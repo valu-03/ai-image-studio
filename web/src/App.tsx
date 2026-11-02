@@ -6,10 +6,15 @@ import { Describe } from "./pages/studio/Describe";
 import { Reference } from "./pages/studio/Reference";
 import { LookCards } from "./pages/studio/LookCards";
 import { MakeButton } from "./pages/studio/MakeButton";
+import { PhotoPanel } from "./pages/studio/PhotoPanel";
+import { RecentStrip } from "./pages/studio/RecentStrip";
 
 export function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const studio = useStudio();
+
+  const activeHistoryId =
+    studio.selectedRecent?.history_id ?? studio.job?.history_id ?? null;
 
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-ground text-text">
@@ -72,7 +77,25 @@ export function App() {
         <section
           aria-label="Photo and check"
           className="flex min-w-0 flex-1 flex-col bg-photo-ground"
-        />
+        >
+          <PhotoPanel
+            job={studio.job}
+            selectedRecent={studio.selectedRecent}
+            recentCheck={studio.recentCheck}
+            price={studio.price}
+            pending={studio.pending}
+            onFix={(key) => void studio.fix(key)}
+            onCheckRecent={(historyId) => void studio.runCheckOnRecent(historyId)}
+          />
+          <RecentStrip
+            items={studio.recent}
+            activeHistoryId={activeHistoryId}
+            onSelect={(item) => studio.setSelectedRecent(item)}
+            onRate={(historyId, thumb) =>
+              void studio.rateCurrentOrRecent(historyId, thumb)
+            }
+          />
+        </section>
       </main>
 
       <Settings
