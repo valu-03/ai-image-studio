@@ -17,6 +17,9 @@ describe("Compose & Look tabs", () => {
     expect(html).toContain("Action");
     expect(html).toContain("Posing");
     expect(html).toContain("Mood");
+    expect(html).toContain('data-testid="prompt-panel"');
+    expect(html).toContain('data-testid="copy-prompt-button"');
+    expect(html).not.toContain("RECENT PHOTOS");
   });
 
   it("LookTab exposes all 8 Look sub-builders as tabs and applies to Compose", () => {

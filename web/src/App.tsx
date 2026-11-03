@@ -7,7 +7,7 @@ import { Settings } from "./pages/Settings";
 import { ComposeEditor } from "./pages/studio/ComposeEditor";
 import { MakeButton } from "./pages/studio/MakeButton";
 import { PhotoPanel } from "./pages/studio/PhotoPanel";
-import { RecentStrip } from "./pages/studio/RecentStrip";
+import { PromptPanel } from "./pages/studio/PromptPanel";
 
 export type MainTab = "compose" | "look";
 
@@ -22,8 +22,6 @@ export function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const studio = useStudio();
 
-  const activeHistoryId =
-    studio.selectedRecent?.history_id ?? studio.job?.history_id ?? null;
   const overrideCount = Object.keys(studio.look.overrides ?? {}).length;
 
   const openLookPart = (part: LookPart = "lighting") => {
@@ -144,13 +142,10 @@ export function App() {
               onFix={(key) => void studio.fix(key)}
               onCheckRecent={(historyId) => void studio.runCheckOnRecent(historyId)}
             />
-            <RecentStrip
-              items={studio.recent}
-              activeHistoryId={activeHistoryId}
-              onSelect={(item) => studio.setSelectedRecent(item)}
-              onRate={(historyId, thumb) =>
-                void studio.rateCurrentOrRecent(historyId, thumb)
-              }
+            <PromptPanel
+              form={studio.composeForm}
+              preview={studio.composePreview}
+              onUpdateField={studio.updateComposeField}
             />
           </section>
         </main>

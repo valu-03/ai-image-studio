@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, Copy, Shuffle } from "lucide-react";
+import { Shuffle } from "lucide-react";
 import type {
   ComposeFormState,
   ComposeOptionsPayload,
@@ -58,7 +58,6 @@ export function ComposeEditor({
   onOpenLookTab,
 }: ComposeEditorProps) {
   const [subTab, setSubTab] = useState<ComposeSubTab>("subject");
-  const [copied, setCopied] = useState(false);
 
   const toggleSkinFeature = (key: string) => {
     const current = form.skin_features ?? [];
@@ -66,13 +65,6 @@ export function ComposeEditor({
       ? current.filter((k) => k !== key)
       : [...current, key];
     onUpdateField("skin_features", next);
-  };
-
-  const handleCopyPrompt = () => {
-    if (!preview?.prompt) return;
-    void navigator.clipboard?.writeText(preview.prompt);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
   };
 
   const reshuffleSeed = () => {
@@ -510,48 +502,6 @@ export function ComposeEditor({
                 onChange={(v) => onUpdateField("anatomy_guard", v)}
               />
             </div>
-
-            {/* Composed Prompt Preview + Realism Gate */}
-            <div className="rounded-xl border border-hairline bg-ground p-3 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-text">
-                  Composed Prompt
-                </span>
-                <div className="flex items-center gap-2">
-                  {preview && (
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                        preview.lint.passed
-                          ? "bg-ok/20 text-ok"
-                          : "bg-accent/20 text-accent"
-                      }`}
-                    >
-                      Realism {preview.lint.score}/{preview.lint.total}
-                    </span>
-                  )}
-                  <button
-                    type="button"
-                    onClick={handleCopyPrompt}
-                    className="inline-flex items-center gap-1 rounded-lg border border-hairline bg-surface px-2 py-0.5 text-[11px] text-muted hover:text-text"
-                  >
-                    {copied ? (
-                      <>
-                        <Check className="h-3 w-3 text-ok" />
-                        Copied
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="h-3 w-3" />
-                        Copy
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-              <p className="max-h-28 overflow-y-auto rounded-lg border border-hairline bg-surface p-2 font-mono text-[11px] leading-relaxed text-muted">
-                {preview?.prompt || "Composed prompt will appear here…"}
-              </p>
-            </div>
           </div>
         )}
       </div>
@@ -696,3 +646,4 @@ function EditableComboField({
     </div>
   );
 }
+
