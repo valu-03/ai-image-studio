@@ -102,7 +102,8 @@ def create_app(static_dir, state):
 
     def look_payload():
         snap = state.snapshot()
-        return {"kind": snap["kind"], "cards": snap["cards"], "touched": snap["touched"]}
+        return {"kind": snap["kind"], "cards": snap["cards"], "touched": snap["touched"],
+                "overrides": snap.get("overrides", {})}
 
     def image_url(path):
         return "/files/" + Path(path).name
@@ -146,7 +147,9 @@ def create_app(static_dir, state):
 
     def submit_page_job(text, provider, reference, kind, cards, extra):
         """Build, register and submit one job; 409 if one is already running."""
-        body = {"prompt": text, "look": look_cards.to_look(cards, kind),
+        merged_look = dict(look_cards.to_look(cards, kind))
+        merged_look.update(state.snapshot().get("overrides", {}))
+        body = {"prompt": text, "look": merged_look,
                 "realism": {"subject": text}, "refine": 0,
                 "tag": "page-{}".format(session_seed), "provider": provider}
         if reference:
@@ -201,6 +204,35 @@ def create_app(static_dir, state):
             state.set_card(str(body.get("card") or ""), str(body.get("option") or ""))
         except ValueError as exc:
             _bad(str(exc))
+        return look_payload()
+
+    @app.get("/api/look/options")
+    def get_look_options():
+        return local_api.look_options()
+
+    @app.post("/api/look/compose")
+    def post_look_compose(body: dict):
+        choices = body.get("choices")
+        if choices is None:
+            part = str(body.get("part") or "")
+            pick = body.get("pick") or {}
+            choices = {part: pick} if part else {}
+        try:
+            phrases, warnings = local_api.compose_look(choices)
+        except local_api.LookError as exc:
+            _bad(str(exc))
+        if body.get("apply"):
+            for part_key in choices:
+                if part_key in local_api.LOOK_KEYS:
+                    state.set_override(part_key, phrases.get(part_key, ""))
+        return {"phrases": phrases, "warnings": warnings, "look": look_payload()}
+
+    @app.put("/api/look/override")
+    def put_look_override(body: dict):
+        part = str(body.get("part") or "")
+        if part not in local_api.LOOK_KEYS:
+            _bad("Unknown Look part: {}".format(part))
+        state.set_override(part, str(body.get("phrase") or ""))
         return look_payload()
 
     # ----------------------------------------------------------------- price

@@ -61,6 +61,20 @@ check("put rejects an unknown card",
 state.set_card("colour", "warm_film", deliberate=False)
 check("non-deliberate set does not touch", "colour" not in state.touched)
 
+opts = client.get("/api/look/options").json()
+check("look/options exposes all 8 Look sub-builders",
+      set(opts) == {"lighting", "composition", "camera", "color", "posing", "style", "capture", "evidence"})
+comp_res = client.post("/api/look/compose", json={
+    "part": "lighting",
+    "pick": {"setup": opts["lighting"]["setups"][0]["key"]},
+    "apply": True,
+}).json()
+check("look/compose applies override to Look state",
+      bool(comp_res["phrases"].get("lighting"))
+      and comp_res["look"]["overrides"].get("lighting") == comp_res["phrases"]["lighting"])
+clear_res = client.put("/api/look/override", json={"part": "lighting", "phrase": ""}).json()
+check("look/override clears override when empty", "lighting" not in clear_res["overrides"])
+
 print("Settings")
 r = client.get("/api/settings")
 check("settings has booleans only",

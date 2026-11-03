@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import type { LookCard } from "../../lib/api";
+import type { LookCard, LookPart } from "../../lib/api";
 import { Term } from "../../components/Term";
 import { CardPicker } from "./CardPicker";
 
@@ -8,20 +8,25 @@ export interface LookCardsProps {
   cards: LookCard[];
   selected: Record<string, string>;
   touched: string[];
+  overrides?: Record<string, string>;
   onSelectOption: (cardId: string, optionKey: string) => void;
+  onOpenLookTab?: (part?: LookPart) => void;
 }
 
 export function LookCards({
   cards,
   selected,
   touched,
+  overrides = {},
   onSelectOption,
+  onOpenLookTab,
 }: LookCardsProps) {
   const [openCardId, setOpenCardId] = useState<string | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const activeCard = cards.find((c) => c.id === openCardId) ?? null;
   const touchedSet = new Set(touched);
+  const overrideCount = Object.keys(overrides).length;
 
   return (
     <div className="space-y-2">
@@ -88,22 +93,66 @@ export function LookCards({
       </div>
 
       <div>
-        <button
-          type="button"
-          aria-expanded={advancedOpen}
-          onClick={() => setAdvancedOpen((v) => !v)}
-          className="inline-flex items-center gap-1 text-[11px] font-medium text-muted hover:text-text"
-        >
-          {advancedOpen ? (
-            <ChevronDown className="h-3.5 w-3.5" />
-          ) : (
-            <ChevronRight className="h-3.5 w-3.5" />
+        <div className="flex items-center justify-between">
+          <button
+            type="button"
+            aria-expanded={advancedOpen}
+            onClick={() => setAdvancedOpen((v) => !v)}
+            className="inline-flex items-center gap-1 text-[11px] font-medium text-muted hover:text-text"
+          >
+            {advancedOpen ? (
+              <ChevronDown className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronRight className="h-3.5 w-3.5" />
+            )}
+            More controls
+          </button>
+          {onOpenLookTab && (
+            <button
+              type="button"
+              onClick={() => onOpenLookTab("lighting")}
+              className="text-[11px] font-medium text-accent hover:underline"
+            >
+              {overrideCount > 0
+                ? `Look tab (${overrideCount} applied) →`
+                : "Open Look tab →"}
+            </button>
           )}
-          More controls
-        </button>
+        </div>
         {advancedOpen && (
-          <div className="mt-1.5 rounded-xl border border-hairline bg-ground/60 p-2.5 text-[11px] leading-relaxed text-muted">
-            Cards with a gold dot are shared with Skit Studio while this window is open. Untouched cards stay on realistic defaults that vary naturally between photos.
+          <div className="mt-1.5 space-y-2 rounded-xl border border-hairline bg-ground/60 p-2.5 text-[11px] leading-relaxed text-muted">
+            <p>
+              Cards with a gold dot are shared with Skit Studio while this window is open. Untouched cards stay on realistic defaults that vary naturally between photos.
+            </p>
+            {onOpenLookTab && (
+              <div className="flex flex-wrap gap-1 pt-0.5">
+                {(
+                  [
+                    ["lighting", "Lighting"],
+                    ["composition", "Composition"],
+                    ["camera", "Camera"],
+                    ["color", "Color"],
+                    ["posing", "Posing"],
+                    ["style", "Style"],
+                    ["capture", "Capture"],
+                    ["evidence", "Evidence"],
+                  ] as [LookPart, string][]
+                ).map(([part, label]) => (
+                  <button
+                    key={part}
+                    type="button"
+                    onClick={() => onOpenLookTab(part)}
+                    className={`rounded-md border px-2 py-0.5 text-[11px] font-medium ${
+                      overrides[part]
+                        ? "border-accent/60 bg-raised text-text"
+                        : "border-hairline bg-surface text-muted hover:text-text"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

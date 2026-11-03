@@ -19,10 +19,61 @@ export interface LookCard {
   advanced_part: string | null;
 }
 
+export type LookPart =
+  | "lighting"
+  | "composition"
+  | "camera"
+  | "color"
+  | "posing"
+  | "style"
+  | "capture"
+  | "evidence";
+
+export interface LookOptionItem {
+  key: string;
+  label: string;
+  phrase: string;
+  group?: string;
+}
+
+export interface LookOptionsPayload {
+  lighting: {
+    setups: LookOptionItem[];
+    directions: LookOptionItem[];
+    qualities: LookOptionItem[];
+    sources: LookOptionItem[];
+    techniques: LookOptionItem[];
+  };
+  composition: {
+    guides: LookOptionItem[];
+    techniques: LookOptionItem[];
+  };
+  camera: {
+    verticals: LookOptionItem[];
+    sides: LookOptionItem[];
+    sizes: LookOptionItem[];
+  };
+  color: {
+    moods: LookOptionItem[];
+    film_looks: LookOptionItem[];
+    techniques: LookOptionItem[];
+  };
+  posing: {
+    poses: LookOptionItem[];
+    techniques: LookOptionItem[];
+  };
+  style: {
+    styles: LookOptionItem[];
+  };
+  capture: Record<string, LookOptionItem[]>;
+  evidence: Record<string, LookOptionItem[]>;
+}
+
 export interface LookSnapshot {
   kind: SubjectKind;
   cards: Record<string, string>;
   touched: string[];
+  overrides?: Record<string, string>;
 }
 
 export interface PriceEstimate {
@@ -134,6 +185,39 @@ export function setCard(card: string, option: string): Promise<LookSnapshot> {
   return request<LookSnapshot>("/api/look", {
     method: "PUT",
     body: JSON.stringify({ card, option }),
+  });
+}
+
+export function getLookOptions(): Promise<LookOptionsPayload> {
+  return request<LookOptionsPayload>("/api/look/options");
+}
+
+export function composeLookPart(
+  part: LookPart,
+  pick: Record<string, unknown>,
+  apply = false
+): Promise<{
+  phrases: Record<string, string>;
+  warnings: string[];
+  look: LookSnapshot;
+}> {
+  return request<{
+    phrases: Record<string, string>;
+    warnings: string[];
+    look: LookSnapshot;
+  }>("/api/look/compose", {
+    method: "POST",
+    body: JSON.stringify({ part, pick, apply }),
+  });
+}
+
+export function setLookOverride(
+  part: LookPart,
+  phrase: string
+): Promise<LookSnapshot> {
+  return request<LookSnapshot>("/api/look/override", {
+    method: "PUT",
+    body: JSON.stringify({ part, phrase }),
   });
 }
 

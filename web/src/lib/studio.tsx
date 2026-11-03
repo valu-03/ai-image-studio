@@ -336,6 +336,7 @@ export function useStudio() {
     kind,
     cards,
     look,
+    setLook,
     price,
     provider,
     reference,

@@ -19,6 +19,7 @@ class LookState:
         self.cards = look_cards.defaults(kind, seed)
         self.touched = set()
         self.extra = []
+        self.overrides = {}
 
     def reset(self, kind, seed, avoid=(), weights=None):
         """New kind (or a fresh roll): defaults back, nothing touched."""
@@ -27,6 +28,15 @@ class LookState:
             self.cards = look_cards.defaults(kind, seed, avoid=avoid, weights=weights)
             self.touched = set()
             self.extra = []
+
+    def set_override(self, part, phrase):
+        """Set or clear a phrase built in one of the Look sub-builders."""
+        with self._lock:
+            cleaned = str(phrase or "").strip()
+            if cleaned:
+                self.overrides[part] = cleaned
+            else:
+                self.overrides.pop(part, None)
 
     def set_card(self, card, option, deliberate=True):
         """Choose an option. ValueError if the card or option does not exist for
@@ -50,12 +60,13 @@ class LookState:
     def snapshot(self):
         with self._lock:
             return {"kind": self.kind, "cards": dict(self.cards),
-                    "touched": sorted(self.touched), "extra": list(self.extra)}
+                    "touched": sorted(self.touched), "extra": list(self.extra),
+                    "overrides": dict(self.overrides)}
 
     def current_phrases(self):
-        """Only the touched cards, as Local API LOOK_KEY phrases."""
+        """Only the touched cards and applied Look sub-builder overrides, as Local API LOOK_KEY phrases."""
         with self._lock:
             chosen = {c: o for c, o in self.cards.items() if c in self.touched}
-            if not chosen:
-                return {}
-            return look_cards.phrases(chosen, self.kind)
+            out = look_cards.phrases(chosen, self.kind) if chosen else {}
+            out.update(self.overrides)
+            return out
