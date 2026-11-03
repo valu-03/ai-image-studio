@@ -27,7 +27,11 @@ import {
 import type { ReferenceFile } from "../pages/studio/Reference";
 
 export function useStudio() {
-  const [text, setTextState] = useState("");
+  const initialParams =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search)
+      : new URLSearchParams();
+  const [text, setTextState] = useState(() => initialParams.get("text") ?? "");
   const [kind, setKind] = useState<SubjectKind>("animal");
   const [cards, setCards] = useState<LookCard[]>([]);
   const [look, setLook] = useState<LookSnapshot>({
@@ -38,9 +42,25 @@ export function useStudio() {
   const [settings, setSettingsState] = useState<SettingsPayload | null>(null);
   const [price, setPrice] = useState<PriceEstimate | null>(null);
   const [reference, setReference] = useState<ReferenceFile | null>(null);
-  const [jobId, setJobId] = useState<string | null>(null);
-  const [job, setJob] = useState<PhotoJob | null>(null);
-  const [pending, setPending] = useState(false);
+  const [jobId, setJobId] = useState<string | null>(
+    () => initialParams.get("photo") ?? null
+  );
+  const [job, setJob] = useState<PhotoJob | null>(() => {
+    const stageParam = initialParams.get("stage");
+    if (stageParam) {
+      return {
+        state: "running",
+        stage: stageParam,
+        error: "",
+        file_url: null,
+        history_id: null,
+        giveaways: null,
+        check_error: "",
+      };
+    }
+    return null;
+  });
+  const [pending, setPending] = useState(() => Boolean(initialParams.get("stage")));
   const [recent, setRecent] = useState<RecentPhoto[]>([]);
   const [selectedRecent, setSelectedRecent] = useState<RecentPhoto | null>(null);
   const [recentCheck, setRecentCheck] = useState<{
@@ -87,6 +107,11 @@ export function useStudio() {
         setCards(c);
         setPrice(p);
         setRecent(r);
+        if (jobId) {
+          const snap = await getPhoto(jobId);
+          setJob(snap);
+          setPending(snap.state === "running");
+        }
       } catch {
         // initial load
       }
