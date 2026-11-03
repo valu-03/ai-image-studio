@@ -339,3 +339,4 @@ def _build_physical_note(ct_bank, mt_bank, sn_bank, spec, kind, contact_on, mate
         _phrase, key = bsn.moment_line(sn_bank, spec, kind)
         parts.append("Moment: " + (key or "a small default"))
     return " · ".join(parts)
+
