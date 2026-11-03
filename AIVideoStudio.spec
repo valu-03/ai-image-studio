@@ -9,6 +9,7 @@ datas = [
     ("tools", "tools"),
     ("assets", "assets"),
     ("workflows", "workflows"),
+    ("mcp_server", "mcp_server"),
     ("web/dist", "web/dist"),
     (".env.example", "."),
 ]
