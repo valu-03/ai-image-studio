@@ -4,9 +4,7 @@ import type { LookPart } from "./lib/api";
 import { useStudio } from "./lib/studio";
 import { LookTab } from "./pages/look/LookTab";
 import { Settings } from "./pages/Settings";
-import { Describe } from "./pages/studio/Describe";
-import { Reference } from "./pages/studio/Reference";
-import { LookCards } from "./pages/studio/LookCards";
+import { ComposeEditor } from "./pages/studio/ComposeEditor";
 import { MakeButton } from "./pages/studio/MakeButton";
 import { PhotoPanel } from "./pages/studio/PhotoPanel";
 import { RecentStrip } from "./pages/studio/RecentStrip";
@@ -100,30 +98,26 @@ export function App() {
         <main className="flex min-h-0 flex-1 overflow-hidden">
           <section
             aria-label="Photo controls"
-            className="flex h-full w-[min(440px,36%)] shrink-0 flex-col justify-between overflow-y-auto border-r border-hairline bg-surface p-4"
+            className="flex h-full w-[min(460px,38%)] shrink-0 flex-col justify-between overflow-hidden border-r border-hairline bg-surface p-4"
           >
-            <div className="space-y-3">
-              <Describe
-                text={studio.text}
-                kind={studio.kind}
-                onChange={studio.setText}
-              />
-              <Reference
-                provider={studio.provider}
-                reference={studio.reference}
-                onChange={studio.setReference}
-              />
-              <LookCards
-                cards={studio.cards}
-                selected={studio.look.cards}
-                touched={studio.look.touched}
-                overrides={studio.look.overrides}
-                onSelectOption={(cardId, optionKey) =>
-                  void studio.selectCardOption(cardId, optionKey)
-                }
-                onOpenLookTab={openLookPart}
-              />
-            </div>
+            <ComposeEditor
+              form={studio.composeForm}
+              options={studio.composeOptions}
+              preview={studio.composePreview}
+              kind={studio.kind}
+              provider={studio.provider}
+              reference={studio.reference}
+              cards={studio.cards}
+              selectedCards={studio.look.cards}
+              touchedCards={studio.look.touched}
+              overrides={studio.look.overrides}
+              onUpdateField={studio.updateComposeField}
+              onReferenceChange={studio.setReference}
+              onSelectCardOption={(cardId, optionKey) =>
+                void studio.selectCardOption(cardId, optionKey)
+              }
+              onOpenLookTab={openLookPart}
+            />
 
             <div className="pt-2">
               <MakeButton

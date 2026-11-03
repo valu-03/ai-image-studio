@@ -75,6 +75,22 @@ check("look/compose applies override to Look state",
 clear_res = client.put("/api/look/override", json={"part": "lighting", "phrase": ""}).json()
 check("look/override clears override when empty", "lighting" not in clear_res["overrides"])
 
+c_opts = client.get("/api/compose/options").json()
+check("compose/options exposes purposes, shots, lighting, colour, guides, skin_features",
+      all(k in c_opts for k in ("purposes", "shots", "lighting_terms", "colour_terms", "composition_guides", "skin_features")))
+c_prev = client.post("/api/compose/preview", json={
+    "form": {
+        "subject": "a woman in her late twenties with light freckles",
+        "wardrobe": "an oversized cream knit sweater",
+        "setting": "a bright apartment kitchen, mid-morning",
+        "action": "leaning against the counter with a mug",
+        "posing": "weight on the back foot",
+        "mood": "calm and unhurried",
+    }
+}).json()
+check("compose/preview builds prompt, lint, and derived notes",
+      bool(c_prev["prompt"]) and c_prev["kind"] == "human" and "score" in c_prev["lint"])
+
 print("Settings")
 r = client.get("/api/settings")
 check("settings has booleans only",

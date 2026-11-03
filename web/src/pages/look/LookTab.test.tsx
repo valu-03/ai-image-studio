@@ -5,10 +5,18 @@ import { App } from "../../App";
 import { LOOK_SUB_BUILDERS, LookTab } from "./LookTab";
 
 describe("Compose & Look tabs", () => {
-  it("App renders both Compose and Look tabs in the header", () => {
+  it("App renders both Compose and Look tabs plus the 5 Compose spec sub-tabs (Purpose, Subject, Scene, Identity, More)", () => {
     const html = renderToStaticMarkup(createElement(App));
     expect(html).toContain('data-testid="main-tab-compose"');
     expect(html).toContain('data-testid="main-tab-look"');
+    for (const sub of ["purpose", "subject", "scene", "identity", "more"]) {
+      expect(html).toContain(`data-testid="compose-subtab-${sub}"`);
+    }
+    expect(html).toContain("Subject");
+    expect(html).toContain("Wardrobe");
+    expect(html).toContain("Action");
+    expect(html).toContain("Posing");
+    expect(html).toContain("Mood");
   });
 
   it("LookTab exposes all 8 Look sub-builders as tabs and applies to Compose", () => {

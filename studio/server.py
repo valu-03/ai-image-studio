@@ -34,6 +34,7 @@ import history  # noqa: E402
 import local_api  # noqa: E402
 import look_cards  # noqa: E402
 import pricing  # noqa: E402
+from studio import compose_spec  # noqa: E402
 from studio.state import LookState  # noqa: E402
 
 KEY_NAMES = ("KIE_API_KEY", "HIGGSFIELD_API_KEY_ID", "HIGGSFIELD_API_KEY_SECRET",
@@ -235,6 +236,18 @@ def create_app(static_dir, state):
         state.set_override(part, str(body.get("phrase") or ""))
         return look_payload()
 
+    # --------------------------------------------------------------- compose
+    @app.get("/api/compose/options")
+    def get_compose_options():
+        return compose_spec.compose_options()
+
+    @app.post("/api/compose/preview")
+    def post_compose_preview(body: dict):
+        form = body.get("form") if isinstance(body.get("form"), dict) else body
+        return compose_spec.build_spec_and_preview(
+            form, state.snapshot().get("overrides")
+        )
+
     # ----------------------------------------------------------------- price
     @app.get("/api/price")
     def get_price(provider: str = "kie"):
@@ -243,7 +256,17 @@ def create_app(static_dir, state):
     # ---------------------------------------------------------------- photos
     @app.post("/api/photos")
     def make_photo(body: dict):
-        text = str(body.get("text") or "").strip()
+        form = body.get("form") if isinstance(body.get("form"), dict) else None
+        if form is not None and not body.get("text"):
+            subj = str(form.get("subject") or "").strip()
+            if not subj:
+                _bad("Describe the subject first.")
+            preview = compose_spec.build_spec_and_preview(
+                form, state.snapshot().get("overrides")
+            )
+            text = preview["prompt"]
+        else:
+            text = str(body.get("text") or "").strip()
         if not text:
             _bad("Describe the photo first.")
         provider = chosen_provider(body.get("provider"))

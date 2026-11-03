@@ -221,12 +221,112 @@ export function setLookOverride(
   });
 }
 
+export interface ComposePurposeOption {
+  key: string;
+  label: string;
+  shot: string;
+  aspect: string;
+  note: string;
+}
+
+export interface ComposeGuideOption {
+  key: string;
+  label: string;
+  phrase: string;
+  note: string;
+}
+
+export interface ComposeSkinFeatureOption {
+  key: string;
+  label: string;
+  tip: string;
+}
+
+export interface ComposeOptionsPayload {
+  purposes: ComposePurposeOption[];
+  aspects: string[];
+  shots: string[];
+  lighting_terms: string[];
+  colour_terms: string[];
+  composition_guides: ComposeGuideOption[];
+  skin_features: ComposeSkinFeatureOption[];
+}
+
+export interface ComposeFormState {
+  subject: string;
+  wardrobe: string;
+  action: string;
+  posing: string;
+  mood: string;
+  setting: string;
+  purpose: string;
+  aspect: string;
+  shot: string;
+  lighting: string;
+  colour: string;
+  composition: string;
+  extra: string;
+  seed: number;
+  slug: string;
+  detailed: boolean;
+  anatomy_guard: boolean;
+  face_detail: boolean;
+  lived_in: boolean;
+  contact_detail: boolean;
+  material_detail: boolean;
+  snapshot: boolean;
+  background_life: boolean;
+  moment: boolean;
+  match_light: boolean;
+  skin_features: string[];
+}
+
+export interface LintCheckRow {
+  key: string;
+  label: string;
+  passed: boolean;
+  fix: string;
+  ok_text: string;
+  state?: string;
+}
+
+export interface ComposePreviewPayload {
+  spec: Record<string, unknown>;
+  prompt: string;
+  kind: SubjectKind;
+  lint: {
+    score: number;
+    total: number;
+    passed: boolean;
+    checks: LintCheckRow[];
+  };
+  notes: {
+    purpose: string;
+    light: string;
+    physical: string;
+  };
+}
+
+export function getComposeOptions(): Promise<ComposeOptionsPayload> {
+  return request<ComposeOptionsPayload>("/api/compose/options");
+}
+
+export function previewCompose(
+  form: Partial<ComposeFormState>
+): Promise<ComposePreviewPayload> {
+  return request<ComposePreviewPayload>("/api/compose/preview", {
+    method: "POST",
+    body: JSON.stringify({ form }),
+  });
+}
+
 export function getPrice(provider: string): Promise<PriceEstimate> {
   return request<PriceEstimate>(`/api/price?provider=${encodeURIComponent(provider)}`);
 }
 
 export function makePhoto(body: {
-  text: string;
+  text?: string;
+  form?: Partial<ComposeFormState>;
   provider?: string;
   reference_b64?: string;
   reference_name?: string;

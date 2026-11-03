@@ -4,16 +4,21 @@ import {
   describe,
   fixPhoto,
   getCards,
+  getComposeOptions,
   getLook,
   getPhoto,
   getPrice,
   getRecent,
   getSettings,
   makePhoto,
+  previewCompose,
   ratePhoto,
   setCard,
   setKey,
   setSettings,
+  type ComposeFormState,
+  type ComposeOptionsPayload,
+  type ComposePreviewPayload,
   type GiveawayItem,
   type KeyName,
   type LookCard,
@@ -26,18 +31,57 @@ import {
 } from "./api";
 import type { ReferenceFile } from "../pages/studio/Reference";
 
+export function createInitialComposeForm(initialSubject = ""): ComposeFormState {
+  return {
+    subject: initialSubject,
+    wardrobe: "",
+    action: "",
+    posing: "",
+    mood: "",
+    setting: "",
+    purpose: "",
+    aspect: "",
+    shot: "",
+    lighting: "",
+    colour: "",
+    composition: "",
+    extra: "",
+    seed: 0,
+    slug: "",
+    detailed: false,
+    anatomy_guard: false,
+    face_detail: true,
+    lived_in: false,
+    contact_detail: true,
+    material_detail: true,
+    snapshot: true,
+    background_life: true,
+    moment: true,
+    match_light: true,
+    skin_features: [],
+  };
+}
+
 export function useStudio() {
   const initialParams =
     typeof window !== "undefined"
       ? new URLSearchParams(window.location.search)
       : new URLSearchParams();
-  const [text, setTextState] = useState(() => initialParams.get("text") ?? "");
+  const initialSubject = initialParams.get("text") ?? "";
+  const [composeForm, setComposeForm] = useState<ComposeFormState>(() =>
+    createInitialComposeForm(initialSubject)
+  );
+  const [composeOptions, setComposeOptions] =
+    useState<ComposeOptionsPayload | null>(null);
+  const [composePreview, setComposePreview] =
+    useState<ComposePreviewPayload | null>(null);
   const [kind, setKind] = useState<SubjectKind>("animal");
   const [cards, setCards] = useState<LookCard[]>([]);
-  const [look, setLook] = useState<LookSnapshot>({
+  const [look, setLookState] = useState<LookSnapshot>({
     kind: "animal",
     cards: {},
     touched: [],
+    overrides: {},
   });
   const [settings, setSettingsState] = useState<SettingsPayload | null>(null);
   const [price, setPrice] = useState<PriceEstimate | null>(null);
@@ -72,6 +116,31 @@ export function useStudio() {
 
   const inFlightRef = useRef(false);
   const provider = settings?.provider ?? "kie";
+  const text = composeForm.subject;
+
+  const setText = useCallback((nextText: string) => {
+    setComposeForm((prev) => ({ ...prev, subject: nextText }));
+  }, []);
+
+  const updateComposeField = useCallback(
+    <K extends keyof ComposeFormState>(key: K, value: ComposeFormState[K]) => {
+      setComposeForm((prev) => ({ ...prev, [key]: value }));
+    },
+    []
+  );
+
+  const setLook = useCallback((nextLook: LookSnapshot) => {
+    setLookState(nextLook);
+    const ov = nextLook.overrides ?? {};
+    setComposeForm((prev) => ({
+      ...prev,
+      lighting: ov.lighting ?? prev.lighting,
+      composition: ov.composition ?? prev.composition,
+      shot: ov.camera ?? prev.shot,
+      colour: ov.color ?? prev.colour,
+      posing: ov.posing ?? prev.posing,
+    }));
+  }, []);
 
   const refreshLookAndCards = useCallback(async (targetKind: SubjectKind) => {
     const [cardList, lookSnap] = await Promise.all([
@@ -79,7 +148,7 @@ export function useStudio() {
       getLook(),
     ]);
     setCards(cardList);
-    setLook(lookSnap);
+    setLookState(lookSnap);
     setKind(lookSnap.kind);
   }, []);
 
@@ -95,10 +164,15 @@ export function useStudio() {
   useEffect(() => {
     void (async () => {
       try {
-        const [s, l] = await Promise.all([getSettings(), getLook()]);
+        const [s, l, co] = await Promise.all([
+          getSettings(),
+          getLook(),
+          getComposeOptions(),
+        ]);
         setSettingsState(s);
-        setLook(l);
+        setLookState(l);
         setKind(l.kind);
+        setComposeOptions(co);
         const [c, p, r] = await Promise.all([
           getCards(l.kind),
           getPrice(s.provider),
@@ -125,24 +199,26 @@ export function useStudio() {
       .catch(() => {});
   }, [settings?.provider]);
 
-  // Debounce 600 ms on text changes -> describe()
+  // Live preview of the composed prompt + realism check + derived notes
   useEffect(() => {
-    const trimmed = text.trim();
-    if (!trimmed) return;
     const timer = setTimeout(() => {
       void (async () => {
         try {
-          const res = await describe(trimmed);
-          if (res.kind !== kind) {
-            await refreshLookAndCards(res.kind);
+          const prev = await previewCompose(composeForm);
+          setComposePreview(prev);
+          if (composeForm.subject.trim() && prev.kind !== kind) {
+            const res = await describe(composeForm.subject.trim());
+            if (res.kind !== kind) {
+              await refreshLookAndCards(res.kind);
+            }
           }
         } catch {
-          // ignore
+          // ignore preview errors
         }
       })();
-    }, 600);
+    }, 250);
     return () => clearTimeout(timer);
-  }, [text, kind, refreshLookAndCards]);
+  }, [composeForm, look.overrides, kind, refreshLookAndCards]);
 
   // Poll running photo job every 1.5 s
   useEffect(() => {
@@ -190,14 +266,14 @@ export function useStudio() {
   const selectCardOption = useCallback(async (cardId: string, optionKey: string) => {
     try {
       const updated = await setCard(cardId, optionKey);
-      setLook(updated);
+      setLookState(updated);
     } catch {
       // ignore
     }
   }, []);
 
   const make = useCallback(async () => {
-    if (inFlightRef.current || pending || !text.trim()) return;
+    if (inFlightRef.current || pending || !composeForm.subject.trim()) return;
     inFlightRef.current = true;
     setPending(true);
     setSelectedRecent(null);
@@ -213,7 +289,7 @@ export function useStudio() {
     });
     try {
       const res = await makePhoto({
-        text: text.trim(),
+        form: composeForm,
         provider,
         ...(reference && provider !== "higgsfield"
           ? { reference_b64: reference.b64, reference_name: reference.name }
@@ -233,7 +309,7 @@ export function useStudio() {
         check_error: "",
       });
     }
-  }, [pending, text, provider, reference]);
+  }, [pending, composeForm, provider, reference]);
 
   const fix = useCallback(
     async (giveawayKey: string) => {
@@ -250,7 +326,7 @@ export function useStudio() {
       try {
         const res = await fixPhoto(jobId, giveawayKey);
         const updatedLook = await getLook();
-        setLook(updatedLook);
+        setLookState(updatedLook);
         setJobId(res.id);
       } catch (err) {
         inFlightRef.current = false;
@@ -332,7 +408,11 @@ export function useStudio() {
 
   return {
     text,
-    setText: setTextState,
+    setText,
+    composeForm,
+    updateComposeField,
+    composeOptions,
+    composePreview,
     kind,
     cards,
     look,
