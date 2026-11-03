@@ -8,7 +8,10 @@ import threading
 import time
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+if getattr(sys, "frozen", False):
+    ROOT = Path(sys.executable).parent
+else:
+    ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 sys.path.insert(0, str(ROOT))
 
@@ -90,7 +93,8 @@ def main() -> int:
             height=900,
             min_size=(1280, 720),
         )
-        webview.start()
+        icon_path = ROOT / "assets" / "icons" / "app.ico"
+        webview.start(icon=str(icon_path) if icon_path.exists() else None)
     finally:
         if api is not None:
             api.stop()

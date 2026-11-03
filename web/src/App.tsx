@@ -34,7 +34,15 @@ export function App() {
       <header className="flex h-12 shrink-0 items-center justify-between border-b border-hairline bg-surface px-5">
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-accent" aria-hidden="true" />
+            <svg
+              viewBox="0 0 256 256"
+              className="h-5 w-5 shrink-0 text-accent"
+              fill="currentColor"
+              fillRule="evenodd"
+              aria-hidden="true"
+            >
+              <path d="M 60.00 24.00 H 100.00 V 50.00 H 65.00 A 15.00 15.00 0 0 0 50.00 65.00 V 100.00 H 24.00 V 60.00 A 36.00 36.00 0 0 1 60.00 24.00 Z M 156.00 24.00 H 196.00 A 36.00 36.00 0 0 1 232.00 60.00 V 100.00 H 206.00 V 65.00 A 15.00 15.00 0 0 0 191.00 50.00 H 156.00 V 24.00 Z M 206.00 156.00 H 232.00 V 196.00 A 36.00 36.00 0 0 1 196.00 232.00 H 156.00 V 206.00 H 191.00 A 15.00 15.00 0 0 0 206.00 191.00 V 156.00 Z M 24.00 156.00 H 50.00 V 191.00 A 15.00 15.00 0 0 0 65.00 206.00 H 100.00 V 232.00 H 60.00 A 36.00 36.00 0 0 1 24.00 196.00 V 156.00 Z M 113.50 108.00 A 34.50 34.50 0 1 1 182.50 108.00 A 34.50 34.50 0 1 1 113.50 108.00 Z" />
+            </svg>
             <h1 className="text-sm font-semibold tracking-tight text-text">
               AI Image Studio
             </h1>
