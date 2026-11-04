@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "ai-image-studio": {
+      "command": "C:\\Users\\Valentin\\AppData\\Local\\Programs\\Python\\Python313\\python.exe",
+      "args": [
+        "C:\\Users\\Valentin\\Downloads\\Personal Projects\\AI Image Studio\\mcp_server\\server.py"
+      ]
+    }
+  }
+}

@@ -4,15 +4,15 @@
 
 Register it:
 
-    codex:   [mcp_servers.ai-image-studio] in ~/.codex/config.toml
-             command = python, args = ["<project>/mcp_server/server.py"]
-    claude:  claude mcp add ai-image-studio -- python "<project>/mcp_server/server.py"
+    antigravity: automatically configured via ~/.gemini/config/mcp_config.json
+    codex:       [mcp_servers.ai-image-studio] in ~/.codex/config.toml
+                 command = python, args = ["<project>/mcp_server/server.py"]
+    claude:      claude mcp add ai-image-studio -- python "<project>/mcp_server/server.py"
 
 A thin client of the Local API (tools/local_api.py, http://127.0.0.1:8785 by default;
-AIVS_LOCAL_API_PORT to change, AIVS_LOCAL_API_TOKEN sent when set). It holds no image
-logic: the open app's Look, the Images tab's free realism switches and its paid Refine
-all run inside AI Image Studio, and every image lands in its History. The app must be
-open with the Local API on (Settings), or run headless: python tools/local_api.py --serve
+AIVS_LOCAL_API_PORT to change, AIVS_LOCAL_API_TOKEN sent when set). If the local app
+is not already open, the server automatically starts the local engine in-process so
+tools answer seamlessly without requiring the GUI window to be open.
 
 Spending: image_generate costs Kie credits (Nano Banana Pro, ~24 credits = ~$0.12 per
 try; Refine adds up to 2 more tries). It refuses to run until `approved=True`, which an
@@ -24,6 +24,7 @@ import json
 import mimetypes
 import os
 import sys
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -32,6 +33,7 @@ from typing import Optional
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
+sys.path.insert(0, str(ROOT))
 import generate_image as gi  # noqa: E402  (.env reader, for the port and token)
 
 try:  # mcp 2.x
@@ -55,6 +57,9 @@ Then image_wait gives the saved file path."""
 
 mcp = _Server("ai-image-studio", instructions=INSTRUCTIONS)
 
+_local_api_instance = None
+_local_api_lock = threading.Lock()
+
 
 def base_url():
     url = os.environ.get("AVS_URL") or gi.env_value("AVS_URL")
@@ -63,7 +68,40 @@ def base_url():
     return "http://127.0.0.1:{}".format(gi.env_value("AIVS_LOCAL_API_PORT") or 8785)
 
 
+def ensure_backend():
+    """Ensure the Local API is answering. If the desktop app is closed, auto-starts in-process."""
+    global _local_api_instance
+    url = base_url()
+    token = gi.env_value("AIVS_LOCAL_API_TOKEN")
+    headers = {"Authorization": "Bearer " + token} if token else {}
+    req = urllib.request.Request(url + "/api/v1/health", headers=headers)
+    try:
+        with urllib.request.urlopen(req, timeout=1.0):
+            return
+    except Exception:
+        pass
+
+    with _local_api_lock:
+        if _local_api_instance is not None:
+            return
+        if "127.0.0.1" in url or "localhost" in url:
+            try:
+                import local_api
+                target_port = local_api.configured_port()
+                _local_api_instance = local_api.start(port=target_port)
+                for _ in range(30):
+                    time.sleep(0.05)
+                    try:
+                        with urllib.request.urlopen(req, timeout=0.5):
+                            break
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+
+
 def call(method, path, body=None, timeout=60):
+    ensure_backend()
     data = json.dumps(body).encode("utf-8") if body is not None else None
     headers = {"Content-Type": "application/json"} if data else {}
     token = gi.env_value("AIVS_LOCAL_API_TOKEN")
