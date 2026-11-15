@@ -29,3 +29,6 @@ Thumbs.db
 .impeccable/
 web/node_modules/
 web/dist/
+
+# machine-specific MCP config (holds local paths)
+.agents/mcp_config.json
