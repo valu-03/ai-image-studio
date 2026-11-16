@@ -122,7 +122,7 @@ export function LookCards({
         {advancedOpen && (
           <div className="mt-1.5 space-y-2 rounded-xl border border-hairline bg-ground/60 p-2.5 text-[11px] leading-relaxed text-muted">
             <p>
-              Cards with a gold dot are shared with Skit Studio while this window is open. Untouched cards stay on realistic defaults that vary naturally between photos.
+              Cards with a gold dot are shared with AI agents and apps (through the Local API) while this window is open. Untouched cards stay on realistic defaults that vary naturally between photos.
             </p>
             {onOpenLookTab && (
               <div className="flex flex-wrap gap-1 pt-0.5">

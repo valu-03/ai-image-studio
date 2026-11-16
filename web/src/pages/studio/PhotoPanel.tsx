@@ -55,7 +55,7 @@ export function PhotoPanel({
           {isApi && !matchingCheck && (
             <div className="flex items-center justify-between rounded-xl border border-hairline bg-surface p-3.5 text-xs">
               <span className="text-muted">
-                Made through Skit Studio. Run the picture check if something looks off.
+                Made through the Local API (an AI agent or another app). Run the picture check if something looks off.
               </span>
               <button
                 type="button"

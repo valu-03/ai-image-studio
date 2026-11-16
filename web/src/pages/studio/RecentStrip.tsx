@@ -55,7 +55,7 @@ export function RecentStrip({
                 />
                 {item.source === "api" && (
                   <span className="absolute left-1 top-1 rounded bg-ground/85 px-1.5 py-0.5 text-[10px] font-semibold text-accent">
-                    Skit Studio
+                    API
                   </span>
                 )}
               </button>

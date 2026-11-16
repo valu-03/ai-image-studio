@@ -1,4 +1,4 @@
-"""tools/scene_variety.py: a different real light and place per skit."""
+"""tools/scene_variety.py: a different real light and place per series of shots."""
 import sys
 from pathlib import Path
 
@@ -16,7 +16,7 @@ def check(name, cond, detail=""):
         fails.append(name)
 
 
-KEYS = ["skit-{}".format(i) for i in range(50)]
+KEYS = ["series-{}".format(i) for i in range(50)]
 check("deterministic", all(sv.pick(k, "animal") == sv.pick(k, "animal") for k in KEYS))
 combos = {tuple(sv.pick(k, "animal").values()) for k in KEYS}
 check("spread_ge_5", len(combos) >= 5, str(len(combos)))
@@ -37,8 +37,8 @@ check("outdoor_spread_ge_5", len(set(OUT)) >= 5, str(len(set(OUT))))
 check("outdoor_no_sunny_wood", not any("sun" in p.lower() and "wood" in p.lower()
                                        for p in sv.OUTDOOR_LIGHTS))
 check("outdoor lights name a light source", all(sv.names_light_source(p) for p in sv.OUTDOOR_LIGHTS))
-check("outdoor deterministic", sv.pick("skit-1", "human", True) == sv.pick("skit-1", "human", True))
-check("indoor default stays indoor", sv.pick("skit-1", "human")["light"] in sv.LIGHTS)
+check("outdoor deterministic", sv.pick("series-1", "human", True) == sv.pick("series-1", "human", True))
+check("indoor default stays indoor", sv.pick("series-1", "human")["light"] in sv.LIGHTS)
 check("street and beach are outdoors", sv.names_outdoor("a cat walks down the street")
       and sv.names_outdoor("a dog on the beach"))
 check("'forestry' / 'parkour' are not outdoor words", not sv.names_outdoor("a cat in the kitchen"))

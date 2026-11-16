@@ -1,11 +1,11 @@
-"""Scene variety: a different, real-world light and place for each skit.
+"""Scene variety: a different, real-world light and place for each series of shots.
 
 Past pictures kept landing in the same sunny-window-plus-wooden-furniture room.
 `pick(key, kind)` chooses a light phrase and a place phrase from a hash of
-`key` (a skit tag, or the prompt text when there is no tag), so the choice is:
+`key` (a caller's tag, or the prompt text when there is no tag), so the choice is:
 
   * deterministic - the same key always gives the same pair, so every shot of
-    one skit (which share a tag) shares one light;
+    one series (which shares a tag) shares one light;
   * spread out - different keys land on many different combinations;
   * never the old cliche - no phrase mixes sun and wood.
 
@@ -131,8 +131,8 @@ def pick(key, kind, outdoor=False):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(
-        description="Show the light and place chosen for a skit tag or prompt text.")
-    parser.add_argument("key", help="skit tag or prompt text")
+        description="Show the light and place chosen for a tag or prompt text.")
+    parser.add_argument("key", help="tag or prompt text")
     parser.add_argument("--kind", default="human",
                         help="human, animal, place or object (default human)")
     args = parser.parse_args(argv)

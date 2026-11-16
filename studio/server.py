@@ -85,7 +85,7 @@ def create_app(static_dir, state):
     session_seed = int(time.time()) % 100000
     app = FastAPI(title="AI Image Studio - photo studio")
     app.state.ask = _fake_ask if os.environ.get("STUDIO_FAKE_ASK") == "1" else None
-    # The desktop shell reports the Skit Studio connection here.
+    # The desktop shell reports whether the Local API started here.
     app.state.local_api = {"running": False, "error": ""}
 
     # ---------------------------------------------------------------- helpers

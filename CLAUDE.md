@@ -1513,35 +1513,42 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
 - `workflows/ugc-ad.md` — Phase 6, the five-beat advert
 - `workflows/cat-story-video.md` — a story in scenes, with its CapCut edit sheet
 - `workflows/sound-design.md` — three layers of ElevenLabs prompts per scene
-- **Videos -> Skit Studio tab** — a finished talking-pet skit from one idea, made by the separate
-  **Skit Studio** app (`..\Skit Studio`) over its REST API. AI Image Studio is
-  only a client here: `tools/skit_client.py` is the one place that speaks the API,
-  `ui/views/skit_studio.py` the tab, `ui/workers.py` `SkitTask` the worker. The tab has
-  "Auto-generate idea" (Skit Studio's `POST /ideas`) and a Clips picker (`video_model`: Kling 3.0
-  on Higgsfield by default, Seedance 2.0/2.5, Wan 3.0, or Kling on Kie). No skit logic lives in
-  this repo, and the tab keeps Skit Studio's cost gate: "Approve & film" is the only
-  button that spends, and it stays disabled while the skit fails its lint. The tab reaches the
-  server only when shown (a request started at construction outlived test windows and crashed
-  their teardown). Contract changes happen in Skit Studio's CLAUDE.md first.
-- **Local API for Skit Studio** (`tools/local_api.py`, 127.0.0.1:8785) — the other direction,
-  the same arrangement as VoiceStudio's port 3900: while this app is open, Skit Studio sends its
-  character and scene prompts here and gets images back. Routes: `GET /api/v1/health`,
+- **Local API** (`tools/local_api.py`, 127.0.0.1:8785) - while this app is open, the MCP
+  server and any other loopback caller send prompts here and get images back. (Skit Studio, the
+  separate app this was first built for, is gone; its client, tab and Settings wording were
+  removed on 2026-11-16.) Routes: `GET /api/v1/health`,
   `/look/options` (every Look list), `/look/current` (the Look phrases now on the Compose form),
   `POST /look/compose`, `POST /prompt` (finished prompt only, no spend: for pasting into Google
   Flow), `POST /images` -> `GET /images/<id>` -> `/images/<id>/file`. Prompts are the caller's
   scene text plus the Look (style first, the no-text sentence kept last); generation is the same
-  `gi.generate()` Compose uses, and each image lands in `temp/outputs/images/skit-<id>.png` and in
-  History with note "Skit Studio". **The caller's approval is the yes**: Skit Studio's cost gate
-  runs before it ever calls `/images`, so the server never pops `confirm_spend`.
+  `gi.generate()` Compose uses, and each image lands in `temp/outputs/images/api-<id>.png` and in
+  History with note "Local API" (the page shows any non-"Studio" row with an **API** badge).
+  **The caller's approval is the yes**: the MCP server's `approved=True` gate runs before it ever
+  calls `/images`, so the server never pops `confirm_spend`.
   Started by `gui.py` (`MainWindow.start_local_api`), never by a test window; Settings ->
-  "Skit Studio connection" turns it off (QSettings `local_api`). The server thread reads a
+  "Local API" turns it off (QSettings `local_api`). The server thread reads a
   lock-guarded Look snapshot (`SpecEditor.look_phrases()`, refreshed on `editor.changed`), never a
   widget. `AIVS_LOCAL_API_PORT` / `AIVS_LOCAL_API_TOKEN` in `.env`. Tests:
   `test_local_api.py` (headless, against mock_api) and `test_local_api_gui.py`.
-  **MCP server** (`mcp_server/server.py`, stdio, registered as `ai-image-studio` in Claude Code
-  and Codex) is a thin client of this API: `avs_status`, `look_options` / `look_current` /
-  `look_compose`, `prompt_preview` (free), `image_generate` (returns the price until
-  `approved=True`), `image_get` / `image_wait` / `image_cancel`. It holds no image logic.
+  **MCP server** (`mcp_server/server.py`, stdio) is a thin client of this API: `avs_status`,
+  `look_options` / `look_current` / `look_compose`, `prompt_preview` (free), `image_generate`
+  (returns the price until `approved=True`), `image_get` / `image_wait` / `image_cancel`. It holds
+  no image logic. Rules that keep it working on any PC and in any client:
+  - **Register it with `python mcp_server/install.py`**, never by hand-typing `python`: each
+    entry is the installer's own `sys.executable` plus the absolute `server.py` path (Claude Code
+    via `claude mcp add --scope user`, Codex `~/.codex/config.toml`, Gemini CLI / Cursor / Claude
+    Desktop / Windsurf JSON). It runs `server.py --check` first and backs up every file it changes.
+  - **The app's port is never taken by the MCP server.** With the app closed it starts a private
+    `local_api.start(port=0, token=<random>)` engine; it re-checks for the app every 10 s and an
+    image job is always polled on the engine that made it (`Backend.job_base`). Binding 8785
+    itself (the old behaviour) made the app's own Local API fail with "port in use" when the app
+    was opened afterwards.
+  - **stdout is the protocol.** Human output goes to stderr (`log()`); the engine start runs
+    under `redirect_stdout(sys.stderr)`.
+  - **Every tool is async and stays under 60 s** (Codex's default tool limit): blocking HTTP runs
+    in `asyncio.to_thread`, and `image_wait` returns `finished: false` after 45 s by default.
+  - `mcp` is in `requirements.txt`; the server supports mcp 1.x (`FastMCP`) and 2.x (`MCPServer`).
+    `tests/test_mcp_server.py` drives it over real stdio from an unrelated folder.
   **Images-tab realism on a typed prompt** (`realism` on `/prompt` and `/images`): the caller
   names the subject / action / setting / shot (+ `species`, `kind`, because `build_evidence`
   reads "Golden Retriever" as an object) and which Compose switches to run (`REALISM_SWITCHES`:
@@ -1556,7 +1563,7 @@ Never delete or overwrite anything in `temp/resources/` without being asked.
   **Refine** (`refine`: 0-2 retries, `MAX_REFINE`): `Jobs._attempts()` generates,
   `brief.critique_image()` names the weak layers, one unused candidate per layer is added before
   the no-text tail, and the attempt with the fewest failing layers is kept (a worse retry never
-  replaces a better first image). Each try is a History row ("Skit Studio - Refine attempt n").
+  replaces a better first image). Each try is a History row ("Local API - Refine attempt n").
   No `OPENROUTER_API_KEY` -> one image and a warning; health reports `refine`.
   `POST /images/<id>/cancel` stops before the next retry. `material_bank.json` `ignore_phrases`
   ("coffee table", "tea towel"...) keeps furniture from reading as the material it is named for.

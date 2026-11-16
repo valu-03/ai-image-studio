@@ -159,11 +159,11 @@ wait(r.json()["id"])
 
 print("Recent / files")
 images = Path(os.environ["AIVS_OUTPUTS_DIR"]) / "images"
-(images / "skit-api1.png").write_bytes(mock_api.PNG)
+(images / "api-1.png").write_bytes(mock_api.PNG)
 history.append({"subject": "a cat", "slug": "s"}, "p", {}, 8, True,
-               image=str(images / "skit-api1.png"), note="Skit Studio")
+               image=str(images / "api-1.png"), note="Local API")
 rows = client.get("/api/recent").json()
-api_row = next((x for x in rows if x["note"] == "Skit Studio"), None)
+api_row = next((x for x in rows if x["note"] == "Local API"), None)
 check("recent includes API photos", api_row and api_row["source"] == "api", str(rows)[:300])
 check("recent marks page photos", any(x["source"] == "page" for x in rows))
 r = client.post("/api/recent/{}/check".format(api_row["history_id"]))

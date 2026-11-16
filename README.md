@@ -27,7 +27,7 @@ A desktop photo studio for making realistic AI photos of pets and people. After 
 - An optional reference photo keeps the same pet or person across shots.
 - The "Does this look real?" check reads the finished image against 8 giveaways, such as dead-centre framing, studio-perfect light or airbrushed skin and fur. Each one comes with a **Fix** button that adjusts the matching Look card and remakes the photo.
 - Thumbs up or down on recent photos teaches the app which card choices work for you.
-- A Local API and an MCP server let other apps and AI agents (Skit Studio, Claude Code, Codex) build prompts with your current Look cards and generate images through the app.
+- An MCP server lets AI agents (Claude Code, Codex, Gemini CLI, Cursor and other MCP clients) build prompts with your Look cards and generate images, whether the app is open or not.
 
 ## Getting started
 
@@ -74,19 +74,22 @@ The realism comes from photography choices only. AI Image Studio never removes, 
 
 ## Local API and MCP server
 
-While the app is open, a Local API runs on `http://127.0.0.1:8785`. You can also run it without the window:
+The MCP server in `mcp_server/server.py` lets AI agents use the app's image engine. To register it with every AI client on your PC, run this from the project folder:
 
 ```powershell
-python tools/local_api.py --serve
+python mcp_server/install.py
 ```
 
-Skit Studio, a separate app, uses it for character sheets and scene stills made with the Look currently set on the page (`GET /api/v1/look/current`). Those stills appear in the recent strip with a **Skit Studio** badge, so you can check and rate them too.
+The installer first runs the server's self-test, then adds it to Claude Code, Codex, Gemini CLI, Cursor, Claude Desktop and Windsurf, whichever of them are installed. Each entry uses the full path of the Python that ran the installer and of `server.py`, so it works from any folder and on any PC. Restart the client afterwards.
 
-The MCP server in `mcp_server/server.py` wraps the same API for AI agents, and starts the backend itself if it isn't running. To add it to Claude Code:
+| Command | What it does |
+|---|---|
+| `python mcp_server/install.py --only claude,codex` | Registers with the clients you name |
+| `python mcp_server/install.py --print` | Prints the config block to paste into any other MCP client, changing nothing |
+| `python mcp_server/install.py --uninstall` | Removes the entries again |
+| `python mcp_server/server.py --check` | Shows which Python, engine and API keys the server sees |
 
-```powershell
-claude mcp add ai-image-studio -- python mcp_server/server.py
-```
+While the app is open, the server talks to the app's Local API on `http://127.0.0.1:8785`, so `look="current"` uses the Look on screen. With the app closed, the server starts its own copy of the engine on a free port, so the app can still be opened later. Photos made this way appear in the recent strip with an **API** badge, where you can check and rate them too. To run the Local API on its own for scripts, use `python tools/local_api.py --serve`.
 
 | Tool | What it does | Spends money |
 |---|---|---|
@@ -94,7 +97,7 @@ claude mcp add ai-image-studio -- python mcp_server/server.py
 | `look_options`, `look_current`, `look_compose` | Lists the Look choices, reads the current Look, builds one | no |
 | `prompt_preview` | Returns the finished prompt | no |
 | `image_generate` | Makes an image. It returns the price first and only generates when called again with `approved=True`. | yes |
-| `image_wait`, `image_get`, `image_cancel` | Follows, fetches or cancels a running image | no |
+| `image_wait`, `image_get`, `image_cancel` | Follows, fetches or cancels a running image. `image_wait` returns after 45 seconds so it stays inside Codex's 60-second tool limit; call it again until the image is done. | no |
 
 ## Development
 

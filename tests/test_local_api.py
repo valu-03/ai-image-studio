@@ -1,4 +1,4 @@
-"""tools/local_api.py - the server Skit Studio talks to while this app is open.
+"""tools/local_api.py - the server the MCP server and other local apps talk to.
 
 Runs in-process against mock_api (Kie), with a throwaway .env and History file
 so nothing real is read, spent or logged. The API itself binds port 0, so it
@@ -121,7 +121,7 @@ check("prompt route spends nothing", mock_api.STATE["last"] is None)
 ref = base64.b64encode(mock_api.PNG).decode()
 code, sub = call(BASE, "POST", "/api/v1/images",
                  {"prompt": "A ginger cat on a sofa. No text, no captions, no watermark.",
-                  "look": "current", "aspect": "9:16", "tag": "skit-test",
+                  "look": "current", "aspect": "9:16", "tag": "api-test",
                   "references": [{"name": "cat.png", "b64": ref}]})
 check("image job accepted", code == 202 and sub.get("id"), str(sub))
 job = wait(BASE, sub["id"])
@@ -137,7 +137,7 @@ check("Kie got the uploaded reference", len(sent.get("image_input", [])) == 1)
 code, data = call(BASE, "GET", "/api/v1/images/{}/file".format(sub["id"]), raw=True)
 check("file route returns the image", code == 200 and data == mock_api.PNG)
 entries = history.load()
-check("History has one Skit Studio row",
+check("History has one Local API row",
       len(entries) == 1 and entries[0]["note"] == la.HISTORY_NOTE, str(len(entries)))
 check("History row keeps the image", entries and entries[0]["image"] == job.get("file"))
 check("on_image was called", len(done_events) == 1 and done_events[0]["state"] == "done")
@@ -202,22 +202,22 @@ check("realism_prompt_does_not_lead_with_photorealistic",
       and "photorealistic" not in cat["prompt"].lower(), cat.get("prompt", "")[:200])
 check("a prompt with no light gets one light phrase",
       sv.pick("A cat eats from a bowl.", "animal")["light"].lower() in cat["prompt"].lower())
-code, one = call(BASE, "POST", "/api/v1/prompt", {"prompt": "A cat eats from a bowl.", "tag": "skit-1",
+code, one = call(BASE, "POST", "/api/v1/prompt", {"prompt": "A cat eats from a bowl.", "tag": "series-1",
                                                  "realism": {"subject": "a cat"}})
-code, two = call(BASE, "POST", "/api/v1/prompt", {"prompt": "A cat leaps onto a chair.", "tag": "skit-1",
+code, two = call(BASE, "POST", "/api/v1/prompt", {"prompt": "A cat leaps onto a chair.", "tag": "series-1",
                                                  "realism": {"subject": "a cat"}})
-light1 = sv.pick("skit-1", "animal")["light"].lower()
+light1 = sv.pick("series-1", "animal")["light"].lower()
 check("same_tag_same_light", light1 in one["prompt"].lower() and light1 in two["prompt"].lower(),
       one["prompt"][-250:])
-code, lit = call(BASE, "POST", "/api/v1/prompt", {"prompt": "A cat by the window lamp.", "tag": "skit-1",
+code, lit = call(BASE, "POST", "/api/v1/prompt", {"prompt": "A cat by the window lamp.", "tag": "series-1",
                                                  "realism": {"subject": "a cat"}})
 check("a prompt that names its light gets no extra one", light1 not in lit["prompt"].lower())
 
-code, out1 = call(BASE, "POST", "/api/v1/prompt", {"prompt": "A cat walks down the street.", "tag": "skit-1",
+code, out1 = call(BASE, "POST", "/api/v1/prompt", {"prompt": "A cat walks down the street.", "tag": "series-1",
                                                   "realism": {"subject": "a cat"}})
-code, out2 = call(BASE, "POST", "/api/v1/prompt", {"prompt": "A cat sits on the beach.", "tag": "skit-1",
+code, out2 = call(BASE, "POST", "/api/v1/prompt", {"prompt": "A cat sits on the beach.", "tag": "series-1",
                                                   "realism": {"subject": "a cat"}})
-outl = sv.pick("skit-1", "animal", True)["light"].lower()
+outl = sv.pick("series-1", "animal", True)["light"].lower()
 check("outdoor prompt gets an outdoor light", outl in out1["prompt"].lower(), out1["prompt"][-250:])
 check("same tag, outdoor scenes share the outdoor light", outl in out2["prompt"].lower())
 check("an outdoor prompt gets no indoor light", light1 not in out1["prompt"].lower())

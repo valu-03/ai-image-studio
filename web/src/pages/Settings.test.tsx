@@ -46,7 +46,7 @@ describe("Settings sheet", () => {
           local_api: {
             enabled: true,
             running: false,
-            error: "Skit Studio connection couldn't start: port 8785 is in use",
+            error: "Local API couldn't start: port 8785 is in use",
           },
         },
         onClose: () => {},
@@ -55,6 +55,6 @@ describe("Settings sheet", () => {
         onToggleLocalApi: async () => {},
       })
     );
-    expect(html).toContain("Skit Studio connection couldn&#x27;t start: port 8785 is in use");
+    expect(html).toContain("Local API couldn&#x27;t start: port 8785 is in use");
   });
 });

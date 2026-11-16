@@ -99,8 +99,8 @@ describe("Right column: PhotoPanel, RealCheck, RecentStrip", () => {
   it("api photo shows check button, page photo does not", () => {
     const apiPhoto: RecentPhoto = {
       history_id: "h-api",
-      file_url: "/files/skit-1.png",
-      note: "Skit Studio",
+      file_url: "/files/api-1.png",
+      note: "Local API",
       rating: null,
       source: "api",
     };
@@ -151,7 +151,7 @@ describe("Right column: PhotoPanel, RealCheck, RecentStrip", () => {
       {
         history_id: "h-down",
         file_url: "/files/down.png",
-        note: "Skit Studio",
+        note: "Local API",
         rating: 1,
         source: "api",
       },
@@ -166,6 +166,6 @@ describe("Right column: PhotoPanel, RealCheck, RecentStrip", () => {
     );
     expect(html).toContain('aria-label="Thumb up" aria-pressed="true"');
     expect(html).toContain('aria-label="Thumb down" aria-pressed="true"');
-    expect(html).toContain("Skit Studio");
+    expect(html).toContain(">API<");
   });
 });

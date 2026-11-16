@@ -50,7 +50,7 @@ taken_port = blocker.getsockname()[1]
 os.environ["AIVS_LOCAL_API_PORT"] = str(taken_port)
 try:
     api, err = start_local_api(state, True)
-    expected = "Skit Studio connection couldn't start: port {} is in use".format(taken_port)
+    expected = "Local API couldn't start: port {} is in use".format(taken_port)
     check("port_taken_reports", api is None and err == expected, str((api, err)))
 finally:
     blocker.close()

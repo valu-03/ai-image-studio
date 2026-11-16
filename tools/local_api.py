@@ -1,11 +1,11 @@
-"""Local API - lets Skit Studio use this app's image engine and Look while it is open.
+"""Local API - lets other apps and AI agents use this app's image engine and Look.
 
-The same idea as VoiceStudio's local API on port 3900: while AI Image Studio
-runs, a small HTTP server on 127.0.0.1 answers Skit Studio (or any loopback
-caller). Skit Studio sends its scene prompt and reference sheets; this app adds
-the Look (the phrases the Look tab builds), generates through the same
-generate_image.generate() the Compose tab uses, and records the result in
-History tagged "Skit Studio".
+While AI Image Studio runs, a small HTTP server on 127.0.0.1 answers any
+loopback caller - the MCP server (mcp_server/server.py) that Claude Code, Codex
+and other agents use, or a script. The caller sends its prompt and any reference
+images; this app adds the Look (the phrases the Look tab builds), generates
+through the same generate_image.generate() the Compose tab uses, and records the
+result in History tagged "Local API".
 
 Routes (all JSON unless noted):
   GET  /api/v1/health             app, version, which image keys are set
@@ -29,8 +29,8 @@ generate, have the vision critique name the weak layer, strengthen it with the
 bank's own words and try again, keeping the attempt the critique liked best.
 
 Loopback only. An optional bearer token (AIVS_LOCAL_API_TOKEN) is required
-when set. Spending: the caller's own approval gate is the yes - Skit Studio
-shows its estimate and waits for Approve before it ever calls /images.
+when set. Spending: the caller's own approval gate is the yes - the MCP
+server shows its price and waits for approved=True before it ever calls /images.
 
 Run headless (no window) with:  python tools/local_api.py --serve
 """
@@ -81,7 +81,7 @@ KEEP_JOBS = 200
 # A still plus up to three reference sheets, base64'd, is a few MB; refuse anything silly.
 MAX_BODY = 40 * 1024 * 1024
 REF_DIR = gi.OUTPUTS_DIR / "local_api"
-HISTORY_NOTE = "Skit Studio"
+HISTORY_NOTE = "Local API"
 
 # Prompt order: style leads (it sets the whole medium), the rest follow the
 # scene in the order a photographer would describe a shot.
@@ -97,7 +97,7 @@ REALISM_TEXT = ("subject", "action", "setting", "shot", "species", "kind")
 SUBJECT_KINDS = ("animal", "human", "object", "place")
 # refine_image.DEFAULT_MAX_RETRIES - an unlucky prompt can never spend more than three images.
 MAX_REFINE = 2
-REFINE_NOTE = "Skit Studio - Refine attempt {}"
+REFINE_NOTE = "Local API - Refine attempt {}"
 # Light no one filming on a phone at home has: a studio rig or painterly contrast.
 PHONE_LIGHT_SKIP = ("chiaroscuro lighting", "studio softbox lighting")
 
@@ -296,7 +296,7 @@ def clean_realism(raw):
     if not isinstance(raw, dict):
         raise ValueError("realism must be an object or true")
     # `phone` keeps the fill to phone-camera words without the snapshot's
-    # "who took it" line - for a character sheet in a phone-footage skit.
+    # "who took it" line - for a character sheet in phone-footage scenes.
     opts = {"fill": bool(raw.get("fill", True)), "phone": bool(raw.get("phone", False))}
     opts.update({key: bool(raw.get(key, True)) for key in REALISM_SWITCHES})
     opts.update({key: str(raw.get(key) or "").strip()[:600] for key in REALISM_TEXT})
@@ -551,8 +551,8 @@ class Jobs:
 
             path, error = gi.generate(
                 request.get("provider") or "kie", prompt,
-                out_name="skit-{}-{}.png".format(job_id, round_number + 1)
-                if retries else "skit-{}.png".format(job_id),
+                out_name="api-{}-{}.png".format(job_id, round_number + 1)
+                if retries else "api-{}.png".format(job_id),
                 references=refs, model=request.get("model") or None,
                 on_stage=on_stage, spec=request.get("spec") or {})
             if error is not None:
@@ -616,7 +616,7 @@ def record_history(request, path, note=None, look=None):
     present, _missing, banned, _warn, _neg = rl.lint(prompt, bank, kind=kind)
     layers = {name: [hit] for name, _cfg, hit in present}
     spec = {"subject": (request.get("base") or prompt)[:300],
-            "slug": request.get("tag") or "skit-studio", "seed": 0,
+            "slug": request.get("tag") or "local-api", "seed": 0,
             "aspect": (request.get("spec") or {}).get("aspect", "")}
     return history.append(spec, prompt, layers, len(present),
                           len(present) == 8 and not banned, image=str(path),
@@ -651,7 +651,7 @@ def parse_prompt_request(body, current_look):
                                "words added"]
     elif realism:
         # Scene variety: a prompt that names no light source gets one, chosen
-        # from the skit tag (so a skit's shots share it) or else the prompt text.
+        # from the caller's tag (so a series of shots shares it) or else the prompt text.
         # parse_image_request delegates here, so /images inherits this.
         if not sv.names_light_source(prompt):
             kind = bev.subject_kind(bev.load_bank(), realism.get("subject") or base)

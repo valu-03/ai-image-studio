@@ -212,15 +212,15 @@ export function Settings({
         <section className="mt-6">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">
             <Term
-              word="Skit Studio connection"
-              plain="Lets Skit Studio ask this app to make still photos using the Look cards you picked here."
-              example="Like leaving a side door unlocked so your video app can borrow your camera setup."
+              word="Local API"
+              plain="Lets AI agents (Claude Code, Codex and others, through the MCP server) and other apps on this computer make photos using the Look cards you picked here."
+              example="Like leaving a side door unlocked so your assistant can borrow your camera setup."
             />
           </h3>
           <div className="mt-2.5 rounded-xl border border-hairline bg-raised/40 p-3">
             <label className="flex cursor-pointer items-center justify-between gap-3">
               <span className="text-xs font-medium text-text">
-                Share Look with Skit Studio (port 8785)
+                Share Look with agents and apps (port 8785)
               </span>
               <input
                 type="checkbox"

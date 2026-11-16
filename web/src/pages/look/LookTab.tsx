@@ -580,7 +580,7 @@ export function LookTab({
             </h3>
             <p className="mt-1 text-xs leading-relaxed text-muted">
               Every phrase you apply here is merged into your next photo in the{" "}
-              <strong className="font-semibold text-text">Compose</strong> tab (and shared with Skit Studio).
+              <strong className="font-semibold text-text">Compose</strong> tab (and shared with AI agents through the Local API).
             </p>
           </div>
 

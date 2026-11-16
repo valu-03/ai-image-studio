@@ -1,5 +1,5 @@
 """Desktop entry: FastAPI served on a local port inside a pywebview window,
-plus the in-process Local API on 8785 for Skit Studio and MCP."""
+plus the in-process Local API on 8785 for the MCP server and other local apps."""
 
 import multiprocessing
 import socket
@@ -51,7 +51,7 @@ def start_local_api(state: LookState, enabled: bool = True, port: int | None = N
         )
         return api, None
     except OSError:
-        return None, "Skit Studio connection couldn't start: port {} is in use".format(target_port)
+        return None, "Local API couldn't start: port {} is in use".format(target_port)
 
 
 def start_server(app, port: int):

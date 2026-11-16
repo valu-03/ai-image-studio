@@ -43,6 +43,7 @@ ORDER = [
     "test_posing_bank.py",
     "test_camera_angle_bank.py",
     "test_local_api.py",
+    "test_mcp_server.py",
     "test_studio_look.py",
     "test_studio_photos.py",
     "test_studio_desktop.py",
